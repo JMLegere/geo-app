@@ -73,6 +73,15 @@ void main() {
           path: 'lib/features/pack/presentation/screens/pack_screen.dart',
           kind: 'Page',
         ),
+        'SpeciesCard': (
+          path: 'lib/features/pack/presentation/widgets/species_card.dart',
+          kind: 'Organism',
+        ),
+        'IdentificationService': (
+          path:
+              'lib/features/identification/presentation/screens/identification_service_screen.dart',
+          kind: 'Page',
+        ),
         'TownDirectory': (
           path:
               'lib/features/living_world/presentation/screens/town_screen.dart',
@@ -132,6 +141,50 @@ void main() {
           isNotEmpty,
           reason: '${entry.key} must declare an interaction policy.',
         );
+      }
+    });
+    test('defines Phase 5 neutral ownership and knowledge boundaries', () {
+      const inventoryExpectations = <String, String>{
+        'lib/features/identification/presentation/screens/identification_service_screen.dart':
+            'examination-before-identification',
+        'lib/features/pack/presentation/screens/pack_screen.dart':
+            'search, filter, sort, category, paging, and grid behavior',
+        'lib/features/pack/presentation/widgets/species_card.dart':
+            'IUCN meaning',
+        'lib/features/living_world/presentation/screens/town_screen.dart':
+            'map knowledge gates',
+        'lib/features/living_world/presentation/screens/venue_detail_screen.dart':
+            'no Venue Visit trigger',
+        'lib/features/living_world/presentation/widgets/venue_marker.dart':
+            'no Venue Visit trigger',
+        'lib/features/home/presentation/screens/home_screen.dart':
+            'no Modules panel or CTA',
+      };
+      final surfaces = {
+        for (final surface in designSurfaceInventory) surface.path: surface,
+      };
+
+      for (final entry in inventoryExpectations.entries) {
+        final surface = surfaces[entry.key];
+        expect(surface, isNotNull, reason: '${entry.key} must be inventoried.');
+        expect(surface!.designSystemNotes, contains('Phase 5'));
+        expect(surface.designSystemNotes, contains(entry.value));
+      }
+
+      const purposeExpectations = <String, String>{
+        'PlayerPack': 'exact owned active Items',
+        'SpeciesCard': 'media fallback',
+        'IdentificationService': 'examination remains separate',
+        'TownDirectory': 'map knowledge gates',
+        'VenueDetail': 'no Venue Visit trigger',
+        'HomeIdentity': 'no Modules future-state panel',
+      };
+      final contracts = {
+        for (final contract in _nativeContracts()) contract.name: contract,
+      };
+
+      for (final entry in purposeExpectations.entries) {
+        expect(contracts[entry.key]!.purpose, contains(entry.value));
       }
     });
     test('ui-action evidence is anchored to native design exports', () {

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
@@ -15,7 +15,6 @@ import 'package:earth_nova/features/living_world/domain/entities/town_projection
 import 'package:earth_nova/features/living_world/domain/repositories/living_world_repository.dart';
 import 'package:earth_nova/features/living_world/presentation/providers/town_provider.dart';
 import 'package:earth_nova/features/living_world/presentation/screens/town_screen.dart';
-import 'package:earth_nova/shared/design.dart';
 
 import '../../data/living_world_test_data.dart';
 
@@ -25,14 +24,11 @@ const _secondOutcomeId = '00000000-0000-4000-8000-000000000013';
 const _secondEncounterId = '00000000-0000-4000-8000-000000000014';
 
 void main() {
-  testWidgets('shows loading while Town projection read is pending',
-      (tester) async {
+  testWidgets('shows loading while Town projection read is pending', (
+    tester,
+  ) async {
     final pending = Completer<TownProjection>();
-    await _pumpTown(
-      tester,
-      onRead: (_) => pending.future,
-      settle: false,
-    );
+    await _pumpTown(tester, onRead: (_) => pending.future, settle: false);
 
     expect(find.text('Loading Town'), findsOneWidget);
     expect(
@@ -42,21 +38,37 @@ void main() {
 
     pending.complete(_projection([]));
     await tester.pumpAndSettle();
-    expect(find.text('NO VENUES KNOWN YET'), findsOneWidget);
+    expect(find.text('No Venues known yet'), findsOneWidget);
   });
 
-  testWidgets('shows error state when Town projection read fails',
-      (tester) async {
-    await _pumpTown(
+  testWidgets('shows error state and retries the Town projection read', (
+    tester,
+  ) async {
+    var attempts = 0;
+    final repository = await _pumpTown(
       tester,
-      onRead: (_) => Future<TownProjection>.error(
-        const LivingWorldFailure.unavailable(),
-      ),
+      onRead: (_) {
+        attempts += 1;
+        if (attempts == 1) {
+          return Future<TownProjection>.error(
+            const LivingWorldFailure.unavailable(),
+          );
+        }
+        return Future.value(_projection([]));
+      },
     );
 
-    expect(find.text('TOWN COULD NOT LOAD'), findsOneWidget);
+    expect(find.text('Town could not load'), findsOneWidget);
     expect(
-        find.text('Unable to load your Town. Pull to retry.'), findsOneWidget);
+      find.text('Unable to load your Town. Pull to retry.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Retry Town load'));
+    await tester.pumpAndSettle();
+
+    expect(repository.reads, 2);
+    expect(find.text('No Venues known yet'), findsOneWidget);
   });
 
   testWidgets('shows empty Town before any Venue reveal', (tester) async {
@@ -66,9 +78,9 @@ void main() {
     );
 
     expect(find.text('Town'), findsOneWidget);
-    expect(find.text('NO VENUES KNOWN YET'), findsOneWidget);
+    expect(find.text('No Venues known yet'), findsOneWidget);
     expect(
-      find.text('Explore the Map to reveal a Venue.'),
+      find.text('Known Venues appear here as the Map reveals them.'),
       findsOneWidget,
     );
     expect(repository.records, 0);
@@ -78,22 +90,24 @@ void main() {
     expect(find.textContaining('Place'), findsNothing);
   });
 
-  testWidgets('shows a known Venue with zero Villagers before introduction',
-      (tester) async {
+  testWidgets('shows a known Venue with zero Villagers before introduction', (
+    tester,
+  ) async {
     await _pumpTown(
       tester,
-      onRead: (_) async => _projection([
-        _venueJson(villagers: const []),
-      ]),
+      onRead: (_) async => _projection([_venueJson(villagers: const [])]),
     );
 
     expect(find.text('Harbor Current'), findsOneWidget);
-    expect(find.text('NO VILLAGERS INTRODUCED HERE YET'), findsOneWidget);
+    expect(find.text('No Villagers introduced here yet'), findsOneWidget);
     expect(
       find.text(
-          'This Venue is known. Town will update when Villagers are introduced here.'),
+        'This Venue is known. Town will update when Villagers are introduced here.',
+      ),
       findsOneWidget,
     );
+    expect(find.text('0 Villagers'), findsOneWidget);
+    expect(find.text('0 Services'), findsOneWidget);
     expect(find.text('Repairs'), findsNothing);
   });
 
@@ -110,13 +124,15 @@ void main() {
     expect(find.text('Canopy Observatory'), findsOneWidget);
   });
 
-  testWidgets('shows a shared known Villager under two visited Venues',
-      (tester) async {
+  testWidgets('shows a shared known Villager under two visited Venues', (
+    tester,
+  ) async {
     await _pumpTown(
       tester,
       onRead: (_) async => _projection([
         _secondVenueJson(
-            villagers: [_villagerJson(firstVenueId: 'venue:harbor')]),
+          villagers: [_villagerJson(firstVenueId: 'venue:harbor')],
+        ),
         _venueJson(villagers: [_villagerJson()]),
       ]),
     );
@@ -125,15 +141,19 @@ void main() {
     expect(find.text('Repairs — Opening soon'), findsNWidgets(2));
   });
 
-  testWidgets(
-      'renders current Service copy as Opening soon and records no Visit',
-      (tester) async {
+  testWidgets('opens Venue detail with action evidence and records no Visit', (
+    tester,
+  ) async {
     final repository = await _pumpTown(
       tester,
       onRead: (_) async => _projection([
         _venueJson(villagers: [_villagerJson()]),
       ]),
     );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(TownScreen)),
+    );
+    final obs = container.read(appObservabilityProvider);
 
     expect(find.text('Repairs — Opening soon'), findsOneWidget);
     await tester.tap(find.text('Harbor Current'));
@@ -143,8 +163,20 @@ void main() {
     expect(find.text('Villagers and Services'), findsOneWidget);
     expect(find.text('Repairs'), findsOneWidget);
     expect(find.text('Restore worn gear.'), findsOneWidget);
-    expect(find.text('OPENING SOON'), findsOneWidget);
+    expect(find.text('Opening soon'), findsOneWidget);
     expect(repository.records, 0);
+
+    final action = obs.pendingLogRecords.lastWhere(
+      (record) =>
+          record['event_name'] == 'interaction.action' &&
+          (record['attributes'] as Map<String, dynamic>)['action_type'] ==
+              'open_venue_detail',
+    );
+    final attributes = action['attributes'] as Map<String, dynamic>;
+    expect(attributes['player_action_id'], 'open-npc-venue-detail');
+    expect(attributes['venue_id'], 'venue:harbor');
+    expect(attributes['villager_count'], 1);
+    expect(attributes['service_count'], 1);
   });
 }
 
@@ -164,10 +196,7 @@ Future<_ScreenRepository> _pumpTown(
         livingWorldRepositoryProvider.overrideWithValue(repository),
         authProvider.overrideWith(() => _FakeAuthNotifier(_authenticated())),
       ],
-      child: MaterialApp(
-        theme: AppTheme.dark(),
-        home: const TownScreen(),
-      ),
+      child: const ShadApp(home: TownScreen()),
     ),
   );
   await tester.pump();
@@ -189,10 +218,9 @@ AuthState _authenticated() {
 }
 
 TownProjection _projection(List<Map<String, Object?>> venues) {
-  return LivingWorldTownDto.fromJson(
-    {'venues': venues},
-    playerId: playerId,
-  ).toDomain();
+  return LivingWorldTownDto.fromJson({
+    'venues': venues,
+  }, playerId: playerId).toDomain();
 }
 
 Map<String, Object?> _venueJson({
@@ -235,9 +263,7 @@ Map<String, Object?> _secondVenueJson({
   };
 }
 
-Map<String, Object?> _villagerJson({
-  String firstVenueId = 'venue:harbor',
-}) {
+Map<String, Object?> _villagerJson({String firstVenueId = 'venue:harbor'}) {
   return {
     'villager_id': 'villager:marin',
     'villager_version_id': villagerVersionId,

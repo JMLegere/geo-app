@@ -6,4 +6,4 @@ Exports: lib/features/pack/presentation/widgets/species_card.dart
 Public API: lib/features/pack/presentation/widgets/species_card.dart
 
 Purpose:
-  Presents one exact recognized Pack Item. Examined unidentified Items reveal shared Base Item identity and content but no Variable Property Values, and hand off only to the distinct Identification Service; unexamined input remains a semantic silhouette with no direct identify or reveal action.
+  Phase 5 neutral presentation of one exact Pack Item. Unexamined input remains a semantic silhouette with no direct identify or reveal action; examined unidentified Items reveal shared Base Item identity and content but no Variable Property Values, preserve IUCN meaning and media fallback, and hand off only to the distinct Identification Service.

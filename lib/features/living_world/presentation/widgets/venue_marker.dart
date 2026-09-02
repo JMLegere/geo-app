@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
-import 'package:earth_nova/shared/design.dart';
 
 enum VenueMarkerDisplayMode { glyphOnly, compactLabel }
 
@@ -20,10 +19,11 @@ class VenueMarker extends StatelessWidget {
     final label = venue.villagers.isEmpty
         ? '${venue.venue.displayName}, Venue'
         : '${venue.venue.displayName}, Venue with '
-            '${venue.villagers.map((v) => v.villager.displayName).join(', ')}';
+              '${venue.villagers.map((v) => v.villager.displayName).join(', ')}';
 
     return Semantics(
       label: label,
+      excludeSemantics: true,
       child: displayMode == VenueMarkerDisplayMode.glyphOnly
           ? _VenuePin(initials: _initialsFor(venue))
           : _CompactVenueCue(
@@ -48,8 +48,9 @@ String _humanizeKind(String kind) {
       .toList(growable: false);
   if (words.isEmpty) return 'Venue';
   return words
-      .map((word) =>
-          '${word.characters.first.toUpperCase()}${word.substring(1)}')
+      .map(
+        (word) => '${word.characters.first.toUpperCase()}${word.substring(1)}',
+      )
       .join(' ');
 }
 
@@ -71,52 +72,25 @@ String _initialsFor(TownVenue venue) {
 }
 
 class _CompactVenueCue extends StatelessWidget {
-  const _CompactVenueCue({
-    required this.initials,
-    required this.label,
-  });
+  const _CompactVenueCue({required this.initials, required this.label});
 
   final String initials;
   final String label;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _VenuePin(initials: initials),
-        const SizedBox(width: Spacing.xs),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(Radii.pill),
-            border: Border.all(
-              color: AppTheme.tertiary.withValues(alpha: 0.72),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.surface.withValues(alpha: 0.24),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
+        const SizedBox(width: 4),
+        Material(
+          color: colors.surfaceContainerHigh,
+          shape: StadiumBorder(side: BorderSide(color: colors.outline)),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Spacing.sm,
-              vertical: Spacing.xs,
-            ),
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppTheme.onSurface,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.1,
-                height: 1.0,
-              ),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(label, style: Theme.of(context).textTheme.labelSmall),
           ),
         ),
       ],
@@ -131,33 +105,14 @@ class _VenuePin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: AppTheme.tertiary, width: 1.4),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.surface.withValues(alpha: 0.28),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: SizedBox(
-        width: 32,
-        height: 32,
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surfaceContainerHighest,
+      shape: CircleBorder(side: BorderSide(color: colors.outline)),
+      child: SizedBox.square(
+        dimension: 32,
         child: Center(
-          child: Text(
-            initials,
-            style: const TextStyle(
-              color: AppTheme.tertiary,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.4,
-              height: 1.0,
-            ),
-          ),
+          child: Text(initials, style: Theme.of(context).textTheme.labelSmall),
         ),
       ),
     );

@@ -685,6 +685,8 @@ No visual component should emit duplicate actions because both wrapper and calle
 
 ### Phase 5 — Pack and knowledge
 
+**Complete (2026-09-01).** Pack, Species Card, Identification, Town/Venue, and identity-only Home now use the neutral `shadcn_ui` vocabulary with their behavior contracts preserved. Rendered evidence: `.agents/qa/2026-09-01-shadcn-reset-phase-5-pack-knowledge.md`. Phase 6 and later remain paused; production deployment is not authorized.
+
 - Pack controls/grid/states;
 - Species Card;
 - Identification;

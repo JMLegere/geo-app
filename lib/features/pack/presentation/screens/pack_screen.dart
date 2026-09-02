@@ -1,52 +1,45 @@
-import 'package:flutter/material.dart' hide Durations;
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:earth_nova/app/readiness/app_readiness.dart';
-import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/domain/entities/game_region.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/domain/entities/iucn_status.dart';
 import 'package:earth_nova/core/domain/entities/taxonomic_group.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/trace_context.dart';
-import 'package:earth_nova/features/pack/domain/entities/pack_filter_state.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/identification/presentation/screens/identification_service_screen.dart';
+import 'package:earth_nova/features/pack/domain/entities/pack_filter_state.dart';
 import 'package:earth_nova/features/pack/presentation/widgets/species_card.dart';
-import 'package:earth_nova/shared/extensions/iconography.dart';
-import 'package:earth_nova/shared/extensions/iucn_status_theme.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
-import 'package:earth_nova/shared/theme/design_tokens.dart';
-import 'package:earth_nova/shared/widgets/loading_dots.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
-import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 
 /// Direction of a cross-tab edge swipe on [PackScreen].
-///
-/// [left]  — user dragged right past page 0 (go to the tab to the left).
-/// [right] — user dragged left past the last page (go to the tab to the right).
 enum EdgeSwipeDirection { left, right }
 
-/// Pack screen — responsive grid of discovered species with collapsible
-/// filter panel and compact filter bar.
-class PackScreen extends ConsumerStatefulWidget {
-  const PackScreen({
-    super.key,
-    this.pageController,
-    this.onEdgeSwipe,
-  });
+enum _PackSortMode {
+  recent('Recent'),
+  rarity('Rarity'),
+  name('A→Z');
 
-  /// Number of sub-pages (one per [ItemCategory]).
+  const _PackSortMode(this.label);
+
+  final String label;
+}
+
+/// Responsive, searchable collection of acquired Items.
+class PackScreen extends ConsumerStatefulWidget {
+  const PackScreen({super.key, this.pageController, this.onEdgeSwipe});
+
   static int get subPageCount => ItemCategory.values.length;
 
-  /// Optional external [PageController]. When provided, [PackScreen] will
-  /// attach to it but will NOT dispose it on unmount — the caller owns it.
+  /// An injected controller remains owned by the caller.
   final PageController? pageController;
-
-  /// Called when the user overscrolls past the first or last category page.
-  /// [EdgeSwipeDirection.left]  → swiped right past page 0.
-  /// [EdgeSwipeDirection.right] → swiped left past the last page.
   final void Function(EdgeSwipeDirection)? onEdgeSwipe;
 
   @override
@@ -55,18 +48,37 @@ class PackScreen extends ConsumerStatefulWidget {
 
 class _PackScreenState extends ConsumerState<PackScreen> {
   int _categoryIndex = 0;
-  PackSortMode _sort = PackSortMode.recent;
+  _PackSortMode _sort = _PackSortMode.recent;
   PackFilterState _filters = const PackFilterState();
   bool _panelExpanded = false;
   String _searchQuery = '';
   final Set<String> _examinationsInFlight = {};
 
-  /// True when this widget created the controller and is responsible for
-  /// disposing it. False when the controller was injected by the caller.
   late final bool _ownsController;
   late final PageController _pageController;
 
   ItemCategory get _category => ItemCategory.values[_categoryIndex];
+
+  @override
+  void initState() {
+    super.initState();
+    _ownsController = widget.pageController == null;
+    _pageController = widget.pageController ?? PageController();
+    _pageController.addListener(_onPageScrolled);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final items = ref.read(itemsProvider);
+      if (!items.hasLoaded && !items.isLoading) {
+        ref.read(itemsProvider.notifier).fetchItems();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.removeListener(_onPageScrolled);
+    if (_ownsController) _pageController.dispose();
+    super.dispose();
+  }
 
   void _logInteraction(
     String actionType,
@@ -88,57 +100,29 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.pageController != null) {
-      _ownsController = false;
-      _pageController = widget.pageController!;
-    } else {
-      _ownsController = true;
-      _pageController = PageController();
-    }
-    _pageController.addListener(_onPageScrolled);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final items = ref.read(itemsProvider);
-      if (!items.hasLoaded && !items.isLoading) {
-        ref.read(itemsProvider.notifier).fetchItems();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _pageController.removeListener(_onPageScrolled);
-    if (_ownsController) {
-      _pageController.dispose();
-    }
-    super.dispose();
-  }
-
   void _onPageScrolled() {
     if (!_pageController.hasClients) return;
     final page = _pageController.page;
     if (page == null) return;
     final newIndex = page.round();
-    if (newIndex != _categoryIndex) {
-      _logInteraction(
-        'category_page_changed',
-        'pack_page_view',
-        telemetryOnlyReason:
-            'Pack category paging refines the open Pack view and is not a separate player action.',
-        data: {
-          'category': ItemCategory.values[newIndex].name,
-          'category_index': newIndex,
-        },
-      );
-      HapticFeedback.selectionClick();
-      setState(() {
-        _categoryIndex = newIndex;
-        _filters = const PackFilterState();
-        _searchQuery = '';
-      });
-    }
+    if (newIndex == _categoryIndex) return;
+
+    _logInteraction(
+      'category_page_changed',
+      'pack_page_view',
+      telemetryOnlyReason:
+          'Pack category paging refines the open Pack view and is not a separate player action.',
+      data: {
+        'category': ItemCategory.values[newIndex].name,
+        'category_index': newIndex,
+      },
+    );
+    HapticFeedback.selectionClick();
+    setState(() {
+      _categoryIndex = newIndex;
+      _filters = const PackFilterState();
+      _searchQuery = '';
+    });
   }
 
   @override
@@ -150,40 +134,38 @@ class _PackScreenState extends ConsumerState<PackScreen> {
       screenName: 'pack_screen',
       observability: obs,
       builder: (_) => Scaffold(
-        backgroundColor: AppTheme.surface,
-        appBar: AppBar(
-          title: const Text('Pack'),
-          backgroundColor: AppTheme.surfaceContainer,
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: AppTheme.outline),
-          ),
-        ),
+        appBar: AppBar(title: const Text('Pack')),
         body: state.isLoading
-            ? const Center(child: LoadingDots())
+            ? Center(
+                child: Semantics(
+                  label: 'Loading Pack',
+                  liveRegion: true,
+                  child: ExcludeSemantics(child: LoadingDots()),
+                ),
+              )
             : state.error != null
-                ? _ErrorState(message: state.error!, onRetry: _fetch)
-                : _PackBody(
-                    allItems: state.items,
-                    category: _category,
-                    sort: _sort,
-                    filters: _filters,
-                    panelExpanded: _panelExpanded,
-                    searchQuery: _searchQuery,
-                    pageController: _pageController,
-                    onCategoryChanged: _onCategoryChanged,
-                    onSortChanged: _onSortChanged,
-                    onToggleType: _onToggleType,
-                    onToggleHabitat: _onToggleHabitat,
-                    onToggleRegion: _onToggleRegion,
-                    onToggleRarity: _onToggleRarity,
-                    onClearFilters: _onClearFilters,
-                    onTogglePanel: _onTogglePanel,
-                    onSearchChanged: _onSearchChanged,
-                    onEdgeSwipe: widget.onEdgeSwipe,
-                    onItemTapped: _onItemTapped,
-                    onOpenIdentificationService: _openIdentificationService,
-                  ),
+            ? _PackErrorState(message: state.error!, onRetry: _fetch)
+            : _PackBody(
+                allItems: state.items,
+                category: _category,
+                sort: _sort,
+                filters: _filters,
+                panelExpanded: _panelExpanded,
+                searchQuery: _searchQuery,
+                pageController: _pageController,
+                onCategoryChanged: _onCategoryChanged,
+                onSortChanged: _onSortChanged,
+                onToggleType: _onToggleType,
+                onToggleHabitat: _onToggleHabitat,
+                onToggleRegion: _onToggleRegion,
+                onToggleRarity: _onToggleRarity,
+                onClearFilters: _onClearFilters,
+                onTogglePanel: _onTogglePanel,
+                onSearchChanged: _onSearchChanged,
+                onEdgeSwipe: widget.onEdgeSwipe,
+                onItemTapped: _onItemTapped,
+                onOpenIdentificationService: _openIdentificationService,
+              ),
       ),
     );
   }
@@ -212,12 +194,12 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     HapticFeedback.selectionClick();
     _pageController.animateToPage(
       index,
-      duration: Durations.normal,
-      curve: AppCurves.standard,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
     );
   }
 
-  void _onSortChanged(PackSortMode mode) {
+  void _onSortChanged(_PackSortMode mode) {
     _logInteraction(
       'sort_changed',
       'sort_chip',
@@ -270,18 +252,18 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     setState(() => _filters = _filters.toggleRegion(region));
   }
 
-  void _onToggleRarity(IucnStatus rarity) {
+  void _onToggleRarity(IucnStatus status) {
     _logInteraction(
       'filter_rarity_toggled',
       'rarity_filter_chip',
       telemetryOnlyReason:
           'Pack filtering refines the open Pack view and is not a separate player action.',
       data: {
-        'rarity': rarity.name,
-        'active_after': !_filters.activeRarities.contains(rarity),
+        'rarity': status.name,
+        'active_after': !_filters.activeRarities.contains(status),
       },
     );
-    setState(() => _filters = _filters.toggleRarity(rarity));
+    setState(() => _filters = _filters.toggleRarity(status));
   }
 
   void _onClearFilters() {
@@ -290,9 +272,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
       'clear_filters_button',
       telemetryOnlyReason:
           'Pack filtering refines the open Pack view and is not a separate player action.',
-      data: {
-        'active_filter_count': _filters.activeFilterCount,
-      },
+      data: {'active_filter_count': _filters.activeFilterCount},
     );
     setState(() => _filters = const PackFilterState());
   }
@@ -303,9 +283,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
       'compact_filter_bar',
       telemetryOnlyReason:
           'Pack filter panel toggling refines the open Pack view and is not a separate player action.',
-      data: {
-        'expanded_after': !_panelExpanded,
-      },
+      data: {'expanded_after': !_panelExpanded},
     );
     setState(() => _panelExpanded = !_panelExpanded);
   }
@@ -324,10 +302,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     setState(() => _searchQuery = query);
   }
 
-  Future<Item?> _onItemTapped(
-    Item item, {
-    TraceContext? parent,
-  }) async {
+  Future<Item?> _onItemTapped(Item item, {TraceContext? parent}) async {
     if (!item.isExamined) {
       if (!_examinationsInFlight.add(item.id)) return null;
       try {
@@ -339,7 +314,6 @@ class _PackScreenState extends ConsumerState<PackScreen> {
         _examinationsInFlight.remove(item.id);
       }
     }
-
     return item;
   }
 
@@ -348,10 +322,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
       'open_identification_service',
       'species_card',
       playerActionId: PlayerActions.openIdentificationService,
-      data: {
-        'item_id': item.id,
-        'category': item.category.name,
-      },
+      data: {'item_id': item.id, 'category': item.category.name},
     );
     final navigator = Navigator.of(context);
     navigator.pop();
@@ -363,29 +334,31 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   }
 }
 
-// ─── Shared filter + sort helper ──────────────────────────────────────────────
-
 List<Item> _applyFilterAndSort(
   List<Item> items,
   ItemCategory category,
   PackFilterState filters,
-  PackSortMode sort,
+  _PackSortMode sort,
   String searchQuery,
 ) {
-  var result = items.where((i) => i.category == category).toList();
+  var result = items.where((item) => item.category == category).toList();
   result = result.where(filters.matches).toList();
   if (searchQuery.isNotEmpty) {
-    final q = searchQuery.toLowerCase();
+    final query = searchQuery.toLowerCase();
     result = result
-        .where((i) =>
-            i.visibleDisplayName.toLowerCase().contains(q) ||
-            (i.visibleScientificName?.toLowerCase().contains(q) ?? false))
+        .where(
+          (item) =>
+              item.visibleDisplayName.toLowerCase().contains(query) ||
+              (item.visibleScientificName?.toLowerCase().contains(query) ??
+                  false),
+        )
         .toList();
   }
+
   switch (sort) {
-    case PackSortMode.recent:
+    case _PackSortMode.recent:
       result.sort((a, b) => b.acquiredAt.compareTo(a.acquiredAt));
-    case PackSortMode.rarity:
+    case _PackSortMode.rarity:
       const order = [
         'criticallyEndangered',
         'endangered',
@@ -393,19 +366,18 @@ List<Item> _applyFilterAndSort(
         'nearThreatened',
         'leastConcern',
       ];
-      result.sort((a, b) {
-        final ai = order.indexOf(a.rarity ?? '');
-        final bi = order.indexOf(b.rarity ?? '');
-        return ai.compareTo(bi);
-      });
-    case PackSortMode.name:
-      result
-          .sort((a, b) => a.visibleDisplayName.compareTo(b.visibleDisplayName));
+      result.sort(
+        (a, b) => order
+            .indexOf(a.rarity ?? '')
+            .compareTo(order.indexOf(b.rarity ?? '')),
+      );
+    case _PackSortMode.name:
+      result.sort(
+        (a, b) => a.visibleDisplayName.compareTo(b.visibleDisplayName),
+      );
   }
   return result;
 }
-
-// ─── Pack body ────────────────────────────────────────────────────────────────
 
 class _PackBody extends StatelessWidget {
   const _PackBody({
@@ -425,20 +397,20 @@ class _PackBody extends StatelessWidget {
     required this.onClearFilters,
     required this.onTogglePanel,
     required this.onSearchChanged,
-    this.onEdgeSwipe,
+    required this.onEdgeSwipe,
     required this.onItemTapped,
     required this.onOpenIdentificationService,
   });
 
   final List<Item> allItems;
   final ItemCategory category;
-  final PackSortMode sort;
+  final _PackSortMode sort;
   final PackFilterState filters;
   final bool panelExpanded;
   final String searchQuery;
   final PageController pageController;
   final void Function(int) onCategoryChanged;
-  final void Function(PackSortMode) onSortChanged;
+  final void Function(_PackSortMode) onSortChanged;
   final void Function(TaxonomicGroup) onToggleType;
   final void Function(Habitat) onToggleHabitat;
   final void Function(GameRegion) onToggleRegion;
@@ -452,207 +424,129 @@ class _PackBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filtered =
-        _applyFilterAndSort(allItems, category, filters, sort, searchQuery);
+    final filtered = _applyFilterAndSort(
+      allItems,
+      category,
+      filters,
+      sort,
+      searchQuery,
+    );
 
-    return Column(
-      children: [
-        _CategoryRow(
-          category: category,
-          allItems: allItems,
-          onCategoryChanged: onCategoryChanged,
-        ),
-        _CompactBar(
-          sort: sort,
-          filters: filters,
-          count: filtered.length,
-          panelExpanded: panelExpanded,
-          onTogglePanel: onTogglePanel,
-        ),
-        ClipRect(
-          child: AnimatedAlign(
-            duration: Durations.normal,
-            curve: AppCurves.standard,
-            alignment: Alignment.topCenter,
-            heightFactor: panelExpanded ? 1.0 : 0.0,
-            child: _FilterPanel(
-              category: category,
-              sort: sort,
-              filters: filters,
-              onSortChanged: onSortChanged,
-              onToggleType: onToggleType,
-              onToggleHabitat: onToggleHabitat,
-              onToggleRegion: onToggleRegion,
-              onToggleRarity: onToggleRarity,
-              onClearFilters: onClearFilters,
+    return LayoutBuilder(
+      builder: (context, constraints) => Column(
+        children: [
+          _CategoryRow(
+            category: category,
+            onCategoryChanged: onCategoryChanged,
+          ),
+          _CompactBar(
+            sort: sort,
+            filters: filters,
+            count: filtered.length,
+            panelExpanded: panelExpanded,
+            onTogglePanel: onTogglePanel,
+          ),
+          ClipRect(
+            child: AnimatedAlign(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              heightFactor: panelExpanded ? 1 : 0,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: constraints.maxHeight * 0.4,
+                ),
+                child: SingleChildScrollView(
+                  child: _FilterPanel(
+                    category: category,
+                    sort: sort,
+                    filters: filters,
+                    onSortChanged: onSortChanged,
+                    onToggleType: onToggleType,
+                    onToggleHabitat: onToggleHabitat,
+                    onToggleRegion: onToggleRegion,
+                    onToggleRarity: onToggleRarity,
+                    onClearFilters: onClearFilters,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-        _SearchBar(
-          query: searchQuery,
-          onChanged: onSearchChanged,
-        ),
-        Expanded(
-          child: NotificationListener<OverscrollNotification>(
-            onNotification: (notification) {
-              final cb = onEdgeSwipe;
-              if (cb == null) return false;
-              if (notification.overscroll < 0) {
-                cb(EdgeSwipeDirection.left);
-              } else if (notification.overscroll > 0) {
-                cb(EdgeSwipeDirection.right);
-              }
-              return false; // let the notification bubble
-            },
-            child: PageView.builder(
-              controller: pageController,
-              itemCount: ItemCategory.values.length,
-              itemBuilder: (_, index) {
-                final cat = ItemCategory.values[index];
-                final items = _applyFilterAndSort(
-                    allItems, cat, filters, sort, searchQuery);
-                if (items.isEmpty) {
-                  return _EmptyState(
-                    category: cat,
-                    hasFilters:
-                        filters.hasActiveFilters || searchQuery.isNotEmpty,
-                  );
+          _SearchBar(query: searchQuery, onChanged: onSearchChanged),
+          Expanded(
+            child: NotificationListener<OverscrollNotification>(
+              onNotification: (notification) {
+                final callback = onEdgeSwipe;
+                if (callback == null) return false;
+                if (notification.overscroll < 0) {
+                  callback(EdgeSwipeDirection.left);
+                } else if (notification.overscroll > 0) {
+                  callback(EdgeSwipeDirection.right);
                 }
-                return _ItemGrid(
-                  items: items,
-                  onItemTap: onItemTapped,
-                  onOpenIdentificationService: onOpenIdentificationService,
-                );
+                return false;
               },
+              child: PageView.builder(
+                controller: pageController,
+                itemCount: ItemCategory.values.length,
+                itemBuilder: (_, index) {
+                  final pageCategory = ItemCategory.values[index];
+                  final items = _applyFilterAndSort(
+                    allItems,
+                    pageCategory,
+                    filters,
+                    sort,
+                    searchQuery,
+                  );
+                  if (items.isEmpty) {
+                    return _PackEmptyState(
+                      category: pageCategory,
+                      isInitialEmpty: allItems.isEmpty,
+                      isFiltered:
+                          filters.hasActiveFilters || searchQuery.isNotEmpty,
+                    );
+                  }
+                  return _ItemGrid(
+                    items: items,
+                    onItemTap: onItemTapped,
+                    onOpenIdentificationService: onOpenIdentificationService,
+                  );
+                },
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-// ─── Category row ─────────────────────────────────────────────────────────────
-
 class _CategoryRow extends StatelessWidget {
-  const _CategoryRow({
-    required this.category,
-    required this.allItems,
-    required this.onCategoryChanged,
-  });
+  const _CategoryRow({required this.category, required this.onCategoryChanged});
 
   final ItemCategory category;
-  final List<Item> allItems;
   final void Function(int) onCategoryChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceContainer,
-        border: Border(
-          bottom: BorderSide(color: AppTheme.outline, width: 0.5),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Spacing.xs,
-          vertical: Spacing.xs,
-        ),
-        child: Row(
-          children: List.generate(ItemCategory.values.length * 2 - 1, (i) {
-            if (i.isOdd) return const SizedBox(width: Spacing.xxs);
-            final index = i ~/ 2;
-            final cat = ItemCategory.values[index];
-            return Expanded(
-              child: _CategoryChip(
-                category: cat,
-                selected: cat == category,
-                onTap: () => onCategoryChanged(index),
-              ),
-            );
-          }),
-        ),
+    return Padding(
+      key: const Key('pack-category-row'),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final (index, value) in ItemCategory.values.indexed)
+            ChoiceChip(
+              key: ValueKey('pack-category-${value.name}'),
+              label: Text(value.label),
+              selected: value == category,
+              onSelected: (_) => onCategoryChanged(index),
+            ),
+        ],
       ),
     );
   }
 }
-
-class _CategoryChip extends StatelessWidget {
-  const _CategoryChip({
-    required this.category,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final ItemCategory category;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // eac-clickable-owner-logs: PackScreen logs category/filter/sort callbacks before passing them into this leaf control.
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(Radii.md),
-      splashColor: Colors.transparent,
-      highlightColor: AppTheme.primary.withValues(alpha: 0.08),
-      child: AnimatedContainer(
-        duration: Durations.quick,
-        curve: AppCurves.standard,
-        constraints: const BoxConstraints(
-          minHeight: ComponentSizes.compactBarHeight,
-        ),
-        padding: const EdgeInsets.all(Spacing.xxs),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.primary : AppTheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(Radii.md),
-          boxShadow: [
-            if (selected)
-              BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.45),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              )
-            else
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.20),
-                blurRadius: 3,
-                offset: const Offset(0, 1.5),
-              ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              category.emoji,
-              style: const TextStyle(fontSize: 18, height: 1.0),
-            ),
-            const SizedBox(height: 1),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                category.label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: selected ? Colors.white : AppTheme.onSurfaceVariant,
-                  height: 1.1,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Compact filter bar ───────────────────────────────────────────────────────
 
 class _CompactBar extends StatelessWidget {
   const _CompactBar({
@@ -663,7 +557,7 @@ class _CompactBar extends StatelessWidget {
     required this.onTogglePanel,
   });
 
-  final PackSortMode sort;
+  final _PackSortMode sort;
   final PackFilterState filters;
   final int count;
   final bool panelExpanded;
@@ -671,169 +565,55 @@ class _CompactBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // eac-clickable-owner-logs: PackScreen logs filter-panel toggles before passing the callback into this leaf control.
-    return GestureDetector(
-      key: const Key('compact-bar'),
-      onTap: onTogglePanel,
-      child: Container(
-        height: ComponentSizes.compactBarHeight,
-        padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-        decoration: const BoxDecoration(
-          color: AppTheme.surfaceContainer,
-          border: Border(
-            bottom: BorderSide(
-              color: AppTheme.outline,
-              width: 0.5,
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surfaceContainerLow,
+      // eac-clickable-owner-logs: onTogglePanel reaches PackScreen._onTogglePanel, which logs its telemetry-only filter-panel action.
+      child: InkWell(
+        key: const Key('compact-bar'),
+        onTap: onTogglePanel,
+        child: Semantics(
+          button: true,
+          expanded: panelExpanded,
+          label: 'Filters. ${sort.label}. $count Items',
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  AppBadge(label: sort.label, variant: AppBadgeVariant.outline),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      filters.hasActiveFilters
+                          ? '${filters.activeFilterCount} active filters'
+                          : 'All discoveries',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    '$count',
+                    key: const Key('compact-bar-count'),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(width: 4),
+                  const Text('Items'),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: panelExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: const Icon(Icons.expand_more),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        child: Row(
-          children: [
-            Text(
-              sort.icon,
-              style: const TextStyle(
-                fontSize: ComponentSizes.compactBarEmoji,
-              ),
-            ),
-            const SizedBox(width: Spacing.xxs),
-            Text(
-              sort.label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.secondary,
-              ),
-            ),
-            if (filters.hasActiveFilters) ...[
-              const SizedBox(width: Spacing.xs),
-              Text(
-                '·',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-              ),
-              const SizedBox(width: Spacing.xs),
-              Expanded(child: _MiniFilterChips(filters: filters)),
-            ] else ...[
-              const SizedBox(width: Spacing.xs),
-              Text(
-                '·',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-              ),
-              const SizedBox(width: Spacing.xs),
-              Text(
-                'All',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
-                ),
-              ),
-              const Spacer(),
-            ],
-            Text(
-              key: const Key('compact-bar-count'),
-              '$count',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.onSurface,
-              ),
-            ),
-            Text(
-              ' sp',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w400,
-                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(width: Spacing.xs),
-            AnimatedRotation(
-              turns: panelExpanded ? 0.5 : 0.0,
-              duration: Durations.normal,
-              curve: AppCurves.standard,
-              child: const Icon(
-                Icons.keyboard_arrow_down,
-                size: 20,
-                color: AppTheme.onSurface,
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 }
-
-class _MiniFilterChips extends StatelessWidget {
-  const _MiniFilterChips({required this.filters});
-  final PackFilterState filters;
-
-  @override
-  Widget build(BuildContext context) {
-    final chips = <String>[
-      ...filters.activeTypes.map((t) => t.icon),
-      ...filters.activeHabitats.map((h) => h.icon),
-      ...filters.activeRegions.map((r) => r.icon),
-    ];
-
-    final showCount = chips.length > 3 ? 3 : chips.length;
-    final overflow = chips.length - showCount;
-
-    return Row(
-      children: [
-        for (var i = 0; i < showCount; i++) ...[
-          if (i > 0) const SizedBox(width: Spacing.xxs),
-          Container(
-            width: ComponentSizes.miniChipSize,
-            height: ComponentSizes.miniChipSize,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceContainerHighest.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(Radii.xs),
-            ),
-            child: Center(
-              child: Text(
-                chips[i],
-                style: const TextStyle(
-                  fontSize: ComponentSizes.compactBarEmoji,
-                ),
-              ),
-            ),
-          ),
-        ],
-        if (overflow > 0) ...[
-          const SizedBox(width: Spacing.xxs),
-          Container(
-            width: ComponentSizes.miniChipSize,
-            height: ComponentSizes.miniChipSize,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceContainerHighest.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(Radii.xs),
-            ),
-            child: Center(
-              child: Text(
-                '+$overflow',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ],
-        const Spacer(),
-      ],
-    );
-  }
-}
-
-// ─── Filter panel (expandable) ────────────────────────────────────────────────
 
 class _FilterPanel extends StatelessWidget {
   const _FilterPanel({
@@ -849,9 +629,9 @@ class _FilterPanel extends StatelessWidget {
   });
 
   final ItemCategory category;
-  final PackSortMode sort;
+  final _PackSortMode sort;
   final PackFilterState filters;
-  final void Function(PackSortMode) onSortChanged;
+  final void Function(_PackSortMode) onSortChanged;
   final void Function(TaxonomicGroup) onToggleType;
   final void Function(Habitat) onToggleHabitat;
   final void Function(GameRegion) onToggleRegion;
@@ -860,369 +640,124 @@ class _FilterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceContainer,
-        border: Border(
-          bottom: BorderSide(color: AppTheme.outline, width: 0.5),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _FilterRow(
-            label: 'SORT',
-            child: Row(
-              children: PackSortMode.values.map((mode) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: Spacing.xs),
-                  child: _SortToggle(
-                    mode: mode,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      child: AppCard(
+        title: 'Filters',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _FilterSection(
+              label: 'SORT',
+              children: [
+                for (final mode in _PackSortMode.values)
+                  ChoiceChip(
+                    key: ValueKey('sort-${mode.name}'),
+                    label: Text(mode.label),
                     selected: mode == sort,
-                    onTap: () => onSortChanged(mode),
+                    onSelected: (_) => onSortChanged(mode),
                   ),
-                );
-              }).toList(),
+              ],
             ),
-          ),
-          if (category == ItemCategory.fauna) ...[
-            _divider(),
-            _FilterRow(
-              label: 'TYPE',
-              child: Wrap(
-                spacing: Spacing.xs,
-                runSpacing: Spacing.xs,
-                children: TaxonomicGroup.values
-                    .where((g) => g != TaxonomicGroup.other)
-                    .map((group) {
-                  return _IconFilterToggle(
-                    key: ValueKey('filter-type-${group.name}'),
-                    icon: group.icon,
-                    selected: filters.activeTypes.contains(group),
-                    onTap: () => onToggleType(group),
-                  );
-                }).toList(),
+            if (category == ItemCategory.fauna)
+              _FilterSection(
+                label: 'TYPE',
+                children: [
+                  for (final group in TaxonomicGroup.values.where(
+                    (group) => group != TaxonomicGroup.other,
+                  ))
+                    FilterChip(
+                      key: ValueKey('filter-type-${group.name}'),
+                      label: Text(group.label),
+                      selected: filters.activeTypes.contains(group),
+                      onSelected: (_) => onToggleType(group),
+                    ),
+                ],
               ),
-            ),
-          ],
-          if (category == ItemCategory.fauna ||
-              category == ItemCategory.flora) ...[
-            _divider(),
-            _FilterRow(
-              label: 'HABITAT',
-              child: Wrap(
-                spacing: Spacing.xs,
-                runSpacing: Spacing.xs,
-                children: Habitat.values.map((habitat) {
-                  return _IconFilterToggle(
-                    icon: habitat.icon,
-                    selected: filters.activeHabitats.contains(habitat),
-                    onTap: () => onToggleHabitat(habitat),
-                  );
-                }).toList(),
+            if (category == ItemCategory.fauna ||
+                category == ItemCategory.flora)
+              _FilterSection(
+                label: 'HABITAT',
+                children: [
+                  for (final habitat in Habitat.values)
+                    FilterChip(
+                      key: ValueKey('filter-habitat-${habitat.name}'),
+                      label: Text(habitat.label),
+                      selected: filters.activeHabitats.contains(habitat),
+                      onSelected: (_) => onToggleHabitat(habitat),
+                    ),
+                ],
               ),
-            ),
-          ],
-          if (category == ItemCategory.fauna ||
-              category == ItemCategory.flora) ...[
-            _divider(),
-            _FilterRow(
-              label: 'REGION',
-              child: Wrap(
-                spacing: Spacing.xs,
-                runSpacing: Spacing.xs,
-                children: GameRegion.values
-                    .where((r) => r != GameRegion.unknown)
-                    .map((region) {
-                  return _IconFilterToggle(
-                    icon: region.icon,
-                    selected: filters.activeRegions.contains(region),
-                    onTap: () => onToggleRegion(region),
-                  );
-                }).toList(),
+            if (category == ItemCategory.fauna ||
+                category == ItemCategory.flora)
+              _FilterSection(
+                label: 'REGION',
+                children: [
+                  for (final region in GameRegion.values.where(
+                    (region) => region != GameRegion.unknown,
+                  ))
+                    FilterChip(
+                      key: ValueKey('filter-region-${region.name}'),
+                      label: Text(region.label),
+                      selected: filters.activeRegions.contains(region),
+                      onSelected: (_) => onToggleRegion(region),
+                    ),
+                ],
               ),
-            ),
-          ],
-          _divider(),
-          _FilterRow(
-            label: 'RARITY',
-            child: Wrap(
-              spacing: Spacing.xs,
-              runSpacing: Spacing.xs,
-              children: IucnStatus.values
-                  .where((s) => s != IucnStatus.extinct)
-                  .map((status) {
-                return _RarityFilterToggle(
-                  status: status,
-                  selected: filters.activeRarities.contains(status),
-                  onTap: () => onToggleRarity(status),
-                );
-              }).toList(),
-            ),
-          ),
-          if (filters.hasActiveFilters) ...[
-            _divider(),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Spacing.md,
-                vertical: Spacing.xs,
-              ),
-              // eac-clickable-owner-logs: PackScreen logs clear-filter callbacks before passing them into this leaf control.
-              child: GestureDetector(
-                onTap: onClearFilters,
-                child: Text(
-                  'Clear all filters',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.error.withValues(alpha: 0.8),
+            _FilterSection(
+              label: 'CONSERVATION',
+              children: [
+                for (final status in IucnStatus.values.where(
+                  (status) => status != IucnStatus.extinct,
+                ))
+                  FilterChip(
+                    key: ValueKey('filter-conservation-${status.name}'),
+                    label: Text(status.code),
+                    tooltip: status.displayName,
+                    selected: filters.activeRarities.contains(status),
+                    onSelected: (_) => onToggleRarity(status),
                   ),
-                ),
-              ),
+              ],
             ),
+            if (filters.hasActiveFilters)
+              AppButton(
+                key: const Key('clear-filters'),
+                label: 'Clear all filters',
+                variant: AppButtonVariant.ghost,
+                onPressed: onClearFilters,
+              ),
           ],
-          const SizedBox(height: Spacing.xs),
-        ],
+        ),
       ),
     );
   }
-
-  static Widget _divider() => Container(
-        height: 0.5,
-        margin: const EdgeInsets.symmetric(horizontal: Spacing.md),
-        color: AppTheme.outline.withValues(alpha: 0.4),
-      );
 }
 
-class _FilterRow extends StatelessWidget {
-  const _FilterRow({required this.label, required this.child});
+class _FilterSection extends StatelessWidget {
+  const _FilterSection({required this.label, required this.children});
+
   final String label;
-  final Widget child;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Spacing.md,
-        vertical: Spacing.sm,
-      ),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: Spacing.xs),
-          child,
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: children),
         ],
       ),
     );
   }
 }
 
-// ─── Toggle components ────────────────────────────────────────────────────────
-
-class _IconFilterToggle extends StatelessWidget {
-  const _IconFilterToggle({
-    super.key,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // eac-clickable-owner-logs: PackScreen logs filter/sort callbacks before passing them into this leaf control.
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(Radii.lg),
-      splashColor: Colors.transparent,
-      highlightColor: AppTheme.primary.withValues(alpha: 0.08),
-      child: AnimatedContainer(
-        duration: Durations.quick,
-        curve: AppCurves.standard,
-        width: ComponentSizes.filterToggleSize,
-        height: ComponentSizes.filterToggleSize,
-        decoration: BoxDecoration(
-          color: selected
-              ? AppTheme.primary.withValues(alpha: 0.15)
-              : AppTheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(Radii.lg),
-          border: Border.all(
-            color: selected
-                ? AppTheme.primary.withValues(alpha: 0.60)
-                : AppTheme.outline,
-            width: selected ? 1.5 : 1.0,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.20),
-                    blurRadius: 8,
-                  ),
-                ]
-              : null,
-        ),
-        child: Center(
-          child: AnimatedDefaultTextStyle(
-            duration: Durations.quick,
-            style: TextStyle(
-              fontSize: ComponentSizes.filterPanelEmoji,
-              color: selected
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.75),
-            ),
-            child: Text(icon),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SortToggle extends StatelessWidget {
-  const _SortToggle({
-    required this.mode,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final PackSortMode mode;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // eac-clickable-owner-logs: PackScreen logs sort callbacks before passing them into this leaf control.
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(Radii.pill),
-      splashColor: Colors.transparent,
-      highlightColor: AppTheme.secondary.withValues(alpha: 0.08),
-      child: AnimatedContainer(
-        duration: Durations.quick,
-        curve: AppCurves.standard,
-        height: ComponentSizes.sortToggleHeight,
-        padding: const EdgeInsets.symmetric(
-          horizontal: Spacing.sm,
-          vertical: Spacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppTheme.secondary.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(Radii.pill),
-          border: Border.all(
-            color: selected
-                ? AppTheme.secondary.withValues(alpha: 0.55)
-                : Colors.transparent,
-            width: selected ? 1.5 : 0,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedDefaultTextStyle(
-              duration: Durations.quick,
-              style: TextStyle(
-                fontSize: 16,
-                color: selected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.50),
-              ),
-              child: Text(mode.icon),
-            ),
-            const SizedBox(width: Spacing.xxs),
-            Text(
-              mode.label,
-              style: TextStyle(
-                fontSize: ComponentSizes.filterLabelFont,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color:
-                    selected ? AppTheme.secondary : AppTheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Rarity filter toggle ─────────────────────────────────────────────────────
-
-class _RarityFilterToggle extends StatelessWidget {
-  const _RarityFilterToggle({
-    required this.status,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IucnStatus status;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // eac-clickable-owner-logs: PackScreen logs rarity filter callbacks before passing them into this leaf control.
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(Radii.lg),
-      splashColor: Colors.transparent,
-      child: AnimatedContainer(
-        duration: Durations.quick,
-        curve: AppCurves.standard,
-        width: ComponentSizes.rarityToggleWidth,
-        height: ComponentSizes.filterToggleSize,
-        decoration: BoxDecoration(
-          color: selected
-              ? status.color.withValues(alpha: 0.15)
-              : AppTheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(Radii.lg),
-          border: Border.all(
-            color: selected
-                ? status.color.withValues(alpha: 0.60)
-                : AppTheme.outline,
-            width: selected ? 1.5 : 1.0,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: status.color.withValues(alpha: 0.25),
-                    blurRadius: 8,
-                  ),
-                ]
-              : null,
-        ),
-        child: Center(
-          child: Text(
-            status.code,
-            style: TextStyle(
-              fontSize: ComponentSizes.rarityCodeFont,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              color: selected ? status.color : AppTheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Search bar ───────────────────────────────────────────────────────────────
-
 class _SearchBar extends StatefulWidget {
   const _SearchBar({required this.query, required this.onChanged});
+
   final String query;
   final void Function(String) onChanged;
 
@@ -1240,9 +775,9 @@ class _SearchBarState extends State<_SearchBar> {
   }
 
   @override
-  void didUpdateWidget(_SearchBar old) {
-    super.didUpdateWidget(old);
-    if (widget.query != old.query && widget.query != _controller.text) {
+  void didUpdateWidget(_SearchBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.query != oldWidget.query && widget.query != _controller.text) {
       _controller.text = widget.query;
     }
   }
@@ -1260,64 +795,31 @@ class _SearchBarState extends State<_SearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
-      margin: const EdgeInsets.symmetric(
-        horizontal: Spacing.sm,
-        vertical: Spacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(Radii.xl),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.search,
-            size: 18,
-            color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
-          ),
-          const SizedBox(width: Spacing.sm),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              onChanged: widget.onChanged,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppTheme.onSurface,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Search species...',
-                hintStyle: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: TextField(
+        key: const Key('pack-search'),
+        controller: _controller,
+        onChanged: widget.onChanged,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          labelText: 'Search Pack',
+          hintText: 'Name or scientific name',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: widget.query.isEmpty
+              ? null
+              // eac-clickable-owner-logs: _clear forwards through PackScreen._onSearchChanged, which logs its telemetry-only search action.
+              : IconButton(
+                  tooltip: 'Clear search',
+                  onPressed: _clear,
+                  icon: const Icon(Icons.close),
                 ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          if (widget.query.isNotEmpty)
-            // eac-clickable-owner-logs: Search clear flows through widget.onChanged, which PackScreen logs as Pack search refinement.
-            GestureDetector(
-              onTap: _clear,
-              child: Icon(
-                Icons.close,
-                size: 16,
-                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
-              ),
-            ),
-        ],
+          border: const OutlineInputBorder(),
+        ),
       ),
     );
   }
 }
-
-// ─── Item grid ────────────────────────────────────────────────────────────────
 
 class _ItemGrid extends StatelessWidget {
   const _ItemGrid({
@@ -1325,6 +827,7 @@ class _ItemGrid extends StatelessWidget {
     required this.onItemTap,
     required this.onOpenIdentificationService,
   });
+
   final List<Item> items;
   final Future<Item?> Function(Item, {TraceContext? parent}) onItemTap;
   final void Function(Item) onOpenIdentificationService;
@@ -1335,9 +838,9 @@ class _ItemGrid extends StatelessWidget {
     return 6;
   }
 
-  static double _aspectRatio(int cols) {
-    if (cols <= 3) return 0.78;
-    if (cols == 4) return 0.82;
+  static double _aspectRatio(int columns) {
+    if (columns == 3) return 0.78;
+    if (columns == 4) return 0.82;
     return 0.85;
   }
 
@@ -1345,18 +848,19 @@ class _ItemGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = _columns(constraints.maxWidth);
+        final columns = _columns(constraints.maxWidth);
         return GridView.builder(
-          padding: const EdgeInsets.all(Spacing.sm),
+          key: const Key('pack-grid'),
+          padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cols,
-            childAspectRatio: _aspectRatio(cols),
-            crossAxisSpacing: Spacing.sm,
-            mainAxisSpacing: Spacing.sm,
+            crossAxisCount: columns,
+            childAspectRatio: _aspectRatio(columns),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
           itemCount: items.length,
-          itemBuilder: (_, i) => _ItemSlot(
-            item: items[i],
+          itemBuilder: (_, index) => _ItemSlot(
+            item: items[index],
             onItemTap: onItemTap,
             onOpenIdentificationService: onOpenIdentificationService,
           ),
@@ -1366,14 +870,13 @@ class _ItemGrid extends StatelessWidget {
   }
 }
 
-// ─── Item slot ────────────────────────────────────────────────────────────────
-
 class _ItemSlot extends ConsumerStatefulWidget {
   const _ItemSlot({
     required this.item,
     required this.onItemTap,
     required this.onOpenIdentificationService,
   });
+
   final Item item;
   final Future<Item?> Function(Item, {TraceContext? parent}) onItemTap;
   final void Function(Item) onOpenIdentificationService;
@@ -1385,176 +888,97 @@ class _ItemSlot extends ConsumerStatefulWidget {
 class _ItemSlotState extends ConsumerState<_ItemSlot> {
   bool _busy = false;
 
+  Future<void> _openItem() async {
+    if (_busy) return;
+    final item = widget.item;
+    final examining = !item.isExamined;
+    final interaction = ObservableInteractionTrace.start(
+      observability: ref.read(appObservabilityProvider),
+      interaction: examining
+          ? PlayerActions.examinePackItem
+          : PlayerActions.inspectPackFind,
+      surface: 'pack.item',
+      screenName: 'pack_screen',
+      widgetName: 'pack_item',
+      actionType: examining ? 'examine_pack_item' : 'open_species_card',
+      readinessState: ref.read(appReadinessProvider).phase.name,
+      payload: {'item_id': item.id, 'category': item.category.name},
+    );
+
+    if (examining) {
+      setState(() => _busy = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) interaction.complete(transition: 'examination_started');
+      });
+    }
+
+    Item? openedItem;
+    try {
+      openedItem = await widget.onItemTap(item, parent: interaction.context);
+    } finally {
+      if (mounted && examining) setState(() => _busy = false);
+    }
+    if (!mounted || openedItem == null || openedItem.id != item.id) return;
+
+    showSpeciesCard(
+      context,
+      openedItem,
+      onOpenIdentificationService: widget.onOpenIdentificationService,
+    );
+    if (!examining) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) interaction.complete(transition: 'species_card_visible');
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
     final status = item.isExamined ? IucnStatus.fromString(item.rarity) : null;
-    final hasFrame2 = item.isExamined && item.iconUrlFrame2 != null;
     final silhouetteLabel = 'Unexamined ${item.category.name} Item';
 
     return Semantics(
-      label: item.isExamined ? null : silhouetteLabel,
+      label: item.isExamined ? item.visibleDisplayName : silhouetteLabel,
       button: true,
-      excludeSemantics: !item.isExamined,
-      // eac-clickable-owner-logs: this surface owns the Pack item trace.
-      child: GestureDetector(
+      enabled: !_busy,
+      excludeSemantics: true,
+      // eac-clickable-owner-logs: _openItem starts the appropriate PlayerActions ObservableInteractionTrace before opening the species card.
+      child: InkWell(
         key: ValueKey('pack-item-${item.id}'),
-        onTap: _busy
-            ? null
-            : () async {
-                final examining = !item.isExamined;
-                final interaction = ObservableInteractionTrace.start(
-                  observability: ref.read(appObservabilityProvider),
-                  interaction: examining
-                      ? PlayerActions.examinePackItem
-                      : PlayerActions.inspectPackFind,
-                  surface: 'pack.item',
-                  screenName: 'pack_screen',
-                  widgetName: 'pack_item',
-                  actionType:
-                      examining ? 'examine_pack_item' : 'open_species_card',
-                  readinessState: ref.read(appReadinessProvider).phase.name,
-                  payload: {
-                    'item_id': item.id,
-                    'category': item.category.name,
-                  },
-                );
-                if (examining) {
-                  setState(() => _busy = true);
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      interaction.complete(
-                        transition: 'examination_started',
-                      );
-                    }
-                  });
-                }
-                final openedItem = await widget.onItemTap(
-                  item,
-                  parent: interaction.context,
-                );
-                if (!context.mounted) return;
-                if (examining) setState(() => _busy = false);
-                if (openedItem == null || openedItem.id != item.id) return;
-                showSpeciesCard(
-                  context,
-                  openedItem,
-                  onOpenIdentificationService:
-                      widget.onOpenIdentificationService,
-                );
-                if (!examining) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      interaction.complete(
-                        transition: 'species_card_visible',
-                      );
-                    }
-                  });
-                }
-              },
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(Radii.xl),
-            border: Border.all(
-              color: status != null
-                  ? status.color.withValues(alpha: status.borderAlpha)
-                  : AppTheme.outline.withValues(alpha: 0.5),
-              width: 1.5,
-            ),
-            boxShadow: status != null && status.glowAlpha > 0
-                ? [
-                    BoxShadow(
-                      color: status.color.withValues(alpha: status.glowAlpha),
-                      blurRadius: 12,
-                      spreadRadius: -2,
-                    ),
-                  ]
-                : null,
-          ),
+        onTap: _busy ? null : _openItem,
+        child: AppCard(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(
-                flex: 5,
-                child: Stack(
-                  children: [
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          Spacing.xs,
-                          Spacing.md,
-                          Spacing.xs,
-                          Spacing.xxs,
-                        ),
-                        child: _busy
-                            ? const SizedBox.square(
-                                dimension: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : item.isExamined
-                                ? _SpeciesIcon(item: item)
-                                : const Icon(
-                                    Icons.help_outline,
-                                    size: 44,
-                                    color: AppTheme.onSurfaceVariant,
-                                  ),
-                      ),
-                    ),
-                    if (status != null)
-                      Positioned(
-                        top: Spacing.xs,
-                        right: Spacing.xs,
-                        child: _RarityBadge(status: status),
-                      ),
-                    if (hasFrame2)
-                      Positioned(
-                        bottom: Spacing.xs,
-                        left: Spacing.xs,
-                        child: Container(
-                          width: 5,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: AppTheme.tertiary.withValues(alpha: 0.9),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.tertiary.withValues(alpha: 0.5),
-                                blurRadius: 4,
-                              ),
-                            ],
+                child: Center(
+                  child: _busy
+                      ? Semantics(
+                          label: 'Examining Item',
+                          liveRegion: true,
+                          child: ExcludeSemantics(
+                            child: SizedBox.square(
+                              dimension: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
                           ),
-                        ),
-                      ),
-                  ],
+                        )
+                      : item.isExamined
+                      ? _SpeciesIcon(item: item)
+                      : const Icon(Icons.help_outline, size: 40),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Spacing.xs,
-                  vertical: Spacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceContainer.withValues(alpha: 0.85),
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(Radii.lg),
-                  ),
-                ),
-                child: Text(
-                  item.isExamined ? item.visibleDisplayName : silhouetteLabel,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.onSurface,
-                    height: 1.25,
-                  ),
-                ),
+              if (status != null) ...[
+                AppBadge(label: status.code, variant: AppBadgeVariant.outline),
+                const SizedBox(height: 6),
+              ],
+              Text(
+                item.isExamined ? item.visibleDisplayName : silhouetteLabel,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium,
               ),
             ],
           ),
@@ -1564,202 +988,114 @@ class _ItemSlotState extends ConsumerState<_ItemSlot> {
   }
 }
 
-// ─── Species icon ─────────────────────────────────────────────────────────────
-
 class _SpeciesIcon extends StatelessWidget {
   const _SpeciesIcon({required this.item});
+
   final Item item;
 
   @override
   Widget build(BuildContext context) {
-    if (item.iconUrl != null) {
-      return Image.network(
-        item.iconUrl!,
-        width: 44,
-        height: 44,
-        fit: BoxFit.contain,
-        loadingBuilder: (_, child, progress) {
-          if (progress == null) return child;
-          return Text(
-            item.category.emoji,
-            style: const TextStyle(fontSize: 28),
-          );
-        },
-        errorBuilder: (_, __, ___) => _CategoryEmoji(category: item.category),
-      );
-    }
-    return _CategoryEmoji(category: item.category);
+    final fallback = _CategoryMediaFallback(item: item);
+    final url = item.iconUrl;
+    if (url == null || url.isEmpty) return fallback;
+
+    return Image.network(
+      url,
+      key: ValueKey('pack-media-${item.id}'),
+      width: 48,
+      height: 48,
+      fit: BoxFit.contain,
+      loadingBuilder: (_, child, progress) =>
+          progress == null ? child : fallback,
+      errorBuilder: (_, __, ___) => fallback,
+    );
   }
 }
 
-class _CategoryEmoji extends StatelessWidget {
-  const _CategoryEmoji({required this.category});
-  final ItemCategory category;
+class _CategoryMediaFallback extends StatelessWidget {
+  const _CategoryMediaFallback({required this.item});
+
+  final Item item;
 
   @override
   Widget build(BuildContext context) {
-    return Text(category.emoji, style: const TextStyle(fontSize: 36));
-  }
-}
-
-// ─── Rarity badge ─────────────────────────────────────────────────────────────
-
-class _RarityBadge extends StatelessWidget {
-  const _RarityBadge({required this.status});
-  final IucnStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-      decoration: BoxDecoration(
-        color: status.color,
-        borderRadius: BorderRadius.circular(Radii.xs),
-        boxShadow: [
-          BoxShadow(
-            color: status.color.withValues(alpha: 0.5),
-            blurRadius: 4,
-          ),
-        ],
-      ),
-      child: Text(
-        status.code,
-        style: TextStyle(
-          fontSize: 8,
-          fontWeight: FontWeight.w800,
-          color: status.fgColor,
-          letterSpacing: 0.4,
-          height: 1.2,
-        ),
+    return Semantics(
+      key: ValueKey('pack-media-fallback-${item.id}'),
+      image: true,
+      label: '${item.category.label} media unavailable',
+      child: ExcludeSemantics(
+        child: Icon(_categoryIcon(item.category), size: 36),
       ),
     );
   }
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+IconData _categoryIcon(ItemCategory category) => switch (category) {
+  ItemCategory.fauna => Icons.pets_outlined,
+  ItemCategory.flora => Icons.local_florist_outlined,
+  ItemCategory.mineral => Icons.diamond_outlined,
+  ItemCategory.fossil => Icons.history_edu_outlined,
+  ItemCategory.artifact => Icons.museum_outlined,
+  ItemCategory.food => Icons.restaurant_outlined,
+  ItemCategory.orb => Icons.circle_outlined,
+};
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
+class _PackEmptyState extends StatelessWidget {
+  const _PackEmptyState({
     required this.category,
-    required this.hasFilters,
+    required this.isInitialEmpty,
+    required this.isFiltered,
   });
 
   final ItemCategory category;
-  final bool hasFilters;
+  final bool isInitialEmpty;
+  final bool isFiltered;
 
   @override
   Widget build(BuildContext context) {
+    final (title, message) = isFiltered
+        ? (
+            'No discoveries match your filters',
+            'Adjust the search or remove filters to see more Items.',
+          )
+        : isInitialEmpty
+        ? ('Your Pack is empty', 'Explore the map to add your first discovery.')
+        : (
+            'No ${category.label.toLowerCase()} discovered yet',
+            'Explore the map to discover more ${category.label.toLowerCase()}.',
+          );
+
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Spacing.xxxl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              hasFilters ? AppIcons.search : category.emoji,
-              style: const TextStyle(fontSize: 56),
-            ),
-            const SizedBox(height: Spacing.md),
-            Text(
-              hasFilters
-                  ? 'No discoveries match your filters'
-                  : 'No ${category.label.toLowerCase()} discovered yet',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.onSurface,
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              hasFilters
-                  ? 'Try removing some filters'
-                  : 'Explore the world to discover wildlife!',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppTheme.onSurfaceVariant,
-                height: 1.4,
-              ),
-            ),
-          ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: AppEmptyState(title: title, message: message),
         ),
       ),
     );
   }
 }
 
-// ─── Error state ──────────────────────────────────────────────────────────────
+class _PackErrorState extends StatelessWidget {
+  const _PackErrorState({required this.message, required this.onRetry});
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
   final String message;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Spacing.xxxl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppTheme.error.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppTheme.error.withValues(alpha: 0.3),
-                  width: 1.5,
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.warning_amber_rounded,
-                  size: 28,
-                  color: AppTheme.error,
-                ),
-              ),
-            ),
-            const SizedBox(height: Spacing.lg),
-            const Text(
-              "Couldn't load your collection",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: Spacing.xs),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppTheme.onSurfaceVariant,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: Spacing.xxl),
-            // eac-clickable-owner-logs: PackScreen logs retry callbacks as transport recovery inside the open Pack view.
-            FilledButton(
-              onPressed: onRetry,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(140, 44),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.xl),
-                ),
-              ),
-              child: const Text('Try Again'),
-            ),
-          ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: AppErrorState(
+            title: "Couldn't load your collection",
+            message: message,
+            retryLabel: 'Try Again',
+            onRetry: onRetry,
+          ),
         ),
       ),
     );

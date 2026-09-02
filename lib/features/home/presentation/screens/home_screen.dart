@@ -32,49 +32,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       screenName: 'home_screen',
       observability: obs,
       builder: (_) => Scaffold(
-        backgroundColor: AppTheme.surface,
         body: SafeArea(
           child: RefreshIndicator(
-            color: AppTheme.tertiary,
-            backgroundColor: AppTheme.surfaceContainerHigh,
             onRefresh: () => _refreshHome(authState),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(
-                Spacing.xl,
-                Spacing.xxl,
-                Spacing.xl,
-                Spacing.huge,
-              ),
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 48),
               children: [
-                Text(
-                  'Home',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppTheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.7,
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 640),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Home',
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Your permanent place in EarthNova.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 24),
+                          _HomeBody(
+                            authState: authState,
+                            state: homeState,
+                            onRetry: () => _refreshHome(authState),
+                            logger:
+                                ({required event, required category, data}) {
+                                  ref
+                                      .read(appObservabilityProvider)
+                                      .log(event, category, data: data);
+                                },
+                          ),
+                        ],
                       ),
-                ),
-                const SizedBox(height: Spacing.sm),
-                Text(
-                  'Your permanent place in EarthNova.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                ),
-                const SizedBox(height: Spacing.xxl),
-                _HomeBody(
-                  authState: authState,
-                  state: homeState,
-                  onRetry: () => _refreshHome(authState),
-                  logger: ({required event, required category, data}) {
-                    ref.read(appObservabilityProvider).log(
-                          event,
-                          category,
-                          data: data,
-                        );
-                  },
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -128,7 +125,7 @@ class _HomeBody extends StatelessWidget {
       return const _HomeLoadingState();
     }
     if (authState.status != AuthStatus.authenticated) {
-      return const EarthNotice(
+      return const AppNotice(
         title: 'Home unavailable',
         message: 'Sign in to view your established Home identity.',
       );
@@ -149,11 +146,7 @@ class _HomeBody extends StatelessWidget {
       return const _HomeLoadingState();
     }
 
-    return _ExistingHomeState(
-      home: home,
-      refreshError: state.error,
-      isRefreshing: state.isLoading,
-    );
+    return _ExistingHomeState(home: home, refreshError: state.error);
   }
 }
 
@@ -162,22 +155,16 @@ class _HomeLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EarthPanel(
+    return const AppCard(
       title: 'Loading Home',
-      eyebrow: 'Home identity',
+      description: 'Home identity',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Confirming your personal Home identity.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
-          ),
-          const SizedBox(height: Spacing.md),
-          const LoadingDots(),
+          Text('Confirming your personal Home identity.'),
+          SizedBox(height: 16),
+          LoadingDots(),
         ],
       ),
     );
@@ -197,46 +184,28 @@ class _HomeErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        EarthNotice(
-          title: 'Home could not load',
-          message: message,
-          tone: EarthNoticeTone.warning,
-        ),
-        const SizedBox(height: Spacing.md),
-        EarthActionButton(
-          label: 'Retry Home load',
-          actionId: null,
-          icon: Icons.refresh,
-          tone: EarthActionTone.secondary,
-          onPressed: ObservableInteraction.wrapAsyncCallback(
-            logger: logger,
-            screenName: 'home_screen',
-            widgetName: 'home_error_retry',
-            actionType: 'retry_home_load',
-            telemetryOnlyReason:
-                'Home retry is transport recovery inside the open Home view.',
-            callback: onRetry,
-          ),
-        ),
-      ],
+    return AppErrorState(
+      title: 'Home could not load',
+      message: message,
+      retryLabel: 'Retry Home load',
+      onRetry: ObservableInteraction.wrapAsyncCallback(
+        logger: logger,
+        screenName: 'home_screen',
+        widgetName: 'home_error_retry',
+        actionType: 'retry_home_load',
+        telemetryOnlyReason:
+            'Home retry is transport recovery inside the open Home view.',
+        callback: onRetry,
+      ),
     );
   }
 }
 
 class _ExistingHomeState extends StatelessWidget {
-  const _ExistingHomeState({
-    required this.home,
-    required this.refreshError,
-    required this.isRefreshing,
-  });
+  const _ExistingHomeState({required this.home, required this.refreshError});
 
   final Home home;
   final String? refreshError;
-  final bool isRefreshing;
 
   @override
   Widget build(BuildContext context) {
@@ -245,48 +214,35 @@ class _ExistingHomeState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (refreshError != null) ...[
-          EarthNotice(
+          AppNotice(
             title: 'Home refresh delayed',
             message: refreshError!,
-            tone: EarthNoticeTone.warning,
+            tone: AppNoticeTone.warning,
           ),
-          const SizedBox(height: Spacing.md),
+          const SizedBox(height: 16),
         ],
-        EarthPanel(
+        AppCard(
           title: 'Your Home',
-          eyebrow: 'Permanent',
-          tone: EarthPanelTone.success,
+          description: 'Permanent',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const EarthFieldRow(
+              const AppFieldRow(
                 label: 'Status',
                 value: 'Established',
                 helper: 'This Home is yours and stays with you.',
               ),
-              const EarthFieldRow(
+              const AppFieldRow(
                 label: 'Identity',
                 value: 'Yours across EarthNova',
                 helper: 'Your Home follows your progress across EarthNova.',
               ),
-              EarthFieldRow(
+              AppFieldRow(
                 label: 'Established',
                 value: _formatEstablishedDate(home.createdAt),
                 helper: 'The day this Home became yours.',
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: Spacing.xl),
-        EarthPanel(
-          title: 'Modules',
-          eyebrow: 'Coming later',
-          child: Text(
-            'Modules will bring new ways to shape this space. Nothing needs your attention yet.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
           ),
         ),
       ],
