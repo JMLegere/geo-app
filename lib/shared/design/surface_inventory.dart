@@ -77,7 +77,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     purpose:
         'Player-facing Villager service flow for identifying an examined find.',
     designSystemNotes:
-        'Composes shared panels, notices, action controls, and app theme tokens for the identification service flow.',
+        'Phase 5 neutral composition uses AppCard, AppButton, AppNotice, and LoadingDots from the public design barrel while preserving exact Item identity, examination-before-identification, retained actions, and the distinct service flow.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/pack/presentation/screens/pack_screen.dart',
@@ -85,7 +85,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Player inventory/Pack surface.',
     designSystemNotes:
-        'Documented local composition; migrate filters, cards, and empty states into documented design components incrementally.',
+        'Phase 5 neutral Pack composition uses the public App vocabulary while preserving exact owned Item identity and the existing search, filter, sort, category, paging, and grid behavior.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/pack/presentation/widgets/species_card.dart',
@@ -93,7 +93,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Owned species/item card used by Pack.',
     designSystemNotes:
-        'Documented Pack card pattern; should become a registered composite before reuse outside Pack.',
+        'Phase 5 neutral Pack card preserves examined-versus-identified disclosure, IUCN meaning, media fallback, and the distinct identification handoff without becoming a shared gameplay primitive.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/living_world/presentation/screens/town_screen.dart',
@@ -102,7 +102,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     purpose:
         'Town directory for known Venues, introduced Villagers, and current Services.',
     designSystemNotes:
-        'Town composes shared design panels, notices, tags, and app theme tokens.',
+        'Phase 5 neutral Town composition uses public App panels, notices, and badges while preserving known-venue provenance, introduced Villagers, current Services, and map knowledge gates.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/home/presentation/screens/home_screen.dart',
@@ -110,7 +110,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Read-only Home identity surface for the authenticated Player.',
     designSystemNotes:
-        'Home composes shared design panels, notices, field rows, and app theme tokens through the public design API.',
+        'Phase 5 identity-only composition uses AppCard, AppNotice, AppFieldRow, and LoadingDots through the public design API; it preserves authenticated/read states and intentionally adds no Modules panel or CTA.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/living_world/presentation/widgets/venue_marker.dart',
@@ -118,7 +118,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map callout for known Town Venues.',
     designSystemNotes:
-        'Map marker styling is documented here until map marker primitives are added to the design taxonomy.',
+        'Phase 5 neutral marker composition uses AppBadge while preserving the known Town projection and its map knowledge gate; it introduces no Venue Visit trigger or new map interaction.',
   ),
   DesignSurfaceDefinition(
     path:
@@ -128,7 +128,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     purpose:
         'Venue detail page grouping known Villagers and their current Services.',
     designSystemNotes:
-        'Dedicated Venue page composes shared design panels, notices, tags, and app theme tokens.',
+        'Phase 5 neutral Venue composition uses public App panels, notices, and badges while preserving known Town provenance, introduced Villagers, current Services, and no Venue Visit trigger.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/painters/cell_overlay_painter.dart',

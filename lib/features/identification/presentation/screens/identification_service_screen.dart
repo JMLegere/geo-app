@@ -14,12 +14,10 @@ import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/product/product_action_surface.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 
-typedef PrepareIdentification = Future<IdentificationPreparation> Function(
-  Item item,
-);
-typedef CommitIdentification = Future<ItemIdentificationResult> Function(
-  ItemIdentificationPlan plan,
-);
+typedef PrepareIdentification =
+    Future<IdentificationPreparation> Function(Item item);
+typedef CommitIdentification =
+    Future<ItemIdentificationResult> Function(ItemIdentificationPlan plan);
 
 /// A distinct Villager Service flow for one examined, unidentified Item.
 class IdentificationServiceScreen extends ConsumerStatefulWidget {
@@ -29,9 +27,9 @@ class IdentificationServiceScreen extends ConsumerStatefulWidget {
     this.prepare,
     this.commit,
   }) : assert(
-          (prepare == null) == (commit == null),
-          'prepare and commit must be supplied together',
-        );
+         (prepare == null) == (commit == null),
+         'prepare and commit must be supplied together',
+       );
 
   final Item item;
   final PrepareIdentification? prepare;
@@ -181,30 +179,54 @@ class _IdentificationServiceScreenState
       screenName: 'identification_service_screen',
       observability: observability,
       builder: (_) => Scaffold(
-        backgroundColor: AppTheme.surface,
         appBar: AppBar(title: const Text('Identify find')),
         body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(Spacing.xl),
-            children: [
-              if (result != null)
-                _IdentifiedResult(item: result.committedItem)
-              else if (_preparation == null && _error == null)
-                const Center(child: LoadingDots())
-              else if (_preparation == null)
-                _PreparationError(message: _error!, onCancel: _cancel)
-              else
-                _PreparedService(
-                  preparation: _preparation!,
-                  started: _started,
-                  committing: _committing,
-                  error: _error,
-                  onStart: _start,
-                  onReveal: _reveal,
-                  onCancel: _cancel,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: result != null
+                      ? _IdentifiedResult(item: result.committedItem)
+                      : _preparation == null && _error == null
+                      ? const _PreparingIdentification()
+                      : _preparation == null
+                      ? _PreparationError(message: _error!, onCancel: _cancel)
+                      : _PreparedService(
+                          preparation: _preparation!,
+                          started: _started,
+                          committing: _committing,
+                          error: _error,
+                          onStart: _start,
+                          onReveal: _reveal,
+                          onCancel: _cancel,
+                        ),
                 ),
-            ],
+              ),
+            ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PreparingIdentification extends StatelessWidget {
+  const _PreparingIdentification();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: 'Preparing identification',
+      child: const ExcludeSemantics(
+        child: AppCard(
+          title: 'Preparing identification',
+          description: 'Getting this examined find ready.',
+          child: Center(child: LoadingDots()),
         ),
       ),
     );
@@ -233,56 +255,51 @@ class _PreparedService extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = preparation.serviceAccess;
-    return EarthPanel(
+    return AppCard(
       title: service.serviceDisplayName,
-      tone: EarthPanelTone.accent,
+      description: service.villagerDisplayName,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(service.villagerDisplayName),
-          const SizedBox(height: Spacing.sm),
           Text(
             started
                 ? 'The prepared result is ready. Hold to reveal it.'
                 : 'This Villager can identify the examined find.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
           ),
           if (error != null) ...[
-            const SizedBox(height: Spacing.md),
-            EarthNotice(
+            const SizedBox(height: 16),
+            AppNotice(
               title: 'Identification was not revealed',
               message: error!,
-              tone: EarthNoticeTone.warning,
+              tone: AppNoticeTone.error,
             ),
           ],
-          const SizedBox(height: Spacing.lg),
+          const SizedBox(height: 20),
           if (!started)
-            EarthActionButton(
-              label: 'Start identification',
+            ProductActionSurface(
               actionId: PlayerActions.identifyUnidentifiedFind,
-              icon: Icons.auto_awesome,
-              expand: true,
-              onPressed: onStart,
+              child: AppButton(
+                label: 'Start identification',
+                leading: const Icon(Icons.play_arrow_outlined),
+                expand: true,
+                onPressed: onStart,
+              ),
             )
           else
             ProductActionSurface(
               actionId: PlayerActions.revealIdentification,
-              child: _HoldToRevealButton(
-                busy: committing,
-                onReveal: onReveal,
-              ),
+              child: _HoldToRevealButton(busy: committing, onReveal: onReveal),
             ),
-          const SizedBox(height: Spacing.sm),
+          const SizedBox(height: 8),
           // eac-clickable-ignore: Cancel dismisses this local flow without committing a result.
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.onSurfaceVariant,
+          ProductActionSurface(
+            actionId: null,
+            child: AppButton(
+              label: 'Cancel',
+              variant: AppButtonVariant.ghost,
+              expand: true,
+              onPressed: committing ? null : onCancel,
             ),
-            onPressed: committing ? null : onCancel,
-            child: const Text('Cancel'),
           ),
         ],
       ),
@@ -291,41 +308,38 @@ class _PreparedService extends StatelessWidget {
 }
 
 class _HoldToRevealButton extends StatelessWidget {
-  const _HoldToRevealButton({
-    required this.busy,
-    required this.onReveal,
-  });
+  const _HoldToRevealButton({required this.busy, required this.onReveal});
 
   final bool busy;
   final Future<void> Function() onReveal;
 
   @override
   Widget build(BuildContext context) {
+    void reveal() => unawaited(onReveal());
+
     return Semantics(
+      key: const Key('hold-to-reveal'),
       container: true,
-      label: 'Hold to reveal',
+      liveRegion: busy,
+      label: busy ? 'Revealing identification' : 'Hold to reveal',
+      hint: busy ? null : 'Press and hold to reveal the identification',
       button: true,
+      enabled: !busy,
       excludeSemantics: true,
-      child: Material(
-        color: busy
-            ? Theme.of(context).colorScheme.surfaceContainerHighest
-            : Theme.of(context).colorScheme.primary,
-        borderRadius: BorderRadius.circular(Radii.xl),
-        // eac-clickable-owner-logs: _reveal logs revealIdentification before invoking this hold control.
-        child: InkWell(
-          onLongPress: busy ? null : onReveal,
-          borderRadius: BorderRadius.circular(Radii.xl),
-          child: const SizedBox(
-            height: ComponentSizes.buttonHeight,
-            child: Center(
-              child: Text(
-                'Hold to reveal',
-                style: TextStyle(
-                  color: AppTheme.onSurface,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+      onLongPress: busy ? null : reveal,
+      // eac-clickable-owner-logs: onReveal invokes _reveal, which logs PlayerActions.revealIdentification before committing.
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: busy ? null : reveal,
+        // Pointer taps stay inert while the AppButton retains keyboard focus.
+        child: IgnorePointer(
+          child: AppButton(
+            label: busy ? 'Revealing…' : 'Hold to reveal',
+            leading: busy
+                ? const LoadingDots()
+                : const Icon(Icons.visibility_outlined),
+            expand: true,
+            onPressed: busy ? null : reveal,
           ),
         ),
       ),
@@ -340,17 +354,13 @@ class _IdentifiedResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EarthPanel(
+    return AppCard(
       key: ValueKey('identified-item-${item.id}'),
       title: item.displayName,
-      eyebrow: 'Identification revealed',
-      tone: EarthPanelTone.success,
-      child: Text(
-        item.scientificName ?? 'Scientific name unavailable',
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.onSurfaceVariant,
-              fontStyle: FontStyle.italic,
-            ),
+      child: AppNotice(
+        title: 'Identification revealed',
+        message: item.scientificName ?? 'Scientific name unavailable',
+        tone: AppNoticeTone.success,
       ),
     );
   }
@@ -364,23 +374,14 @@ class _PreparationError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        EarthNotice(
-          title: 'Identification unavailable',
-          message: message,
-          tone: EarthNoticeTone.warning,
-        ),
-        const SizedBox(height: Spacing.md),
-        EarthActionButton(
-          label: 'Cancel',
-          actionId: null,
-          tone: EarthActionTone.neutral,
-          expand: true,
-          onPressed: onCancel,
-        ),
-      ],
+    return ProductActionSurface(
+      actionId: null,
+      child: AppErrorState(
+        title: 'Identification unavailable',
+        message: message,
+        retryLabel: 'Cancel',
+        onRetry: onCancel,
+      ),
     );
   }
 }

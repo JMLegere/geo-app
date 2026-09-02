@@ -1,65 +1,42 @@
-import 'package:flutter/material.dart' hide Durations;
+import 'package:flutter/material.dart';
+
 import 'package:earth_nova/core/domain/entities/game_region.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/domain/entities/iucn_status.dart';
 import 'package:earth_nova/core/domain/entities/taxonomic_group.dart';
-import 'package:earth_nova/shared/extensions/iconography.dart';
-import 'package:earth_nova/shared/extensions/iucn_status_theme.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
-import 'package:earth_nova/shared/theme/design_tokens.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/product/product_action_surface.dart';
 
-/// Shows a TCG-style species card as a centered modal overlay.
+/// Opens neutral species details without changing the Item's knowledge state.
 void showSpeciesCard(
   BuildContext context,
   Item item, {
   void Function(Item item)? onOpenIdentificationService,
 }) {
-  final disableAnimations = MediaQuery.disableAnimationsOf(context);
-  showGeneralDialog<void>(
+  showDialog<void>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.78),
     barrierDismissible: true,
     barrierLabel: 'Close species card',
-    transitionDuration:
-        disableAnimations ? Duration.zero : const Duration(milliseconds: 400),
-    transitionBuilder: (context, animation, _, child) {
-      if (disableAnimations) return child;
-      final curved = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutBack,
-        reverseCurve: Curves.easeIn,
-      );
-      return FadeTransition(
-        opacity: animation,
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.78, end: 1.0).animate(curved),
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.04),
-              end: Offset.zero,
-            ).animate(curved),
-            child: child,
-          ),
-        ),
-      );
-    },
-    pageBuilder: (context, _, __) => SpeciesCard(
+    useSafeArea: true,
+    traversalEdgeBehavior: TraversalEdgeBehavior.closedLoop,
+    requestFocus: true,
+    builder: (_) => SpeciesCard(
       item: item,
       onOpenIdentificationService: onOpenIdentificationService,
     ),
   );
 }
 
-/// TCG card widget — can be used standalone or via [showSpeciesCard].
+/// Responsive species details shown standalone or in [showSpeciesCard].
 class SpeciesCard extends StatefulWidget {
   const SpeciesCard({
     super.key,
     required this.item,
     this.onOpenIdentificationService,
   });
+
   final Item item;
   final void Function(Item item)? onOpenIdentificationService;
 
@@ -68,96 +45,62 @@ class SpeciesCard extends StatefulWidget {
 }
 
 class _SpeciesCardState extends State<SpeciesCard> {
+  static const _dismissDistance = 80.0;
+
+  double _downwardOverscroll = 0;
+
+  void _dismiss() {
+    Navigator.of(context).maybePop();
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollStartNotification) {
+      _downwardOverscroll = 0;
+    } else if (notification is OverscrollNotification &&
+        notification.metrics.pixels <= notification.metrics.minScrollExtent &&
+        notification.overscroll < 0) {
+      _downwardOverscroll -= notification.overscroll;
+      if (_downwardOverscroll >= _dismissDistance) {
+        _downwardOverscroll = 0;
+        _dismiss();
+      }
+    } else if (notification is ScrollEndNotification) {
+      _downwardOverscroll = 0;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    if (!item.isExamined) {
-      return Center(
-        child: Semantics(
-          label: 'Unexamined ${item.category.label.toLowerCase()} Item',
-          excludeSemantics: true,
-          child: Container(
-            key: ValueKey('species-card-${item.id}'),
-            padding: const EdgeInsets.all(Spacing.xl),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(Radii.xxxl),
-              border: Border.all(color: AppTheme.outline),
-            ),
-            child: Text(
-              'Unexamined ${item.category.label.toLowerCase()} Item',
-              style: const TextStyle(
-                color: AppTheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    final status = IucnStatus.fromString(item.rarity);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final cardWidth = (screenWidth - 48).clamp(0.0, 320.0);
-    final artHeight = cardWidth * 0.68;
-    final borderColor = status?.color ?? AppTheme.outline;
-    final isRare = status != null &&
-        (status == IucnStatus.criticallyEndangered ||
-            status == IucnStatus.endangered ||
-            status == IucnStatus.vulnerable);
-    final borderWidth = isRare ? 2.5 : 1.5;
+    final content = item.isExamined
+        ? _ExaminedSpeciesContent(
+            item: item,
+            onOpenIdentificationService: widget.onOpenIdentificationService,
+            onDismiss: _dismiss,
+          )
+        : _UnexaminedSpeciesContent(item: item, onDismiss: _dismiss);
 
-    return Center(
-      // eac-clickable-ignore: card drag-to-dismiss is local modal chrome, not a gameplay product action.
-      child: GestureDetector(
-        onVerticalDragEnd: (details) {
-          if ((details.primaryVelocity ?? 0) > 300) {
-            Navigator.of(context).pop();
-          }
-        },
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            key: ValueKey('species-card-${item.id}'),
-            width: cardWidth,
-            decoration: BoxDecoration(
-              color: _cardBgColor(status),
-              borderRadius: BorderRadius.circular(Radii.xxxl),
-              border: Border.all(color: borderColor, width: borderWidth),
-              boxShadow: status != null && status.glowAlpha > 0
-                  ? [
-                      BoxShadow(
-                        color: status.color
-                            .withValues(alpha: status.glowAlpha + 0.10),
-                        blurRadius: 24,
-                        spreadRadius: -4,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(Radii.xxxl - 1),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ArtZone(
-                    item: item,
-                    status: status,
-                    width: cardWidth,
-                    height: artHeight,
-                  ),
-                  Container(
-                    height: 4,
-                    color: status?.color ?? AppTheme.surfaceContainerHighest,
-                  ),
-                  _InfoZone(
-                    item: item,
-                    status: status,
-                    onOpenIdentificationService:
-                        widget.onOpenIdentificationService == null
-                            ? null
-                            : () => widget.onOpenIdentificationService!(item),
-                  ),
-                ],
+    return SafeArea(
+      child: Center(
+        child: NotificationListener<ScrollNotification>(
+          onNotification: _onScrollNotification,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Semantics(
+                scopesRoute: true,
+                namesRoute: true,
+                explicitChildNodes: true,
+                label: item.isExamined
+                    ? 'Species details for ${item.visibleDisplayName}'
+                    : 'Unexamined ${item.category.label.toLowerCase()} Item',
+                child: KeyedSubtree(
+                  key: ValueKey('species-card-${item.id}'),
+                  child: content,
+                ),
               ),
             ),
           ),
@@ -165,323 +108,275 @@ class _SpeciesCardState extends State<SpeciesCard> {
       ),
     );
   }
-
-  static Color _cardBgColor(IucnStatus? status) {
-    if (status == null) return AppTheme.surfaceContainer;
-    return switch (status) {
-      IucnStatus.criticallyEndangered => const Color(0xFF150A24),
-      IucnStatus.endangered => const Color(0xFF1A1200),
-      IucnStatus.vulnerable => const Color(0xFF06142A),
-      _ => AppTheme.surfaceContainer,
-    };
-  }
 }
 
-// ─── Art zone ─────────────────────────────────────────────────────────────────
-
-class _ArtZone extends StatelessWidget {
-  const _ArtZone({
+class _UnexaminedSpeciesContent extends StatelessWidget {
+  const _UnexaminedSpeciesContent({
     required this.item,
-    required this.status,
-    required this.width,
-    required this.height,
+    required this.onDismiss,
   });
 
   final Item item;
-  final IucnStatus? status;
-  final double width;
-  final double height;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Stack(
-        fit: StackFit.expand,
+    final label = 'Unexamined ${item.category.label.toLowerCase()} Item';
+    return AppCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildArt(),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    _SpeciesCardState._cardBgColor(status)
-                        .withValues(alpha: 0.85),
+          Align(
+            alignment: Alignment.centerRight,
+            // eac-clickable-ignore: Species-card dismissal closes local detail chrome without creating product state.
+            child: IconButton(
+              key: const Key('species-card-close'),
+              autofocus: true,
+              tooltip: 'Close species card',
+              onPressed: onDismiss,
+              icon: const Icon(Icons.close),
+            ),
+          ),
+          AppNotice(
+            title: label,
+            message:
+                'Identity and field details are unavailable until this Item has been examined.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExaminedSpeciesContent extends StatelessWidget {
+  const _ExaminedSpeciesContent({
+    required this.item,
+    required this.onOpenIdentificationService,
+    required this.onDismiss,
+  });
+
+  final Item item;
+  final void Function(Item item)? onOpenIdentificationService;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final mobile = MediaQuery.sizeOf(context).width < 700;
+    final media = _SpeciesMedia(item: item);
+    final details = _SpeciesDetails(
+      item: item,
+      onOpenIdentificationService: onOpenIdentificationService,
+    );
+
+    return AppCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.visibleDisplayName,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    if (item.visibleScientificName != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        item.visibleScientificName!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-            ),
+              // eac-clickable-ignore: Species-card dismissal closes local detail chrome without creating product state.
+              IconButton(
+                key: const Key('species-card-close'),
+                autofocus: true,
+                tooltip: 'Close species card',
+                onPressed: onDismiss,
+                icon: const Icon(Icons.close),
+              ),
+            ],
           ),
-          Positioned(
-            top: 10,
-            left: 10,
-            right: 10,
-            child: Row(
+          const SizedBox(height: 16),
+          if (mobile)
+            Column(
+              key: const Key('species-card-mobile-layout'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [media, const SizedBox(height: 16), details],
+            )
+          else
+            Row(
+              key: const Key('species-card-desktop-layout'),
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (status != null) _rarityPill(),
-                const Spacer(),
-                _overlayPill(
-                  child: Text(item.category.emoji,
-                      style: const TextStyle(fontSize: 16)),
-                ),
-                const SizedBox(width: Spacing.xs),
-                // eac-clickable-ignore: close button is local modal chrome, not a gameplay product action.
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 14,
-                      color: Colors.white.withValues(alpha: 0.80),
-                    ),
-                  ),
-                ),
+                Expanded(child: media),
+                const SizedBox(width: 24),
+                Expanded(child: details),
               ],
             ),
-          ),
         ],
       ),
     );
   }
-
-  Widget _buildArt() {
-    if (item.artUrl != null) {
-      return Image.network(
-        item.artUrl!,
-        fit: BoxFit.cover,
-        loadingBuilder: (_, child, progress) {
-          if (progress == null) return child;
-          return _fallbackArt();
-        },
-        errorBuilder: (_, __, ___) => _fallbackArt(),
-      );
-    }
-    if (item.iconUrl != null) {
-      return Container(
-        color: _artBgColor(),
-        child: Center(
-          child: Image.network(
-            item.iconUrl!,
-            width: 100,
-            height: 100,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => _fallbackEmoji(),
-          ),
-        ),
-      );
-    }
-    return _fallbackArt();
-  }
-
-  Widget _fallbackArt() => Container(
-        color: _artBgColor(),
-        child: Center(child: _fallbackEmoji()),
-      );
-
-  Widget _fallbackEmoji() =>
-      Text(item.category.emoji, style: const TextStyle(fontSize: 56));
-
-  Color _artBgColor() {
-    if (status == null) return AppTheme.surfaceContainerHigh;
-    return switch (status!) {
-      IucnStatus.criticallyEndangered => const Color(0xFF12072A),
-      IucnStatus.endangered => const Color(0xFF1A1000),
-      IucnStatus.vulnerable => const Color(0xFF04101E),
-      _ => AppTheme.surfaceContainerHigh,
-    };
-  }
-
-  Widget _rarityPill() {
-    final isRare = status == IucnStatus.criticallyEndangered ||
-        status == IucnStatus.endangered;
-    return _overlayPill(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isRare) ...[
-            Text('◆', style: TextStyle(fontSize: 6, color: status!.color)),
-            const SizedBox(width: 2),
-          ],
-          Text(
-            status!.code,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: status!.color,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _overlayPill({required Widget child}) => Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Spacing.sm,
-          vertical: Spacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.55),
-          borderRadius: BorderRadius.circular(Radii.pill),
-        ),
-        child: child,
-      );
 }
 
-// ─── Info zone ────────────────────────────────────────────────────────────────
+class _SpeciesMedia extends StatelessWidget {
+  const _SpeciesMedia({required this.item});
 
-class _InfoZone extends StatelessWidget {
-  const _InfoZone({
-    required this.item,
-    required this.status,
-    this.onOpenIdentificationService,
-  });
   final Item item;
-  final IucnStatus? status;
-  final VoidCallback? onOpenIdentificationService;
 
   @override
   Widget build(BuildContext context) {
-    final group = item.taxonomicGroup;
-    final habitatList =
-        item.habitats.map(Habitat.fromString).whereType<Habitat>().toList();
-    final regionList = item.continents
-        .map(GameRegion.fromString)
-        .whereType<GameRegion>()
-        .where((r) => r != GameRegion.unknown)
-        .toList();
+    return AspectRatio(aspectRatio: 16 / 10, child: _primaryMedia(context));
+  }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            item.displayName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.onSurface,
-              letterSpacing: -0.3,
-            ),
+  Widget _primaryMedia(BuildContext context) {
+    final artUrl = item.artUrl;
+    if (artUrl != null && artUrl.isNotEmpty) {
+      return Image.network(
+        artUrl,
+        key: ValueKey('species-art-${item.id}'),
+        fit: BoxFit.cover,
+        loadingBuilder: (_, child, progress) =>
+            progress == null ? child : _iconOrCategoryFallback(context),
+        errorBuilder: (_, __, ___) => _iconOrCategoryFallback(context),
+      );
+    }
+    return _iconOrCategoryFallback(context);
+  }
+
+  Widget _iconOrCategoryFallback(BuildContext context) {
+    final iconUrl = item.iconUrl;
+    if (iconUrl != null && iconUrl.isNotEmpty) {
+      return ColoredBox(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Center(
+          child: Image.network(
+            iconUrl,
+            key: ValueKey('species-icon-${item.id}'),
+            width: 112,
+            height: 112,
+            fit: BoxFit.contain,
+            loadingBuilder: (_, child, progress) =>
+                progress == null ? child : _categoryFallback(context),
+            errorBuilder: (_, __, ___) => _categoryFallback(context),
           ),
-          if (item.scientificName != null) ...[
-            const SizedBox(height: 3),
-            Text(
-              item.scientificName!,
-              style: TextStyle(
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.80),
-              ),
-            ),
-          ],
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: Spacing.sm,
-            runSpacing: Spacing.xs,
-            children: [
-              if (status != null)
-                _BadgePill(
-                  text: '${status!.code} · ${status!.displayName}',
-                  color: status!.color,
-                ),
-              if (item.taxonomicClass != null && group != TaxonomicGroup.other)
-                _InfoPill(icon: group.icon, label: group.label),
-            ],
-          ),
-          if (habitatList.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Row(
+        ),
+      );
+    }
+    return _categoryFallback(context);
+  }
+
+  Widget _categoryFallback(BuildContext context) {
+    final label = '${item.category.label} media unavailable';
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Center(
+        child: Semantics(
+          key: ValueKey('species-media-fallback-${item.id}'),
+          image: true,
+          label: label,
+          child: ExcludeSemantics(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                for (var i = 0; i < habitatList.length && i < 7; i++) ...[
-                  if (i > 0) const SizedBox(width: Spacing.sm),
-                  Text(habitatList[i].icon,
-                      style: const TextStyle(fontSize: 18)),
-                ],
+                const Icon(Icons.image_not_supported_outlined, size: 56),
+                const SizedBox(height: 8),
+                Text(label),
               ],
             ),
-          ],
-          if (regionList.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                for (var i = 0; i < regionList.length && i < 6; i++) ...[
-                  if (i > 0) const SizedBox(width: Spacing.sm),
-                  Text(regionList[i].icon,
-                      style: const TextStyle(fontSize: 18)),
-                ],
-              ],
-            ),
-          ],
-          if (item.isUnidentified &&
-              item.isExamined &&
-              onOpenIdentificationService != null) ...[
-            const SizedBox(height: Spacing.md),
-            ProductActionSurface(
-              actionId: PlayerActions.openIdentificationService,
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: onOpenIdentificationService,
-                  child: const Text('Open identification service'),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 2,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text('📅', style: TextStyle(fontSize: 12)),
-              Text(
-                _formatDate(item.acquiredAt),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.onSurfaceVariant,
-                ),
-              ),
-              if (item.acquiredInCellId != null) ...[
-                Text('·',
-                    style: TextStyle(
-                        color: AppTheme.onSurfaceVariant)),
-                const Text('📍', style: TextStyle(fontSize: 12)),
-                Text(
-                  'Cell ${item.acquiredInCellId}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppTheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ],
           ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  static String _formatDate(DateTime dt) {
+class _SpeciesDetails extends StatelessWidget {
+  const _SpeciesDetails({
+    required this.item,
+    required this.onOpenIdentificationService,
+  });
+
+  final Item item;
+  final void Function(Item item)? onOpenIdentificationService;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = IucnStatus.fromString(item.rarity);
+    final group = item.taxonomicGroup;
+    final habitats = item.habitats
+        .map(Habitat.fromString)
+        .whereType<Habitat>()
+        .map((habitat) => habitat.label)
+        .toList();
+    final regions = item.continents
+        .map(GameRegion.fromString)
+        .whereType<GameRegion>()
+        .where((region) => region != GameRegion.unknown)
+        .map((region) => region.label)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            AppBadge(
+              label: item.category.label,
+              variant: AppBadgeVariant.outline,
+            ),
+            AppBadge(label: item.isUnidentified ? 'Examined' : 'Identified'),
+            if (status != null)
+              AppBadge(
+                label: '${status.code} · ${status.displayName}',
+                variant: AppBadgeVariant.outline,
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (item.isUnidentified)
+          const Text(
+            'Examination revealed these field details. Identification remains pending.',
+          ),
+        if (item.taxonomicClass != null && group != TaxonomicGroup.other)
+          AppFieldRow(label: 'Taxonomic group', value: group.label),
+        if (habitats.isNotEmpty)
+          AppFieldRow(label: 'Habitats', value: habitats.join(', ')),
+        if (regions.isNotEmpty)
+          AppFieldRow(label: 'Regions', value: regions.join(', ')),
+        AppFieldRow(label: 'Acquired', value: _formatDate(item.acquiredAt)),
+        if (item.acquiredInCellId != null)
+          const AppFieldRow(label: 'Provenance', value: 'Map exploration'),
+        if (item.isUnidentified && onOpenIdentificationService != null) ...[
+          const SizedBox(height: 12),
+          ProductActionSurface(
+            actionId: PlayerActions.openIdentificationService,
+            child: AppButton(
+              key: const Key('open-identification-service'),
+              label: 'Open identification service',
+              expand: true,
+              onPressed: () => onOpenIdentificationService!(item),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static String _formatDate(DateTime date) {
     const months = [
       'Jan',
       'Feb',
@@ -496,67 +391,6 @@ class _InfoZone extends StatelessWidget {
       'Nov',
       'Dec',
     ];
-    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
-  }
-}
-
-// ─── Badge pills ──────────────────────────────────────────────────────────────
-
-class _BadgePill extends StatelessWidget {
-  const _BadgePill({required this.text, required this.color});
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: color.withValues(alpha: 0.50)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  const _InfoPill({required this.icon, required this.label});
-  final String icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: AppTheme.outline.withValues(alpha: 0.50)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 14)),
-          const SizedBox(width: Spacing.xs),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }

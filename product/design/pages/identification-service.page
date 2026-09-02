@@ -6,4 +6,4 @@ Exports: lib/features/identification/presentation/screens/identification_service
 Public API: lib/features/identification/presentation/screens/identification_service_screen.dart
 
 Purpose:
-  Prepares one examined unidentified owned active Item on entry, names the known Villager and current Identification Service, and commits the retained exact plan only after explicit start and completed hold-to-reveal. Cancel or release before reveal writes nothing, and this page does not activate Town as a bottom destination.
+  Phase 5 neutral Villager service composition prepares one examined unidentified owned active Item on entry, names the known Villager and current Identification Service, and commits the retained exact plan only after explicit start and completed hold-to-reveal. Cancel or release before reveal writes nothing; examination remains separate, and this page does not activate Town as a bottom destination.

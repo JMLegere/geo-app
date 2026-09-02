@@ -343,7 +343,7 @@ void main() {
     expect(find.byTooltip('Back'), findsOneWidget);
     expect(find.text('Villagers and Services'), findsOneWidget);
     expect(find.text('Repairs'), findsOneWidget);
-    expect(find.text('OPENING SOON'), findsOneWidget);
+    expect(find.text('Harbor Current'), findsOneWidget);
     expect(find.textContaining('NPC'), findsNothing);
   });
 }

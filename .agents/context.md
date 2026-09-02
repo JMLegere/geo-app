@@ -995,3 +995,29 @@
 **Outcome**
 
 - Phase 4 is complete. Phase 5 and later remain paused. No production deployment, data migration, schema mutation, provider change, route change, or gameplay expansion was performed.
+
+### 2026-09-01 — Issue #580 Phase 5 Pack and knowledge complete
+
+**Authority**
+
+- The user explicitly authorized PRD Phase 5 only. Phase 6 and later remain paused until separately authorized; production deployment remains unauthorized.
+- Phase 5 preserved routes, tabs, providers, domain entities, persisted data, schemas, dependencies, exact Item identity, disclosure rules, Examination/Identification sequencing, Town/Venue provenance, current roster/service projections, gestures, player action IDs, and telemetry.
+
+**Implementation**
+
+- Pack now uses neutral search/category/filter/sort/grid/state composition, with wrapped mobile category controls, native category icons, 3/4/6-column breakpoints, paging, edge navigation, and distinct initial-empty, filtered-zero, loading, and retry states.
+- Species Card now presents safe unexamined, examined/unidentified, and identified disclosure with labeled native media fallback, player-facing Map provenance, Identification handoff, and text-backed conservation meaning.
+- Identification retains prepare, start, hold-to-reveal, commit, success, and failure behavior in neutral dialog composition.
+- Town and Venue detail/marker retain known-provenance disclosure, introduced Villagers, current Services, safe empty/error states, and routes without adding a Visit trigger. Home is identity-only and no longer presents the speculative Modules panel.
+- The capture harness mirrors the production dark-zinc Shad/Material theme, loads Geist and Material Icons, preserves transitioned Identification state, and keeps opt-in capture cases out of default CI.
+
+**Verification**
+
+- Phase 5 focused behavior/contract suite passed, including the mobile category-wrap regression.
+- Full `flutter analyze`, full Flutter suite, EAC, documentation authority, and `git diff --check` passed; exact counts are recorded in `.agents/qa/2026-09-01-shadcn-reset-phase-5-pack-knowledge.md`.
+- Twenty-four final PNGs at 390×844 and 1440×900 passed rendered inspection for state truth, contrast, responsive columns, 200% text, recognizable native glyphs, non-color meaning, no raw IDs, no speculative actions, and no clipping or overflow.
+- Independent source review found no Phase 5 correctness blocker.
+
+**Outcome**
+
+- Phase 5 is complete. Phase 6 and later remain paused. No production deployment, data migration, schema mutation, provider change, route change, dependency change, backend change, or gameplay expansion was performed.

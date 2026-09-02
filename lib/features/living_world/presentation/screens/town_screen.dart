@@ -33,49 +33,42 @@ class _TownScreenState extends ConsumerState<TownScreen> {
       screenName: 'town_screen',
       observability: obs,
       builder: (_) => Scaffold(
-        backgroundColor: AppTheme.surface,
         body: SafeArea(
           child: RefreshIndicator(
-            color: AppTheme.tertiary,
-            backgroundColor: AppTheme.surfaceContainerHigh,
             onRefresh: () => _refreshTown(authState),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(
-                Spacing.xl,
-                Spacing.xxl,
-                Spacing.xl,
-                Spacing.huge,
-              ),
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 48),
               children: [
-                Text(
-                  'Town',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppTheme.onSurface,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.7,
-                      ),
-                ),
-                const SizedBox(height: Spacing.sm),
-                Text(
-                  'Known Venues, introduced Villagers, and current Services.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                ),
-                const SizedBox(height: Spacing.xxl),
-                _TownBody(
-                  authState: authState,
-                  state: townState,
-                  onRetry: () => _refreshTown(authState),
-                  logger: ({required event, required category, data}) {
-                    ref.read(appObservabilityProvider).log(
-                          event,
-                          category,
-                          data: data,
-                        );
-                  },
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Town',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Known Venues, introduced Villagers, and current Services.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 32),
+                        _TownBody(
+                          authState: authState,
+                          state: townState,
+                          onRetry: () => _refreshTown(authState),
+                          logger: ({required event, required category, data}) {
+                            ref
+                                .read(appObservabilityProvider)
+                                .log(event, category, data: data);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -126,7 +119,7 @@ class _TownBody extends StatelessWidget {
       return const _TownLoadingState();
     }
     if (authState.status != AuthStatus.authenticated) {
-      return const EarthNotice(
+      return const AppNotice(
         title: 'Town unavailable',
         message: 'Sign in to view known Venues, Villagers, and Services.',
       );
@@ -152,55 +145,27 @@ class _TownLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EarthPanel(
+    return const AppCard(
       title: 'Loading Town',
-      eyebrow: 'Town projection',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Gathering the places and people you know.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
-          ),
-          const SizedBox(height: Spacing.md),
-          const LoadingDots(),
-        ],
-      ),
+      description: 'Gathering the places and people you know.',
+      child: Align(alignment: Alignment.centerLeft, child: LoadingDots()),
     );
   }
 }
 
 class _TownErrorState extends StatelessWidget {
-  const _TownErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _TownErrorState({required this.message, required this.onRetry});
 
   final String message;
   final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        EarthNotice(
-          title: 'Town could not load',
-          message: message,
-          tone: EarthNoticeTone.warning,
-        ),
-        const SizedBox(height: Spacing.md),
-        EarthActionButton(
-          label: 'Retry Town load',
-          actionId: null,
-          icon: Icons.refresh,
-          tone: EarthActionTone.secondary,
-          onPressed: () => unawaited(onRetry()),
-        ),
-      ],
+    return AppErrorState(
+      title: 'Town could not load',
+      message: message,
+      retryLabel: 'Retry Town load',
+      onRetry: () => unawaited(onRetry()),
     );
   }
 }
@@ -210,9 +175,9 @@ class _TownEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const EarthNotice(
+    return const AppEmptyState(
       title: 'No Venues known yet',
-      message: 'Explore the Map to reveal a Venue.',
+      message: 'Known Venues appear here as the Map reveals them.',
     );
   }
 }
@@ -229,7 +194,7 @@ class _TownVenueList extends StatelessWidget {
       children: [
         for (final venue in town.venues) ...[
           _TownVenueCard(venue: venue, logger: logger),
-          if (venue != town.venues.last) const SizedBox(height: Spacing.md),
+          if (venue != town.venues.last) const SizedBox(height: 16),
         ],
       ],
     );
@@ -249,7 +214,7 @@ class _TownVenueCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Open ${venue.venue.displayName} Venue detail',
-      child: GestureDetector(
+      child: InkWell(
         onTap: ObservableInteraction.wrapVoidCallback(
           logger: logger,
           screenName: 'town_screen',
@@ -270,21 +235,34 @@ class _TownVenueCard extends StatelessWidget {
             );
           },
         ),
-        child: EarthPanel(
+        child: AppCard(
           title: venue.venue.displayName,
-          eyebrow: 'Venue • ${_humanizeKind(venue.venue.kind)}',
-          actions: [
-            EarthTag(label: '${venue.villagers.length} Villagers'),
-            EarthTag(
-                label: '$serviceCount Services', tone: EarthTagTone.accent),
-          ],
-          child: venue.villagers.isEmpty
-              ? const EarthNotice(
+          description: 'Venue • ${_humanizeKind(venue.venue.kind)}',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  AppBadge(label: _plural(venue.villagers.length, 'Villager')),
+                  AppBadge(
+                    label: _plural(serviceCount, 'Service'),
+                    variant: AppBadgeVariant.outline,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (venue.villagers.isEmpty)
+                const AppNotice(
                   title: 'No Villagers introduced here yet',
                   message:
                       'This Venue is known. Town will update when Villagers are introduced here.',
                 )
-              : _TownVillagerPreviewList(villagers: venue.villagers),
+              else
+                _TownVillagerPreviewList(villagers: venue.villagers),
+            ],
+          ),
         ),
       ),
     );
@@ -302,8 +280,7 @@ class _TownVillagerPreviewList extends StatelessWidget {
       children: [
         for (final villager in villagers) ...[
           _TownVillagerPreview(villager: villager),
-          if (villager != villagers.last)
-            const Divider(color: AppTheme.outline),
+          if (villager != villagers.last) const Divider(),
         ],
       ],
     );
@@ -320,11 +297,11 @@ class _TownVillagerPreview extends StatelessWidget {
     final serviceSummary = villager.services.isEmpty
         ? 'No Services visible yet'
         : villager.services
-            .map((service) => '${service.service.displayName} — Opening soon')
-            .join('\n');
+              .map((service) => '${service.service.displayName} — Opening soon')
+              .join('\n');
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -334,31 +311,23 @@ class _TownVillagerPreview extends StatelessWidget {
               Expanded(
                 child: Text(
                   villager.villager.displayName,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.onSurface,
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
-              const SizedBox(width: Spacing.sm),
-              const EarthTag(label: 'Villager', tone: EarthTagTone.success),
+              const SizedBox(width: 8),
+              const AppBadge(
+                label: 'Villager',
+                variant: AppBadgeVariant.outline,
+              ),
             ],
           ),
-          const SizedBox(height: Spacing.xs),
+          const SizedBox(height: 4),
           Text(
             villager.villager.role,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.onSurfaceVariant,
-                ),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
-          const SizedBox(height: Spacing.xs),
-          Text(
-            serviceSummary,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.onSurface,
-                  height: 1.35,
-                ),
-          ),
+          const SizedBox(height: 4),
+          Text(serviceSummary, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );
@@ -373,6 +342,11 @@ int _serviceCountFor(TownVenue venue) {
   return count;
 }
 
+String _plural(int count, String label) {
+  if (count == 1) return '1 $label';
+  return '$count ${label}s';
+}
+
 String _humanizeKind(String kind) {
   final words = kind
       .replaceAll('_', '-')
@@ -381,7 +355,8 @@ String _humanizeKind(String kind) {
       .toList(growable: false);
   if (words.isEmpty) return 'Venue';
   return words
-      .map((word) =>
-          '${word.characters.first.toUpperCase()}${word.substring(1)}')
+      .map(
+        (word) => '${word.characters.first.toUpperCase()}${word.substring(1)}',
+      )
       .join(' ');
 }

@@ -6,4 +6,4 @@ Exports: lib/features/living_world/presentation/screens/venue_detail_screen.dart
 Public API: lib/features/living_world/presentation/screens/venue_detail_screen.dart
 
 Purpose:
-  Venue detail page that groups known Villagers and their current Services.
+  Phase 5 neutral Venue detail page that groups the known Town projection's introduced Villagers and their current Services. It preserves Town/Venue provenance and map knowledge gates with no Venue Visit trigger.

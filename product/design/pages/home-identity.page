@@ -6,4 +6,4 @@ Exports: lib/features/home/presentation/screens/home_screen.dart
 Public API: lib/features/home/presentation/screens/home_screen.dart
 
 Purpose:
-  Home page for the authenticated Player, showing a permanent Home identity and a calm Modules future-state panel without a CTA.
+  Phase 5 identity-only Home page for the authenticated Player, preserving loading, unavailable, error, retry, and established identity states. It intentionally contains no Modules future-state panel, Module CTA, destination, or new route.

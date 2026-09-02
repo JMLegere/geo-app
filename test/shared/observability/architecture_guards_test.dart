@@ -11,15 +11,16 @@ List<File> _dartFilesUnder(String directoryPath) {
   final directory = Directory(directoryPath);
   if (!directory.existsSync()) return const <File>[];
 
-  final files = directory
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => _normalizePath(file.path).endsWith('.dart'))
-      .toList()
-    ..sort(
-      (left, right) =>
-          _normalizePath(left.path).compareTo(_normalizePath(right.path)),
-    );
+  final files =
+      directory
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => _normalizePath(file.path).endsWith('.dart'))
+          .toList()
+        ..sort(
+          (left, right) =>
+              _normalizePath(left.path).compareTo(_normalizePath(right.path)),
+        );
   return files;
 }
 
@@ -64,11 +65,7 @@ bool _isFeaturePackagePath(String path) {
   return false;
 }
 
-bool _isFeatureLayerImport(
-  File sourceFile,
-  String importUri,
-  String layer,
-) {
+bool _isFeatureLayerImport(File sourceFile, String importUri, String layer) {
   final path = _resolvedImportPath(sourceFile, importUri);
   if (!_isFeaturePackagePath(path)) return false;
 
@@ -116,41 +113,43 @@ void main() {
       expect(
         violations,
         isEmpty,
-        reason: 'Feature observability files must not import lib/shared:\n'
+        reason:
+            'Feature observability files must not import lib/shared:\n'
             '${violations.join('\n')}',
       );
     });
 
     test(
-        'core domain files do not import framework or feature presentation/data layers',
-        () {
-      final violations = <String>[];
+      'core domain files do not import framework or feature presentation/data layers',
+      () {
+        final violations = <String>[];
 
-      for (final file in _dartFilesUnder('lib/core/domain')) {
-        final contents = file.readAsStringSync();
-        for (final match in _dartDirectivePattern.allMatches(contents)) {
-          final importUri = match.group(1)!;
-          if (_isForbiddenDomainImport(file, importUri)) {
-            violations.add(
-              '${_normalizePath(file.path)} imports forbidden dependency '
-              '$importUri',
-            );
+        for (final file in _dartFilesUnder('lib/core/domain')) {
+          final contents = file.readAsStringSync();
+          for (final match in _dartDirectivePattern.allMatches(contents)) {
+            final importUri = match.group(1)!;
+            if (_isForbiddenDomainImport(file, importUri)) {
+              violations.add(
+                '${_normalizePath(file.path)} imports forbidden dependency '
+                '$importUri',
+              );
+            }
           }
         }
-      }
 
-      violations.sort();
+        violations.sort();
 
-      expect(
-        violations,
-        isEmpty,
-        reason:
-            'Core domain files must not import Flutter (including dart:ui), '
-            'Riverpod, Supabase, or feature presentation/data layers. '
-            'Move each dependency behind an appropriate adapter:\n'
-            '${violations.join('\n')}',
-      );
-    });
+        expect(
+          violations,
+          isEmpty,
+          reason:
+              'Core domain files must not import Flutter (including dart:ui), '
+              'Riverpod, Supabase, or feature presentation/data layers. '
+              'Move each dependency behind an appropriate adapter:\n'
+              '${violations.join('\n')}',
+        );
+      },
+    );
 
     test('core domain rules do not import feature packages', () {
       final violations = <String>[];
@@ -174,7 +173,8 @@ void main() {
       expect(
         violations,
         isEmpty,
-        reason: 'Rule files must not import feature packages. Move each '
+        reason:
+            'Rule files must not import feature packages. Move each '
             'feature dependency out of lib/core/domain/rules/:\n'
             '${violations.join('\n')}',
       );
@@ -188,8 +188,9 @@ void main() {
 
       final violations = <String>[];
       final staticMutablePattern = RegExp(
-          r'^\s*static\s+(?!const\b|final\b)[\w<>?,\s]+\s+\w+\s*(=|;)',
-          multiLine: true);
+        r'^\s*static\s+(?!const\b|final\b)[\w<>?,\s]+\s+\w+\s*(=|;)',
+        multiLine: true,
+      );
 
       for (final dir in dirs) {
         if (!dir.existsSync()) continue;
@@ -207,7 +208,8 @@ void main() {
       expect(
         violations,
         isEmpty,
-        reason: 'Observability files must not define static mutable globals:\n'
+        reason:
+            'Observability files must not define static mutable globals:\n'
             '${violations.join('\n')}',
       );
     });
@@ -231,8 +233,8 @@ void main() {
         final contents = file.readAsStringSync();
         final hasFlutterUiImport =
             contents.contains("import 'package:flutter/material.dart'") ||
-                contents.contains("import 'package:flutter/widgets.dart'") ||
-                contents.contains("import 'package:flutter/cupertino.dart'");
+            contents.contains("import 'package:flutter/widgets.dart'") ||
+            contents.contains("import 'package:flutter/cupertino.dart'");
 
         if (hasFlutterUiImport) {
           violations.add(file.path);
@@ -242,32 +244,70 @@ void main() {
       expect(
         violations,
         isEmpty,
-        reason: 'Core observability contract files must stay UI-free:\n'
+        reason:
+            'Core observability contract files must stay UI-free:\n'
             '${violations.join('\n')}',
       );
     });
   });
 
   test('all root app screens are wrapped with ObservableScreen', () {
-    final screenFiles = {
-      'loading_screen':
-          'lib/features/auth/presentation/screens/loading_screen.dart',
-      'login_screen':
-          'lib/features/auth/presentation/screens/login_screen.dart',
-      'pack_screen': 'lib/features/pack/presentation/screens/pack_screen.dart',
-      'map_root_screen':
-          'lib/features/map/presentation/screens/map_root_screen.dart',
-      'map_screen': 'lib/features/map/presentation/screens/map_screen.dart',
-      'settings_screen':
-          'lib/features/profile/presentation/screens/settings_screen.dart',
+    final screenFiles = <String, ({String path, List<String> evidence})>{
+      'loading_screen': (
+        path: 'lib/features/auth/presentation/screens/loading_screen.dart',
+        evidence: ["screenName: 'loading_screen'"],
+      ),
+      'login_screen': (
+        path: 'lib/features/auth/presentation/screens/login_screen.dart',
+        evidence: ["screenName: 'login_screen'"],
+      ),
+      'pack_screen': (
+        path: 'lib/features/pack/presentation/screens/pack_screen.dart',
+        evidence: ["screenName: 'pack_screen'"],
+      ),
+      'identification_service_screen': (
+        path:
+            'lib/features/identification/presentation/screens/identification_service_screen.dart',
+        evidence: ["screenName: 'identification_service_screen'"],
+      ),
+      'town_screen': (
+        path: 'lib/features/living_world/presentation/screens/town_screen.dart',
+        evidence: ["screenName: 'town_screen'"],
+      ),
+      'venue_detail_screen': (
+        path:
+            'lib/features/living_world/presentation/screens/venue_detail_screen.dart',
+        evidence: [
+          "static const _screenName = 'venue_detail_screen'",
+          'screenName: _screenName',
+        ],
+      ),
+      'home_screen': (
+        path: 'lib/features/home/presentation/screens/home_screen.dart',
+        evidence: ["screenName: 'home_screen'"],
+      ),
+      'map_root_screen': (
+        path: 'lib/features/map/presentation/screens/map_root_screen.dart',
+        evidence: ["screenName: 'map_root_screen'"],
+      ),
+      'map_screen': (
+        path: 'lib/features/map/presentation/screens/map_screen.dart',
+        evidence: ["screenName: 'map_screen'"],
+      ),
+      'settings_screen': (
+        path: 'lib/features/profile/presentation/screens/settings_screen.dart',
+        evidence: ["screenName: 'settings_screen'"],
+      ),
     };
 
     final missing = <String>[];
     for (final entry in screenFiles.entries) {
-      final source = File(entry.value).readAsStringSync();
-      if (!source.contains('ObservableScreen(') ||
-          !source.contains("screenName: '${entry.key}'")) {
-        missing.add('${entry.key} (${entry.value})');
+      final source = File(entry.value.path).readAsStringSync();
+      final missingEvidence = entry.value.evidence
+          .where((evidence) => !source.contains(evidence))
+          .toList();
+      if (!source.contains('ObservableScreen(') || missingEvidence.isNotEmpty) {
+        missing.add('${entry.key} (${entry.value.path})');
       }
     }
 

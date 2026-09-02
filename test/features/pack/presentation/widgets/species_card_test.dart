@@ -1,202 +1,289 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/pack/presentation/widgets/species_card.dart';
 
 void main() {
   group('SpeciesCard', () {
-    testWidgets('displays species name and scientific name', (tester) async {
+    testWidgets('identified card discloses neutral field details', (
+      tester,
+    ) async {
       final item = _item(
         name: 'Red Fox',
         scientificName: 'Vulpes vulpes',
+        rarity: 'endangered',
+        taxonomicClass: 'MAMMALIA',
+        habitats: ['Forest', 'Mountain'],
+        continents: ['Africa', 'Asia'],
+        cellId: 'v_45_67',
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
+      await _pumpCard(tester, item, onOpenIdentificationService: (_) {});
 
       expect(find.text('Red Fox'), findsOneWidget);
       expect(find.text('Vulpes vulpes'), findsOneWidget);
-    });
-
-    testWidgets('displays rarity badge pill with full name', (tester) async {
-      final item = _item(rarity: 'endangered');
-
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
-
+      expect(find.text('Identified'), findsOneWidget);
       expect(find.text('EN · Endangered'), findsOneWidget);
-    });
-
-    testWidgets('displays category emoji in art overlay', (tester) async {
-      final item = _item(category: ItemCategory.flora);
-
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
-
-      expect(find.text('🌿'), findsAtLeast(1));
-    });
-
-    testWidgets('displays habitat emojis when present', (tester) async {
-      final item = _item(habitats: ['Forest', 'Mountain']);
-
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
-
-      expect(find.text('🌲'), findsOneWidget);
-      expect(find.text('🏔️'), findsOneWidget);
-    });
-
-    testWidgets('displays region emojis when present', (tester) async {
-      final item = _item(continents: ['Africa', 'Asia']);
-
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
-
-      expect(find.text('🌍'), findsOneWidget);
-      expect(find.text('🌏'), findsOneWidget);
-    });
-
-    testWidgets('displays acquired date', (tester) async {
-      final item = _item();
-
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
-
-      expect(find.text('Jan 15, 2026'), findsOneWidget);
-    });
-
-    testWidgets('displays taxonomic group badge for fauna', (tester) async {
-      final item = _item(taxonomicClass: 'MAMMALIA');
-
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
-
       expect(find.text('Mammals'), findsOneWidget);
-    });
-
-    testWidgets('hides habitat/region rows when empty', (tester) async {
-      final item = _item();
-
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
-
+      expect(find.text('Forest, Mountain'), findsOneWidget);
+      expect(find.text('Africa, Asia'), findsOneWidget);
+      expect(find.text('Jan 15, 2026'), findsOneWidget);
+      expect(find.text('Map exploration'), findsOneWidget);
+      expect(find.text('Cell v_45_67'), findsNothing);
+      expect(find.text('Open identification service'), findsNothing);
+      expect(find.text('◆'), findsNothing);
       expect(find.text('🌲'), findsNothing);
       expect(find.text('🌍'), findsNothing);
     });
 
-    testWidgets('showSpeciesCard opens dialog overlay', (tester) async {
-      final item = _item(name: 'Test Species');
-
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () => showSpeciesCard(context, item),
-              child: const Text('Open'),
-            ),
-          ),
-        ),
-      ));
-
-      await tester.tap(find.text('Open'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Test Species'), findsOneWidget);
-    });
-
-    testWidgets('unexamined card is a semantic silhouette', (tester) async {
+    testWidgets('unexamined card is a safe semantic silhouette', (
+      tester,
+    ) async {
       final semantics = tester.ensureSemantics();
       final item = _item(
         name: 'Amberwing Warbler',
         scientificName: 'Setophaga aestiva',
-        rarity: 'rare',
+        rarity: 'endangered',
         examinationState: ItemExaminationState.unexamined,
         identificationState: ItemIdentificationState.unidentified,
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
+      await _pumpCard(tester, item);
 
-      expect(
-        find.bySemanticsLabel('Unexamined fauna Item'),
-        findsOneWidget,
-      );
+      expect(find.bySemanticsLabel('Unexamined fauna Item'), findsOneWidget);
       expect(find.text('Amberwing Warbler'), findsNothing);
       expect(find.text('Setophaga aestiva'), findsNothing);
-      expect(find.text('Rare'), findsNothing);
+      expect(find.text('EN · Endangered'), findsNothing);
+      expect(
+        find.text(
+          'Identity and field details are unavailable until this Item has been examined.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Examine this Item before viewing its identity and field details.',
+        ),
+        findsNothing,
+      );
+      expect(find.text('Open identification service'), findsNothing);
       expect(find.text('Start identification'), findsNothing);
       expect(find.text('Hold to reveal'), findsNothing);
       semantics.dispose();
     });
 
     testWidgets(
-        'examined unidentified card opens service without direct identify or reveal',
-        (tester) async {
-      var openServiceCount = 0;
-      String? openedItemId;
+      'examined unidentified card hands the exact Item to Identification',
+      (tester) async {
+        Item? openedItem;
+        final item = _item(
+          name: 'Amberwing Warbler',
+          scientificName: 'Setophaga aestiva',
+          examinationState: ItemExaminationState.examined,
+          identificationState: ItemIdentificationState.unidentified,
+        );
+
+        await _pumpCard(
+          tester,
+          item,
+          onOpenIdentificationService: (value) => openedItem = value,
+        );
+
+        expect(find.text('Amberwing Warbler'), findsOneWidget);
+        expect(find.text('Setophaga aestiva'), findsOneWidget);
+        expect(find.text('Examined'), findsOneWidget);
+        expect(
+          find.text(
+            'Examination revealed these field details. Identification remains pending.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Open identification service'), findsOneWidget);
+        expect(find.text('Start identification'), findsNothing);
+        expect(find.text('Hold to reveal'), findsNothing);
+
+        await tester.tap(find.byKey(const Key('open-identification-service')));
+        await tester.pump();
+
+        expect(identical(openedItem, item), isTrue);
+      },
+    );
+
+    testWidgets('media fallback uses a labeled native icon', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final item = _item(category: ItemCategory.flora);
+
+      await _pumpCard(tester, item);
+
+      expect(
+        find.byKey(const ValueKey('species-media-fallback-test-1')),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('Flora media unavailable'), findsOneWidget);
+      expect(find.text('Flora media unavailable'), findsOneWidget);
+      expect(find.byIcon(Icons.image_not_supported_outlined), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('art and icon images define loading and fallback paths', (
+      tester,
+    ) async {
       final item = _item(
-        name: 'Amberwing Warbler',
-        scientificName: 'Setophaga aestiva',
-        rarity: 'rare',
-        examinationState: ItemExaminationState.examined,
-        identificationState: ItemIdentificationState.unidentified,
+        artUrl: 'https://example.invalid/species-art.png',
+        iconUrl: 'https://example.invalid/species-icon.png',
       );
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: SpeciesCard(
-            item: item,
-            onOpenIdentificationService: (item) {
-              openServiceCount++;
-              openedItemId = item.id;
-            },
-          ),
-        ),
-      ));
+      await _pumpCard(tester, item);
 
-      expect(find.text('Amberwing Warbler'), findsOneWidget);
-      expect(find.text('Setophaga aestiva'), findsOneWidget);
-      expect(find.text('Open identification service'), findsOneWidget);
-      expect(find.text('Start identification'), findsNothing);
-      expect(find.text('Hold to reveal'), findsNothing);
-
-      await tester.tap(find.text('Open identification service'));
-      await tester.pump();
-
-      expect(openServiceCount, 1);
-      expect(openedItemId, item.id);
+      final art = tester.widget<Image>(
+        find.byKey(const ValueKey('species-art-test-1')),
+      );
+      expect(art.loadingBuilder, isNotNull);
+      expect(art.errorBuilder, isNotNull);
     });
 
-    testWidgets('displays cell ID when available', (tester) async {
-      final item = _item(cellId: 'v_45_67');
+    testWidgets('uses a stacked layout on narrow screens', (tester) async {
+      await _pumpCard(tester, _item(), size: const Size(500, 900));
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
-
-      expect(find.text('Cell v_45_67'), findsOneWidget);
+      expect(
+        find.byKey(const Key('species-card-mobile-layout')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('species-card-desktop-layout')),
+        findsNothing,
+      );
     });
 
-    testWidgets('CR shows diamond accent in rarity pill', (tester) async {
-      final item = _item(rarity: 'criticallyEndangered');
+    testWidgets('uses a split layout on wide screens', (tester) async {
+      await _pumpCard(tester, _item(), size: const Size(1000, 900));
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: SpeciesCard(item: item)),
-      ));
+      expect(
+        find.byKey(const Key('species-card-desktop-layout')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('species-card-mobile-layout')), findsNothing);
+    });
 
-      expect(find.text('◆'), findsOneWidget);
-      expect(find.text('CR'), findsAtLeast(1));
+    testWidgets('dialog opens with an autofocus close control', (tester) async {
+      await _openDialog(tester, _item(name: 'Test Species'));
+
+      expect(find.byKey(const ValueKey('species-card-test-1')), findsOneWidget);
+      final close = tester.widget<IconButton>(
+        find.byKey(const Key('species-card-close')),
+      );
+      expect(close.autofocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('species-card-test-1')), findsNothing);
+    });
+
+    testWidgets('Escape dismisses the dialog', (tester) async {
+      await _openDialog(tester, _item());
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('species-card-test-1')), findsNothing);
+    });
+
+    testWidgets('the modal barrier dismisses the dialog', (tester) async {
+      await _openDialog(tester, _item());
+
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('species-card-test-1')), findsNothing);
+    });
+
+    testWidgets('a downward drag dismisses the dialog', (tester) async {
+      await _openDialog(tester, _item());
+
+      await tester.drag(
+        find.byKey(const ValueKey('species-card-test-1')),
+        const Offset(0, 400),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('species-card-test-1')), findsNothing);
+    });
+
+    test('source uses neutral design vocabulary without legacy decoration', () {
+      final source = File(
+        'lib/features/pack/presentation/widgets/species_card.dart',
+      ).readAsStringSync();
+
+      expect(source, contains("package:earth_nova/shared/design.dart"));
+      for (final token in const [
+        'AppTheme',
+        'design_tokens',
+        'Earth',
+        'TCG',
+        'LinearGradient',
+        'BoxShadow',
+        'glow',
+        'iconography.dart',
+        'iucn_status_theme',
+        'Color(0x',
+        '_RarityPill',
+        '◆',
+      ]) {
+        expect(source, isNot(contains(token)), reason: 'legacy token: $token');
+      }
+      expect(source, isNot(contains('.emoji')));
+      expect(source, isNot(contains('_categoryMediaFallback')));
+      expect(source, isNot(contains("Cell \${item.acquiredInCellId}")));
     });
   });
+}
+
+Future<void> _pumpCard(
+  WidgetTester tester,
+  Item item, {
+  Size size = const Size(800, 900),
+  void Function(Item item)? onOpenIdentificationService,
+}) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+
+  await tester.pumpWidget(
+    ShadApp(
+      home: Scaffold(
+        body: SpeciesCard(
+          item: item,
+          onOpenIdentificationService: onOpenIdentificationService,
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _openDialog(WidgetTester tester, Item item) async {
+  tester.view.physicalSize = const Size(800, 900);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+
+  await tester.pumpWidget(
+    ShadApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showSpeciesCard(context, item),
+            child: const Text('Open'),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('Open'));
+  await tester.pumpAndSettle();
 }
 
 Item _item({
@@ -208,27 +295,30 @@ Item _item({
   List<String> habitats = const [],
   List<String> continents = const [],
   String? cellId,
+  String? artUrl,
+  String? iconUrl,
   ItemIdentificationState identificationState =
       ItemIdentificationState.identified,
   String? identifiedDisplayName,
   String? identifiedScientificName,
   ItemExaminationState examinationState = ItemExaminationState.examined,
-}) =>
-    Item(
-      id: 'test-1',
-      definitionId: 'def-1',
-      displayName: name,
-      scientificName: scientificName,
-      category: category,
-      rarity: rarity,
-      acquiredAt: DateTime(2026, 1, 15),
-      acquiredInCellId: cellId,
-      status: ItemStatus.active,
-      taxonomicClass: taxonomicClass,
-      habitats: habitats,
-      continents: continents,
-      identificationState: identificationState,
-      examinationState: examinationState,
-      identifiedDisplayName: identifiedDisplayName,
-      identifiedScientificName: identifiedScientificName,
-    );
+}) => Item(
+  id: 'test-1',
+  definitionId: 'def-1',
+  displayName: name,
+  scientificName: scientificName,
+  category: category,
+  rarity: rarity,
+  artUrl: artUrl,
+  iconUrl: iconUrl,
+  acquiredAt: DateTime(2026, 1, 15),
+  acquiredInCellId: cellId,
+  status: ItemStatus.active,
+  taxonomicClass: taxonomicClass,
+  habitats: habitats,
+  continents: continents,
+  identificationState: identificationState,
+  examinationState: examinationState,
+  identifiedDisplayName: identifiedDisplayName,
+  identifiedScientificName: identifiedScientificName,
+);

@@ -24,63 +24,51 @@ class VenueDetailScreen extends ConsumerWidget {
       screenName: _screenName,
       observability: obs,
       builder: (_) => Scaffold(
-        backgroundColor: AppTheme.surface,
         body: SafeArea(
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    Spacing.lg,
-                    Spacing.sm,
-                    Spacing.xl,
-                    Spacing.xxl,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      IconButton(
-                        tooltip: 'Back',
-                        onPressed: ObservableInteraction.wrapVoidCallback(
-                          logger: ({required event, required category, data}) =>
-                              obs.log(event, category, data: data),
-                          screenName: _screenName,
-                          widgetName: 'back_button',
-                          actionType: 'navigate_back',
-                          playerActionId: PlayerActions.openTown,
-                          callback: () => Navigator.of(context).pop(),
-                        ),
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: AppTheme.onSurface,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 44,
-                          minHeight: 44,
-                        ),
-                      ),
-                      const SizedBox(height: Spacing.sm),
-                      _VenueHero(venue: venue),
-                      const SizedBox(height: Spacing.xxl),
-                      Text(
-                        'Villagers and Services',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: AppTheme.onSurface,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.2,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 48),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          IconButton(
+                            tooltip: 'Back',
+                            onPressed: ObservableInteraction.wrapVoidCallback(
+                              logger:
+                                  ({required event, required category, data}) =>
+                                      obs.log(event, category, data: data),
+                              screenName: _screenName,
+                              widgetName: 'back_button',
+                              actionType: 'navigate_back',
+                              playerActionId: PlayerActions.openTown,
+                              callback: () => Navigator.of(context).pop(),
                             ),
+                            icon: const Icon(Icons.arrow_back),
+                          ),
+                          const SizedBox(height: 8),
+                          _VenueHero(venue: venue),
+                          const SizedBox(height: 32),
+                          Text(
+                            'Villagers and Services',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 16),
+                          if (venue.villagers.isEmpty)
+                            const AppEmptyState(
+                              title: 'No Villagers introduced here yet',
+                              message:
+                                  'This Venue is known. Town will update when Villagers are introduced here.',
+                            )
+                          else
+                            _VillagerGroups(villagers: venue.villagers),
+                        ],
                       ),
-                      const SizedBox(height: Spacing.md),
-                      if (venue.villagers.isEmpty)
-                        const EarthNotice(
-                          title: 'No Villagers introduced here yet',
-                          message:
-                              'This Venue is known. Town will update when Villagers are introduced here.',
-                        )
-                      else
-                        _VillagerGroups(villagers: venue.villagers),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -101,86 +89,44 @@ class _VenueHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final serviceCount = _serviceCountFor(venue);
 
-    return EarthPanel(
-      title: venue.venue.displayName,
-      eyebrow: 'Venue',
-      tone: EarthPanelTone.accent,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppCard(
+          title: venue.venue.displayName,
+          description: 'Venue • ${_humanizeKind(venue.venue.kind)}',
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.tertiary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(Radii.xxxl),
-                  border: Border.all(
-                    color: AppTheme.tertiary.withValues(alpha: 0.38),
-                  ),
-                ),
-                child: SizedBox(
-                  width: 54,
-                  height: 54,
-                  child: Center(
-                    child: Text(
-                      _initialsFor(venue.venue.displayName),
-                      style: const TextStyle(
-                        color: AppTheme.tertiary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                  ),
-                ),
+              AppFieldRow(
+                label: 'First known',
+                value:
+                    '${MaterialLocalizations.of(context).formatCompactDate(venue.knownVenue.revealedAt.toLocal())} • Version ${venue.knownVenue.venueVersion.revision}',
               ),
-              const SizedBox(width: Spacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: Spacing.sm,
-                      runSpacing: Spacing.sm,
-                      children: [
-                        EarthTag(label: _humanizeKind(venue.venue.kind)),
-                        EarthTag(
-                          label: venue.venue.anchorCellId,
-                          tone: EarthTagTone.accent,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: Spacing.sm),
-                    Text(
-                      'Town shows known Venues, introduced Villagers, and current Services.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 8),
+              Text(
+                'This Venue shows its introduced Villagers and current Services.',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),
-          const SizedBox(height: Spacing.lg),
-          EarthStatGrid(
-            items: [
-              EarthStatItem(
-                label: 'Villagers',
-                value: '${venue.villagers.length}',
-                helper: _plural(venue.villagers.length, 'known Villager'),
-              ),
-              EarthStatItem(
-                label: 'Services',
-                value: '$serviceCount',
-                helper: _plural(serviceCount, 'current Service'),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        AppStatGrid(
+          items: [
+            AppStatItem(
+              label: 'Villagers',
+              value: '${venue.villagers.length}',
+              helper: _plural(venue.villagers.length, 'known Villager'),
+            ),
+            AppStatItem(
+              label: 'Services',
+              value: '$serviceCount',
+              helper: _plural(serviceCount, 'current Service'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -196,7 +142,7 @@ class _VillagerGroups extends StatelessWidget {
       children: [
         for (final villager in villagers) ...[
           _VillagerPanel(villager: villager),
-          if (villager != villagers.last) const SizedBox(height: Spacing.md),
+          if (villager != villagers.last) const SizedBox(height: 16),
         ],
       ],
     );
@@ -210,11 +156,11 @@ class _VillagerPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EarthPanel(
+    return AppCard(
       title: villager.villager.displayName,
-      eyebrow: 'Villager • ${villager.villager.role}',
+      description: 'Villager • ${villager.villager.role}',
       child: villager.services.isEmpty
-          ? const EarthNotice(
+          ? const AppNotice(
               title: 'No Services visible yet',
               message:
                   'Services appear here when this Villager currently provides one at this Venue.',
@@ -223,8 +169,7 @@ class _VillagerPanel extends StatelessWidget {
               children: [
                 for (final service in villager.services) ...[
                   _ServiceTile(service: service),
-                  if (service != villager.services.last)
-                    const SizedBox(height: Spacing.sm),
+                  if (service != villager.services.last) const Divider(),
                 ],
               ],
             ),
@@ -239,73 +184,35 @@ class _ServiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHigh
-            .withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(Radii.xl),
-        border: Border.all(color: AppTheme.outline.withValues(alpha: 0.48)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(Radii.lg),
-              ),
-              child: const SizedBox(
-                width: 38,
-                height: 38,
-                child: Icon(
-                  Icons.room_service,
-                  color: AppTheme.tertiary,
-                  size: 20,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.room_service_outlined, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  service.service.displayName,
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
-            ),
-            const SizedBox(width: Spacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          service.service.displayName,
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    color: AppTheme.onSurface,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                        ),
-                      ),
-                      const SizedBox(width: Spacing.sm),
-                      const EarthTag(
-                        label: 'Opening soon',
-                        tone: EarthTagTone.warning,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: Spacing.xs),
-                  Text(
-                    service.service.description,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.onSurfaceVariant,
-                          height: 1.35,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            service.service.description,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          const AppBadge(
+            label: 'Opening soon',
+            variant: AppBadgeVariant.outline,
+          ),
+        ],
       ),
     );
   }
@@ -332,24 +239,8 @@ String _humanizeKind(String kind) {
       .toList(growable: false);
   if (words.isEmpty) return 'Venue';
   return words
-      .map((word) =>
-          '${word.characters.first.toUpperCase()}${word.substring(1)}')
+      .map(
+        (word) => '${word.characters.first.toUpperCase()}${word.substring(1)}',
+      )
       .join(' ');
-}
-
-String _initialsFor(String value) {
-  final words = value
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .toList(growable: false);
-  if (words.isEmpty) return 'V';
-  if (words.length == 1) {
-    return words.single.characters.take(2).toString().toUpperCase();
-  }
-  return words
-      .take(2)
-      .map((word) => word.characters.first)
-      .join()
-      .toUpperCase();
 }
