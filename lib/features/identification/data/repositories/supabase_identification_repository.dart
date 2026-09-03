@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:earth_nova/features/identification/data/dtos/identification_aggregate_dto.dart';
 import 'package:earth_nova/features/identification/data/dtos/identification_preparation_dto.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
@@ -68,8 +70,9 @@ final class SupabaseIdentificationRepository
       operation: operation,
       traceId: traceId,
       action: () async {
+        late dynamic response;
         try {
-          final response = await _rpc(
+          response = await _rpc(
             operation,
             <String, dynamic>{
               'p_item_id': plan.item.id.value,
@@ -83,6 +86,12 @@ final class SupabaseIdentificationRepository
               'p_property_resolutions': _serializePlan(plan),
             },
           );
+        } catch (error) {
+          throw IdentificationCommitFailure(
+            identificationFailureKindFor(error),
+          );
+        }
+        try {
           return IdentificationAggregateDto.fromJson(
             _responseObject(response),
             plan: plan,
@@ -134,6 +143,31 @@ final class SupabaseIdentificationRepository
       rethrow;
     }
   }
+}
+
+IdentificationFailureKind identificationFailureKindFor(Object error) {
+  if (error is TimeoutException) return IdentificationFailureKind.network;
+  if (error is PostgrestException) {
+    final code = error.code?.trim() ?? '';
+    final status = int.tryParse(code);
+    if (status == 429) return IdentificationFailureKind.rateLimited;
+    if (status != null && status >= 500 && status <= 599) {
+      return IdentificationFailureKind.transientServer;
+    }
+    if (status == 401 || code == 'PGRST301' || code.startsWith('JWT')) {
+      return IdentificationFailureKind.auth;
+    }
+    if (status == 403 || code == '42501') {
+      return IdentificationFailureKind.permission;
+    }
+    if (status == 400 || status == 409 || status == 422) {
+      return IdentificationFailureKind.validation;
+    }
+    if (code.startsWith('23') || code == 'P0001') {
+      return IdentificationFailureKind.contract;
+    }
+  }
+  return IdentificationFailureKind.unknown;
 }
 
 Map<String, dynamic> _responseObject(dynamic response) {

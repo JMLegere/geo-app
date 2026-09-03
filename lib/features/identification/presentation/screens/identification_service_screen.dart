@@ -3,10 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/app/readiness/app_readiness.dart';
+import 'package:earth_nova/app/sync/application/identification_sync_provider.dart';
+import 'package:earth_nova/app/sync/application/identification_sync_service.dart';
+import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
@@ -47,6 +52,7 @@ class _IdentificationServiceScreenState
   String? _error;
   bool _started = false;
   bool _committing = false;
+  bool _queued = false;
 
   bool get _usesInjectedBoundary => widget.prepare != null;
 
@@ -93,7 +99,11 @@ class _IdentificationServiceScreenState
 
   Future<void> _reveal() async {
     final preparation = _preparation;
-    if (preparation == null || !_started || _committing || _result != null) {
+    if (preparation == null ||
+        !_started ||
+        _committing ||
+        _queued ||
+        _result != null) {
       return;
     }
 
@@ -118,15 +128,17 @@ class _IdentificationServiceScreenState
       if (result.committedItem.id != widget.item.id) {
         throw StateError('Identification returned a different Item.');
       }
-      if (!_usesInjectedBoundary) {
-        ref
-            .read(itemsProvider.notifier)
-            .registerOwnedDiscovery(result.committedItem);
-      }
       if (!mounted) return;
       setState(() {
         _result = result;
         _committing = false;
+      });
+    } on IdentificationSyncPending {
+      if (!mounted) return;
+      setState(() {
+        _committing = false;
+        _queued = true;
+        _error = null;
       });
     } catch (_) {
       if (!mounted) return;
@@ -145,7 +157,34 @@ class _IdentificationServiceScreenState
     if (repository == null) {
       throw StateError('Identification repository is unavailable.');
     }
-    return repository.commit(plan);
+    final auth = ref.read(authProvider);
+    if (auth.status != AuthStatus.authenticated || auth.user == null) {
+      throw StateError('Identification requires an authenticated Player.');
+    }
+    Future<void> apply(ItemIdentificationResult result) async {
+      ref
+          .read(itemsProvider.notifier)
+          .registerOwnedDiscovery(result.committedItem);
+      await ref.read(appReadinessProvider.notifier).persistCurrent();
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+        _queued = false;
+      });
+    }
+
+    final sync = ref.read(identificationSyncServiceProvider);
+    if (sync != null) {
+      return sync.commit(
+        plan,
+        playerId: auth.user!.id,
+        applyCanonicalResult: apply,
+      );
+    }
+    return repository.commit(plan).then((result) async {
+      await apply(result);
+      return result;
+    });
   }
 
   void _logProductionAction({
@@ -198,6 +237,7 @@ class _IdentificationServiceScreenState
                           preparation: _preparation!,
                           started: _started,
                           committing: _committing,
+                          queued: _queued,
                           error: _error,
                           onStart: _start,
                           onReveal: _reveal,
@@ -238,6 +278,7 @@ class _PreparedService extends StatelessWidget {
     required this.preparation,
     required this.started,
     required this.committing,
+    required this.queued,
     required this.error,
     required this.onStart,
     required this.onReveal,
@@ -247,6 +288,7 @@ class _PreparedService extends StatelessWidget {
   final IdentificationPreparation preparation;
   final bool started;
   final bool committing;
+  final bool queued;
   final String? error;
   final VoidCallback onStart;
   final Future<void> Function() onReveal;
@@ -276,6 +318,14 @@ class _PreparedService extends StatelessWidget {
               tone: AppNoticeTone.error,
             ),
           ],
+          if (queued) ...[
+            const SizedBox(height: 16),
+            const AppNotice(
+              title: 'Identification saved',
+              message:
+                  'We will finish revealing it when your connection is ready.',
+            ),
+          ],
           const SizedBox(height: 20),
           if (!started)
             ProductActionSurface(
@@ -287,7 +337,7 @@ class _PreparedService extends StatelessWidget {
                 onPressed: onStart,
               ),
             )
-          else
+          else if (!queued)
             ProductActionSurface(
               actionId: PlayerActions.revealIdentification,
               child: _HoldToRevealButton(busy: committing, onReveal: onReveal),

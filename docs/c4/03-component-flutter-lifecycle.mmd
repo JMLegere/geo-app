@@ -10,7 +10,7 @@ flowchart TB
         lifecycle["<b>Application Lifecycle</b><br/>[Component]<br/>Bootstrap, adapter selection, ProviderScope, observability start"]
         auth_component["<b>Auth and Session</b><br/>[Component]<br/>Normalize phone and call Supabase Auth"]
         readiness["<b>App Readiness</b><br/>[Component]<br/>Refresh projections and gate startup"]
-        working[("<b>Working Set Persistence</b><br/>[Component]<br/>Commit/hydrate browser snapshots")]
+        working[("<b>Local State and Sync</b><br/>[Component]<br/>Commit/hydrate snapshots; persist and replay safe commands")]
         adapters["<b>Repository Adapters</b><br/>[Component]<br/>Call Supabase reads and commands"]
         shell["<b>Tab Shell</b><br/>[Component]<br/>Map, Pack, Settings, transitions, wake lock"]
         observability["<b>Observability</b><br/>[Component]<br/>Flush startup, screen, interaction, error logs/spans"]

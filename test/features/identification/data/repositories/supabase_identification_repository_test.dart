@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:earth_nova/features/identification/data/repositories/supabase_identification_repository.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
@@ -16,6 +18,23 @@ const _committedAt = '2026-07-20T12:01:00.000Z';
 
 void main() {
   group('SupabaseIdentificationRepository', () {
+    test('classifies commit timeouts for durable retry without provider text', () async {
+      final plan = await _plan(await prepareFrom(preparationResponse()));
+      final repository = SupabaseIdentificationRepository(
+        client: null,
+        rpcCaller: (_, __) async => throw TimeoutException('provider secret'),
+      );
+
+      await expectLater(
+        repository.commit(plan),
+        throwsA(
+          isA<IdentificationCommitFailure>()
+              .having((error) => error.kind, 'kind', IdentificationFailureKind.network)
+              .having((error) => error.toString(), 'safe message', isNot(contains('secret'))),
+        ),
+      );
+    });
+
     test('prepares only through the named RPC with exact params', () async {
       late String name;
       late Map<String, dynamic> params;

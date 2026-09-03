@@ -49,7 +49,14 @@ void main() {
     );
 
     expect(committed, same(result));
-    expect(sequence, ['enqueue', 'update:dispatching', 'commit', 'apply', 'remove']);
+    expect(sequence, [
+      'enqueue',
+      'update:dispatching',
+      'commit',
+      'apply',
+      'update:confirmed',
+      'remove',
+    ]);
     expect(store.commands, isEmpty);
     expect(events, containsAllInOrder([
       'sync.command.enqueued',
@@ -62,7 +69,7 @@ void main() {
     final plan = testIdentificationPlan();
     final result = testIdentificationResult(plan);
     repository.errors.add(
-      const IdentificationCommitFailure(IdentificationFailureKind.network),
+      IdentificationCommitFailure(IdentificationFailureKind.network),
     );
     repository.results.add(result);
     final sync = service();
@@ -108,7 +115,7 @@ void main() {
   test('terminal failure is inspectable and never automatically retries', () async {
     final plan = testIdentificationPlan();
     repository.errors.add(
-      const IdentificationCommitFailure(IdentificationFailureKind.contract),
+      IdentificationCommitFailure(IdentificationFailureKind.contract),
     );
 
     await expectLater(
@@ -141,7 +148,7 @@ void main() {
       },
     );
     repository.errors.add(
-      const IdentificationCommitFailure(IdentificationFailureKind.network),
+      IdentificationCommitFailure(IdentificationFailureKind.network),
     );
     await expectLater(
       sync.commit(

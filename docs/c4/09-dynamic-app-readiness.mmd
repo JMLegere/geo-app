@@ -6,6 +6,7 @@ sequenceDiagram
     participant Auth as Auth Notifier
     participant Ready as App Readiness Gate
     participant Cache as Client Working Set
+    participant Sync as Pending Command Queue
     participant API as Supabase API/RPC
     participant Shell as Tab Shell
 
@@ -15,17 +16,20 @@ sequenceDiagram
     API-->>Auth: Authenticated Player
     Auth->>Ready: Start readiness
     Ready->>Cache: Load last bounded snapshot
+    Ready->>Sync: Validate Player/environment queue
     Cache-->>Ready: Valid snapshot or missing
     alt valid warm snapshot
         Ready->>Shell: Hydrate and release usable session
         Ready->>API: Background refresh
         API-->>Ready: Refresh result
         Ready->>Cache: Commit successful refresh
+        Ready->>Sync: Recover eligible Identification commits
     else cold start without valid snapshot
         Ready->>API: Required cold-start fetch
         API-->>Ready: Cold-start result
         Ready->>Cache: Commit first valid snapshot
         Ready->>Shell: Release cold-start session
+        Ready->>Sync: Recover eligible Identification commits
     end
     Shell-->>App: Usable session
     App-->>Explorer: Render usable session

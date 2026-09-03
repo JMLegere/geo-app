@@ -162,6 +162,10 @@ void main() {
       tester,
     ) async {
       final container = await buildScreen(tester);
+      await container
+          .read(authProvider.notifier)
+          .signInWithPhone('1234567890');
+      await tester.pump();
 
       await tester.tap(find.byKey(const Key('sign_out_button')));
       await tester.pumpAndSettle();

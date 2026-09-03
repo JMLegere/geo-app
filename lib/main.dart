@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/foundation.dart';
@@ -11,6 +12,10 @@ import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/app/readiness/app_readiness_gate.dart';
 import 'package:earth_nova/app/readiness/app_readiness.dart';
+import 'package:earth_nova/app/sync/application/identification_sync_provider.dart';
+import 'package:earth_nova/app/sync/application/identification_sync_service.dart';
+import 'package:earth_nova/app/sync/application/sync_retry_policy.dart';
+import 'package:earth_nova/app/sync/data/shared_preferences_pending_command_store.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/browser_telemetry_session_bridge.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
@@ -107,6 +112,7 @@ void main() async {
   final startupSpan = obs.startSpan('app.startup');
   final navigationLogger = NavigationScreenTransitionLogger(logEvent: obs.log);
   obs.startPeriodicFlush();
+  final prefs = await SharedPreferences.getInstance();
 
   obs.logFlowEvent(
     'app.startup',
@@ -162,6 +168,11 @@ void main() async {
               logEvent: obs.log,
             )
           : null;
+  final random = Random();
+  const deploymentEnvironment = String.fromEnvironment(
+    'DEPLOYMENT_ENVIRONMENT',
+    defaultValue: 'unknown',
+  );
 
   final ItemIndexRepository itemIndexRepository = supabaseClient != null
       ? SupabaseItemIndexRepository.fromSupabase(
@@ -201,8 +212,6 @@ void main() async {
 
   final WakeLockRepository wakeLockRepository = _buildWakeLockRepository();
 
-  final prefs = await SharedPreferences.getInstance();
-
   final HierarchyRepository hierarchyRepository = supabaseClient != null
       ? SupabaseHierarchyRepository(client: supabaseClient, logEvent: obs.log)
       : MockHierarchyRepository();
@@ -221,6 +230,35 @@ void main() async {
           packRepositoryProvider.overrideWithValue(packRepository),
           identificationRepositoryProvider
               .overrideWithValue(identificationRepository),
+          identificationSyncServiceProvider.overrideWith((ref) {
+            final repository = identificationRepository;
+            if (repository == null ||
+                (deploymentEnvironment != 'local' &&
+                    deploymentEnvironment != 'prod')) {
+              return null;
+            }
+            final service = IdentificationSyncService(
+              environment: deploymentEnvironment,
+              store: SharedPreferencesPendingCommandStore(prefs),
+              repository: repository,
+              retryPolicy: const SyncRetryPolicy(),
+              now: () => DateTime.now().toUtc(),
+              commandId: () => const Uuid().v4(),
+              jitterUnit: random.nextDouble,
+              logEvent: (event, category, {data}) =>
+                  obs.log(event, category, data: data),
+              backgroundApplyCanonicalResult: (result) async {
+                ref
+                    .read(itemsProvider.notifier)
+                    .registerOwnedDiscovery(result.committedItem);
+                await ref
+                    .read(appReadinessProvider.notifier)
+                    .persistCurrent();
+              },
+            );
+            ref.onDispose(service.dispose);
+            return service;
+          }),
           itemIndexRepositoryProvider.overrideWithValue(itemIndexRepository),
           livingWorldRepositoryProvider
               .overrideWithValue(livingWorldRepository),

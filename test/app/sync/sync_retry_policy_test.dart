@@ -22,7 +22,7 @@ void main() {
     test('pauses auth and fails closed for unknown or contract failures', () {
       expect(
         policy.classify(
-          const IdentificationCommitFailure(
+          IdentificationCommitFailure(
             IdentificationFailureKind.auth,
           ),
         ),
@@ -31,7 +31,7 @@ void main() {
       expect(policy.classify(StateError('unknown')), SyncFailureDisposition.terminal);
       expect(
         policy.classify(
-          const IdentificationCommitFailure(
+          IdentificationCommitFailure(
             IdentificationFailureKind.contract,
           ),
         ),
