@@ -92,5 +92,23 @@ void main() {
       expect(() => build(schema: 2, payload: 1), throwsArgumentError);
       expect(() => build(schema: 1, payload: 2), throwsArgumentError);
     });
+
+    test('wire enums parse every known value and reject unknown values', () {
+      expect(
+        PendingCommandKind.parse('identify_item'),
+        PendingCommandKind.identifyItem,
+      );
+      expect(
+        () => PendingCommandKind.parse('visit_cell'),
+        throwsFormatException,
+      );
+      for (final state in PendingCommandState.values) {
+        expect(PendingCommandState.parse(state.wireName), state);
+      }
+      expect(
+        () => PendingCommandState.parse('mystery'),
+        throwsFormatException,
+      );
+    });
   });
 }

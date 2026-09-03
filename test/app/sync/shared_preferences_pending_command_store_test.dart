@@ -95,6 +95,72 @@ void main() {
     expect(loaded.single.lastFailure, SyncFailureKind.rateLimited);
   });
 
+  test('round trips terminal, auth-paused, and confirmed lifecycle states', () async {
+    await store.enqueue(
+      testPendingCommand(
+        commandId: 'terminal-command',
+        itemId: 'terminal-item',
+        state: PendingCommandState.terminal,
+        lastFailure: SyncFailureKind.contract,
+      ),
+    );
+    await store.enqueue(
+      testPendingCommand(
+        commandId: 'auth-command',
+        itemId: 'auth-item',
+        state: PendingCommandState.pausedAuth,
+        lastFailure: SyncFailureKind.auth,
+      ),
+    );
+    await store.enqueue(
+      testPendingCommand(
+        commandId: 'confirmed-command',
+        itemId: 'confirmed-item',
+        state: PendingCommandState.confirmed,
+      ),
+    );
+
+    final loaded = await store.load(
+      environment: 'local',
+      playerId: testPlayerId,
+      now: DateTime.utc(2026, 9, 2),
+    );
+
+    expect(
+      loaded.map((command) => command.state),
+      [
+        PendingCommandState.terminal,
+        PendingCommandState.pausedAuth,
+        PendingCommandState.confirmed,
+      ],
+    );
+  });
+
+  test('rejects unknown persisted command enums without guessing', () async {
+    final key = 'pending_commands.v1.local.$testPlayerId';
+    Future<void> reject(void Function(Map<String, dynamic>) mutate) async {
+      await store.enqueue(testPendingCommand());
+      final root = jsonDecode(preferences.getString(key)!) as Map<String, dynamic>;
+      final commands = root['commands'] as List<dynamic>;
+      final command = commands.single as Map<String, dynamic>;
+      mutate(command);
+      await preferences.setString(key, jsonEncode(root));
+      await expectLater(
+        store.load(
+          environment: 'local',
+          playerId: testPlayerId,
+          now: DateTime.utc(2026, 9, 2),
+        ),
+        throwsA(isA<QueueCorruptFailure>()),
+      );
+      expect(preferences.containsKey(key), isFalse);
+    }
+
+    await reject((command) => command['kind'] = 'visit_cell');
+    await reject((command) => command['state'] = 'mystery');
+    await reject((command) => command['lastFailure'] = 'provider_detail');
+  });
+
   test('rejects an oversized payload and preserves the last queue', () async {
     final original = testPendingCommand();
     await store.enqueue(original);

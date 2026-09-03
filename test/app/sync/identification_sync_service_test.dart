@@ -299,6 +299,84 @@ void main() {
     );
     expect(events, contains('sync.queue.corrupt_removed'));
     expect(events, contains('sync.queue.load_failed'));
+
+    events.clear();
+    store.loadError = const QueueBoundFailure();
+    await expectLater(
+      service().recover(
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<QueueBoundFailure>()),
+    );
+    expect(events, contains('sync.queue.bound_exceeded'));
+    expect(events, contains('sync.queue.load_failed'));
+
+    events.clear();
+    store.loadError = StateError('private storage detail');
+    await expectLater(
+      service().recover(
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(events, contains('sync.queue.load_failed'));
+  });
+
+  test('generic enqueue and purge failures remain safe and observable', () async {
+    store.enqueueError = StateError('private write detail');
+    await expectLater(
+      service().commit(
+        testIdentificationPlan(),
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(events, contains('sync.command.enqueue_rejected'));
+
+    events.clear();
+    store.enqueueError = null;
+    store.purgeError = StateError('private purge detail');
+    await expectLater(
+      service().purge(playerId: testPlayerId),
+      throwsA(isA<StateError>()),
+    );
+    expect(events, contains('sync.queue.purge_failed'));
+  });
+
+  test('constructor and clock reject unknown execution scopes', () async {
+    expect(
+      () => IdentificationSyncService(
+        environment: 'beta',
+        store: store,
+        repository: repository,
+        retryPolicy: const SyncRetryPolicy(),
+        now: () => DateTime.utc(2026, 9, 2),
+        commandId: () => 'command',
+        jitterUnit: () => 0.5,
+        logEvent: (_, __, {data}) {},
+      ),
+      throwsArgumentError,
+    );
+    final sync = IdentificationSyncService(
+      environment: 'local',
+      store: store,
+      repository: repository,
+      retryPolicy: const SyncRetryPolicy(),
+      now: () => DateTime(2026, 9, 2),
+      commandId: () => 'command',
+      jitterUnit: () => 0.5,
+      logEvent: (_, __, {data}) {},
+    );
+    await expectLater(
+      sync.recover(
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<StateError>()),
+    );
   });
 
   test('disposed service refuses new serialized work', () async {
@@ -390,6 +468,7 @@ final class _MemoryCommandStore implements PendingCommandStore {
   final List<PendingCommand> commands = [];
   Object? enqueueError;
   Object? loadError;
+  Object? purgeError;
 
   @override
   Future<void> enqueue(PendingCommand command) async {
@@ -427,6 +506,8 @@ final class _MemoryCommandStore implements PendingCommandStore {
 
   @override
   Future<void> purge({required String environment, required String playerId}) async {
+    final error = purgeError;
+    if (error != null) throw error;
     commands.removeWhere(
       (entry) => entry.environment == environment && entry.playerId == playerId,
     );
