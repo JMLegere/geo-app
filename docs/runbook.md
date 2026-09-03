@@ -11,7 +11,7 @@
 | Prod URL | https://geo-app-production-47b0.up.railway.app |
 | Prod Supabase project | `bfaczcsrpfcbijoaeckb` |
 | Railway dashboard | https://railway.app |
-| Git main branch | `main` — CI only; prod deployment is manual |
+| Git main branch | `main` — successful push CI automatically deploys its exact SHA to prod |
 
 ---
 
@@ -42,7 +42,7 @@ cp .env.local.example .env.local
 # Set client-safe production values. Local gameplay actions mutate production data.
 mise run desktop:local
 
-# Manually deploy a selected commit to prod
+# Recovery/rollback: manually deploy a selected commit to prod
 gh workflow run deploy-prod.yml
 ```
 
@@ -52,22 +52,25 @@ See `.github/workflows/` for the deploy flow.
 
 ## Deploy
 
-`main` is the trunk branch. CI runs on PRs and on pushes to `main`; it does not deploy.
+`main` is the trunk branch. CI runs on PRs and on pushes to `main`. A successful CI workflow caused by a push to `main` automatically invokes `deploy-prod.yml` with that run's exact `head_sha`. Pull-request, failed, cancelled, manually dispatched, and non-`main` CI runs do not deploy.
 
-**Manual prod deployment:**
+**Automatic production deployment:**
+
+1. Merge the reviewed revision to `main`.
+2. Wait for the push-triggered `CI` workflow to pass.
+3. `deploy-prod.yml` validates the completed workflow event and selects its exact `head_sha`.
+4. The workflow applies production Supabase changes first.
+5. It sets Railway `DEPLOYMENT_ENVIRONMENT=prod` without triggering a separate deploy and deploys the same revision to the external Railway environment `production`.
+6. Verify the prod URL loads within 60s.
+7. Check `telemetry_logs` for `app.cold_start` + `supabase.init_success`.
+8. Keep the prior healthy revision handy as the rollback target.
+
+**Manual recovery or rollback:**
 ```bash
-gh workflow run deploy-prod.yml
+gh workflow run deploy-prod.yml -f commit_sha=<exact-sha>
 ```
 
-Optional input: `commit_sha` to deploy a specific commit.
-
-1. Confirm CI is green (`flutter analyze` + `flutter test`).
-2. Trigger `deploy-prod.yml`.
-3. The workflow applies production Supabase changes first.
-4. It then sets Railway `DEPLOYMENT_ENVIRONMENT=prod` without triggering a separate deploy and deploys the selected commit to the external Railway environment `production`.
-5. Verify the prod URL loads within 60s.
-6. Check `telemetry_logs` for `app.cold_start` + `supabase.init_success`.
-7. Keep the rollback target handy in Railway Deployments.
+Use the manual path only for an explicit selected-SHA recovery, rollback, or rerun. Confirm the selected SHA's CI evidence before dispatch.
 
 Local app actions use production Supabase and mutate production data. Beta project/data remain untouched pending separate destructive authorization.
 
@@ -97,9 +100,9 @@ curl -X POST \
 ### Apply migrations
 
 ```bash
-# GitHub Actions is the default path. Production migrations require
+# Automatic post-CI GitHub Actions is the default path. Production migrations require
 # SUPABASE_PRODUCTION_DB_PASSWORD; the deployment fails closed when it is absent.
-gh workflow run deploy-prod.yml
+gh workflow run deploy-prod.yml -f commit_sha=<exact-sha> # recovery only
 
 # For direct CLI work, link the target project first and then push.
 # Set SUPABASE_DB_PASSWORD in non-interactive shells.
@@ -542,4 +545,4 @@ See `.env.example` for the full list. Required secrets and variables:
 | `RAILWAY_API_TOKEN` | GitHub secret | Required by Railway CLI workflows |
 | `RAILWAY_PROJECT_ID` | Workflow env or secret | `e693a14e-316c-4280-842a-6258a048d326` |
 
-To rotate an anon key: update Railway environment `production`, then manually run `deploy-prod.yml`.
+To rotate an anon key without a code merge: update Railway environment `production`, then manually run `deploy-prod.yml` for the selected exact SHA.

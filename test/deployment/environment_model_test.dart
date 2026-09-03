@@ -17,7 +17,7 @@ void main() {
     final workflow =
         File('.github/workflows/deploy-prod.yml').readAsStringSync();
     expect(workflow, contains('workflow_dispatch:'));
-    expect(workflow, isNot(contains('workflow_run:')));
+    expect(workflow, contains('workflow_run:'));
     expect(workflow, contains('environment_name: prod'));
     expect(workflow, contains('needs: deploy-supabase'));
     expect(workflow, contains('DEPLOYMENT_ENVIRONMENT=prod'));

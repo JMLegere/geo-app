@@ -1,10 +1,10 @@
 # Target Container Migration PRD
 
-> **Role: CURRENT-SCOPED.** Snapshot of the human-approved Outcome Contract in GitHub Issue [#592](https://github.com/JMLegere/geo-app/issues/592). This file does not expand the approved slice or authorize later phases by itself.
+> **Role: CURRENT-SCOPED.** Snapshot of the human-approved Outcome Contract and Phase 3 delivery amendment in GitHub Issue [#592](https://github.com/JMLegere/geo-app/issues/592). This file does not expand the approved slice or authorize later phases by itself.
 
 ## Status
 
-**APPROVED FOR THE FIRST DEPLOYABLE VERTICAL SLICE — Phase 0 architecture records, the minimum Phase 1 Local State and Sync foundation, Phase 2 Identification commit recovery, and the Phase 3 exact-SHA production release are authorized. Additional queued commands, product features, service splits, and non-goals remain unauthorized.**
+**APPROVED FOR THE FIRST DEPLOYABLE VERTICAL SLICE — Phase 0 architecture records, the minimum Phase 1 Local State and Sync foundation, Phase 2 Identification commit recovery, and the Phase 3 exact-SHA production release are authorized. The Phase 3 amendment automatically deploys successful push-triggered `main` CI revisions through repository YAML while retaining manual exact-SHA rollback. Additional queued commands, product features, service splits, and non-goals remain unauthorized.**
 
 ## Outcome Contract
 
@@ -60,7 +60,7 @@ The final bounded-context map remains deliberately unresolved. This contract doe
 #### Phase 3 — production release and verification
 
 - Merge only after CI, EAC, SuperBDD where applicable, focused tests, full Flutter tests, analyzer, generator drift check, and rendered C4 QA pass.
-- Deploy the exact merged commit through the manual `deploy-prod.yml` workflow.
+- Deploy the exact successful push-triggered `main` CI head SHA automatically through `deploy-prod.yml`; retain manual exact-SHA dispatch for rollback and recovery.
 - Apply additive Supabase changes before the Railway app only if Phase 2 requires them.
 - Validate production startup, authentication, Map and Pack readiness, Degraded Session behavior, queued-command behavior, telemetry, provider health, and asset delivery.
 - Record the deployed SHA and verification timestamp.
@@ -93,7 +93,7 @@ The final bounded-context map remains deliberately unresolved. This contract doe
 - All schema changes must be additive and backward compatible.
 - No destructive migration or legacy-data deletion.
 - No deployment from an unmerged or unverified commit.
-- Production deployment uses the repository's serialized manual workflow and exact commit SHA.
+- Production deployment uses the repository's serialized workflow, automatically consumes an eligible successful `main` CI head SHA, and retains manual exact-SHA recovery.
 - Rollback readiness is verified before dispatch.
 
 ### Authorization evidence
@@ -223,7 +223,7 @@ The target player personas remain product context, not container boundaries: Fie
 6. One restart-safe, idempotent synchronization vertical slice.
 7. Structured synchronization observability.
 8. Focused unit, integration, behavior, architecture, generator, and rendered-diagram tests.
-9. Manual exact-SHA production deployment and post-deploy verification.
+9. Automatic exact-CI-SHA production deployment, manual exact-SHA recovery, and post-deploy verification.
 
 #### Out of scope
 
@@ -531,7 +531,8 @@ Deliverables:
 
 - reviewed PR and merge SHA
 - pre-deploy backup/rollback evidence
-- manual exact-SHA workflow dispatch
+- automatic guarded workflow dispatch for the successful push-triggered `main` CI head SHA
+- retained manual exact-SHA rollback/recovery dispatch
 - workflow/job verification
 - production smoke and telemetry record
 - issue comment with deployed SHA, time, checks, and anomalies
@@ -611,7 +612,7 @@ Exit criteria:
 2. Confirm required GitHub secrets without exposing values.
 3. Confirm additive migration compatibility if database work exists.
 4. Merge only after all required checks pass.
-5. Dispatch `deploy-prod.yml` with the exact merge SHA.
+5. Let the successful push-triggered `main` CI completion invoke `deploy-prod.yml` with its exact `head_sha`.
 6. Supabase deploy completes before Railway application deploy.
 7. Wait for Railway health and then execute the runbook validation.
 8. Record evidence in Issue #592.
@@ -649,7 +650,7 @@ Exit criteria:
 | Delayed actions change domain meaning | Enable only explicitly audited command kinds; defer Cell Visit |
 | Big-bang refactor destabilizes prod | Phased vertical slices and behavior-preserving boundaries |
 | Diagram diverges from implementation | Single generator plus drift check |
-| Production deploy applies unreviewed SHA | Exact merged SHA in manual workflow |
+| Production deploy applies unreviewed SHA | Guard the `workflow_run` source to successful push-triggered `main` CI and deploy its exact `head_sha`; retain explicit exact-SHA recovery |
 | Solo operator cannot diagnose failure | Required telemetry, deploy record, and rollback checklist |
 
 ### 18. Dependencies and sequencing
@@ -682,5 +683,4 @@ This initiative is done only when:
 ### 20. Approval
 
 Approval of Issue #592 authorizes the phased implementation and exact-SHA production release described above. It does not authorize any non-goal, destructive database action, additional queued command, new product feature, microservice split, or technology replacement.
-
 

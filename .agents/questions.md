@@ -39,7 +39,7 @@
 ## Resolved or Superseded Questions
 
 Resolved items are retained in `.agents/decisions.md`, dated `.agents/context.md`, and historical design/QA artifacts rather than duplicated here.
-- The `main` auto-deploy ambiguity is superseded by ADR 0009 and issue #569: `main` runs CI only, beta is retired, and prod deploys only through the manual `deploy-prod.yml` workflow.
+- The `main` auto-deploy ambiguity is resolved by ADR 0011 and the Issue #592 amendment: successful push-triggered `main` CI deploys its exact SHA automatically; manual exact-SHA dispatch remains for rollback and recovery. Beta remains retired.
 
 - Cell entry creates **zero or one** Encounter through one Selector; the old three-slot question is superseded by `CONTEXT.md`.
 - Identification resolves Version-owned Variable Properties into permanent Item Property Values; the old generic stat/affix model is superseded.
