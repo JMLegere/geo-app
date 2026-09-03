@@ -146,6 +146,98 @@ void main() {
     expect(store.commands.single.lastFailure, SyncFailureKind.contract);
   });
 
+  test('auth failures pause until authentication resumes', () async {
+    final plan = testIdentificationPlan();
+    final result = testIdentificationResult(plan);
+    repository.errors.add(
+      IdentificationCommitFailure(IdentificationFailureKind.auth),
+    );
+    repository.results.add(result);
+    final sync = service();
+    var applied = false;
+
+    await expectLater(
+      sync.commit(
+        plan,
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncPending>()),
+    );
+    expect(store.commands.single.state, PendingCommandState.pausedAuth);
+
+    await sync.resumeAfterAuthentication(
+      playerId: testPlayerId,
+      applyCanonicalResult: (_) async => applied = true,
+    );
+
+    expect(applied, isTrue);
+    expect(store.commands, isEmpty);
+    expect(events, contains('sync.command.auth_paused'));
+  });
+
+  test('scheduled retry uses the provider-lifetime apply callback', () async {
+    final plan = testIdentificationPlan();
+    final result = testIdentificationResult(plan);
+    final scheduled = <void Function()>[];
+    final backgroundApplied = Completer<void>();
+    var directApplyCount = 0;
+    repository.errors.add(
+      IdentificationCommitFailure(IdentificationFailureKind.network),
+    );
+    repository.results.add(result);
+    final sync = IdentificationSyncService(
+      environment: 'local',
+      store: store,
+      repository: repository,
+      retryPolicy: const SyncRetryPolicy(jitterFraction: 0),
+      now: () => DateTime.utc(2026, 9, 2),
+      commandId: () => 'durable-command-1',
+      jitterUnit: () => 0.5,
+      logEvent: (event, _, {data}) => events.add(event),
+      backgroundApplyCanonicalResult: (_) async {
+        if (!backgroundApplied.isCompleted) backgroundApplied.complete();
+      },
+      scheduleRetry: (_, callback) {
+        scheduled.add(callback);
+        return _FakeTimer();
+      },
+    );
+
+    await expectLater(
+      sync.commit(
+        plan,
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async => directApplyCount++,
+      ),
+      throwsA(isA<IdentificationSyncPending>()),
+    );
+    scheduled.single();
+    await backgroundApplied.future.timeout(const Duration(seconds: 1));
+    for (var index = 0; index < 20 && store.commands.isNotEmpty; index++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    expect(directApplyCount, 0);
+    expect(store.commands, isEmpty);
+    expect(repository.plans, hasLength(2));
+  });
+
+  test('recovery removes an already confirmed command without redispatch', () async {
+    store.commands.add(
+      testPendingCommand(state: PendingCommandState.confirmed),
+    );
+
+    final results = await service().recover(
+      playerId: testPlayerId,
+      applyCanonicalResult: (_) async {},
+    );
+
+    expect(results, isEmpty);
+    expect(store.commands, isEmpty);
+    expect(repository.plans, isEmpty);
+  });
+
   test('wrong Player cannot load or dispatch another Player command', () async {
     store.commands.add(testPendingCommand());
 

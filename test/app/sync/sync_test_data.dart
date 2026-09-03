@@ -12,18 +12,20 @@ ItemIdentificationPlan testIdentificationPlan({
   String itemId = 'item-1',
   String playerId = testPlayerId,
   String villagerDisplayName = 'Rowan',
+  bool includeProperties = false,
 }) {
   final baseItemId = StableContentId<BaseItemContent>('base-item-1');
+  final baseItemVersion = ExactVersionRef<BaseItemContent>(
+    stableId: baseItemId,
+    versionId: ContentVersionId<BaseItemContent>('version-1'),
+    revision: 1,
+  );
   return ItemIdentificationPlan(
     item: ItemKnowledgeItemRef(
       id: ItemKnowledgeItemId(itemId),
       playerId: playerId,
       baseItemId: baseItemId,
-      baseItemVersion: ExactVersionRef<BaseItemContent>(
-        stableId: baseItemId,
-        versionId: ContentVersionId<BaseItemContent>('version-1'),
-        revision: 1,
-      ),
+      baseItemVersion: baseItemVersion,
     ),
     serviceAccess: IdentificationServiceAccess(
       villagerId: VillagerId('villager:rowan'),
@@ -36,7 +38,36 @@ ItemIdentificationPlan testIdentificationPlan({
       ),
       serviceDisplayName: 'Identification',
     ),
-    propertyResolutions: const [],
+    propertyResolutions: includeProperties
+        ? [
+            PlannedPropertyResolution(
+              ordinal: 0,
+              definition: VariablePropertyDefinition(
+                id: VariablePropertyDefinitionId('property:color'),
+                baseItemId: baseItemId,
+                baseItemVersion: baseItemVersion,
+                selectorId: PropertySelectorId('selector:color'),
+              ),
+              selectorCandidateId: PropertySelectorCandidateId(
+                'candidate:red',
+              ),
+              resolution: SelectedPropertyValue('value:red'),
+            ),
+            PlannedPropertyResolution(
+              ordinal: 1,
+              definition: VariablePropertyDefinition(
+                id: VariablePropertyDefinitionId('property:pattern'),
+                baseItemId: baseItemId,
+                baseItemVersion: baseItemVersion,
+                selectorId: PropertySelectorId('selector:pattern'),
+              ),
+              selectorCandidateId: PropertySelectorCandidateId(
+                'candidate:none',
+              ),
+              resolution: const NoPropertyValue(),
+            ),
+          ]
+        : const [],
   );
 }
 

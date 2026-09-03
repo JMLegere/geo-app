@@ -19,7 +19,23 @@ void main() {
   });
 
   test('round trips the exact Identification plan separately by owner', () async {
-    final command = testPendingCommand();
+    final command = PendingCommand(
+      schemaVersion: PendingCommand.currentSchemaVersion,
+      commandId: 'command-with-properties',
+      idempotencyKey: 'identify:item-with-properties',
+      kind: PendingCommandKind.identifyItem,
+      payloadVersion: IdentificationCommandPayload.currentVersion,
+      payload: IdentificationCommandPayload(
+        plan: testIdentificationPlan(
+          itemId: 'item-with-properties',
+          includeProperties: true,
+        ),
+      ),
+      environment: 'local',
+      playerId: testPlayerId,
+      enqueuedAt: DateTime.utc(2026, 9, 1),
+      state: PendingCommandState.pending,
+    );
     await store.enqueue(command);
 
     final loaded = await store.load(
@@ -102,6 +118,39 @@ void main() {
     expect(preferences.getKeys(), isEmpty);
   });
 
+  test('removes an over-count or expired queue instead of truncating it', () async {
+    final key = 'pending_commands.v1.local.$testPlayerId';
+    await preferences.setString(
+      key,
+      jsonEncode({
+        'version': 1,
+        'environment': 'local',
+        'playerId': testPlayerId,
+        'commands': List<Object?>.filled(101, const {}),
+      }),
+    );
+    await expectLater(
+      store.load(
+        environment: 'local',
+        playerId: testPlayerId,
+        now: DateTime.utc(2026, 9, 2),
+      ),
+      throwsA(isA<QueueBoundFailure>()),
+    );
+    expect(preferences.containsKey(key), isFalse);
+
+    await store.enqueue(testPendingCommand());
+    await expectLater(
+      store.load(
+        environment: 'local',
+        playerId: testPlayerId,
+        now: DateTime.utc(2026, 9, 10),
+      ),
+      throwsA(isA<QueueBoundFailure>()),
+    );
+    expect(preferences.containsKey(key), isFalse);
+  });
+
   test('purges current and prior queue versions for one owner only', () async {
     await store.enqueue(testPendingCommand());
     await preferences.setString(
@@ -118,3 +167,4 @@ void main() {
     );
   });
 }
+import 'dart:convert';

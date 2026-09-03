@@ -7,6 +7,7 @@ import 'package:earth_nova/features/identification/domain/repositories/identific
 import 'package:earth_nova/features/identification/domain/use_cases/plan_item_identification.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 const _itemId = '11111111-1111-4111-8111-111111111111';
 const _playerId = '22222222-2222-4222-8222-222222222222';
@@ -34,6 +35,21 @@ void main() {
               .having((error) => error.toString(), 'safe message', isNot(contains('secret'))),
         ),
       );
+    });
+
+    test('classifies only explicit PostgREST status families', () {
+      IdentificationFailureKind kind(String code) =>
+          identificationFailureKindFor(
+            PostgrestException(message: 'provider detail', code: code),
+          );
+
+      expect(kind('429'), IdentificationFailureKind.rateLimited);
+      expect(kind('503'), IdentificationFailureKind.transientServer);
+      expect(kind('401'), IdentificationFailureKind.auth);
+      expect(kind('42501'), IdentificationFailureKind.permission);
+      expect(kind('409'), IdentificationFailureKind.validation);
+      expect(kind('23505'), IdentificationFailureKind.contract);
+      expect(kind('unexpected'), IdentificationFailureKind.unknown);
     });
 
     test('prepares only through the named RPC with exact params', () async {
