@@ -114,6 +114,7 @@ _DocumentRole? _roleFor(String path) {
     'docs/dependencies.md',
     'docs/frontend-usability-design-system.md',
     'docs/ios-safari-maplibre.md',
+    'docs/prd-target-container-migration.md',
     'docs/prd-shadcn-ui-reset.md',
     'docs/observability-interaction-coverage.md',
     'docs/runbook.md',

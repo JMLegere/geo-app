@@ -1,5 +1,7 @@
 # Identification synchronization replay audit
 
+**Role: HISTORICAL-EVIDENCE.** This dated audit records verification evidence and does not override current authority.
+
 **Date:** 2026-09-03  
 **Outcome Contract:** GitHub Issue #592, approved first deployable slice  
 **Command:** `identify_v3_item` only
