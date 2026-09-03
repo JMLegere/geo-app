@@ -425,6 +425,78 @@ void main() {
     expect(events, contains('sync.command.terminal'));
   });
 
+  test('persists every safe repository failure classification', () async {
+    for (final entry in <(IdentificationFailureKind, SyncFailureKind, bool)>[
+      (
+        IdentificationFailureKind.rateLimited,
+        SyncFailureKind.rateLimited,
+        true,
+      ),
+      (
+        IdentificationFailureKind.transientServer,
+        SyncFailureKind.transientServer,
+        true,
+      ),
+      (
+        IdentificationFailureKind.validation,
+        SyncFailureKind.validation,
+        false,
+      ),
+      (
+        IdentificationFailureKind.permission,
+        SyncFailureKind.permission,
+        false,
+      ),
+      (
+        IdentificationFailureKind.ownership,
+        SyncFailureKind.ownership,
+        false,
+      ),
+      (
+        IdentificationFailureKind.unknown,
+        SyncFailureKind.unknown,
+        false,
+      ),
+    ]) {
+      sequence = [];
+      events = [];
+      store = _MemoryCommandStore(sequence);
+      repository = _RecordingIdentificationRepository(sequence)
+        ..errors.add(IdentificationCommitFailure(entry.$1));
+
+      await expectLater(
+        service().commit(
+          testIdentificationPlan(),
+          playerId: testPlayerId,
+          applyCanonicalResult: (_) async {},
+        ),
+        throwsA(
+          entry.$3
+              ? isA<IdentificationSyncPending>()
+              : isA<IdentificationSyncTerminal>(),
+        ),
+      );
+
+      expect(store.commands.single.lastFailure, entry.$2);
+    }
+
+    sequence = [];
+    events = [];
+    store = _MemoryCommandStore(sequence);
+    repository = _RecordingIdentificationRepository(sequence)
+      ..errors.add(StateError('unclassified provider detail'));
+
+    await expectLater(
+      service().commit(
+        testIdentificationPlan(),
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncTerminal>()),
+    );
+    expect(store.commands.single.lastFailure, SyncFailureKind.unknown);
+  });
+
   test('purge cancels retries and emits success only after storage clears', () async {
     final scheduled = <void Function()>[];
     final sync = IdentificationSyncService(

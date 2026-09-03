@@ -95,6 +95,23 @@ void main() {
     expect(loaded.single.lastFailure, SyncFailureKind.rateLimited);
   });
 
+  test('rejects duplicate command and idempotency identities', () async {
+    await store.enqueue(testPendingCommand());
+
+    await expectLater(
+      store.enqueue(testPendingCommand(commandId: 'different-command')),
+      throwsArgumentError,
+    );
+    await expectLater(
+      store.enqueue(
+        testPendingCommand(
+          itemId: 'different-item',
+        ),
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('round trips terminal, auth-paused, and confirmed lifecycle states', () async {
     await store.enqueue(
       testPendingCommand(
