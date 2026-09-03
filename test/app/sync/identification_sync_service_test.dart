@@ -1,0 +1,241 @@
+import 'dart:async';
+
+import 'package:earth_nova/app/sync/application/identification_sync_service.dart';
+import 'package:earth_nova/app/sync/application/sync_retry_policy.dart';
+import 'package:earth_nova/app/sync/domain/pending_command.dart';
+import 'package:earth_nova/app/sync/domain/pending_command_store.dart';
+import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
+import 'package:earth_nova/features/identification/domain/repositories/identification_repository.dart';
+import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'sync_test_data.dart';
+
+void main() {
+  late _MemoryCommandStore store;
+  late _RecordingIdentificationRepository repository;
+  late List<String> sequence;
+  late List<String> events;
+
+  setUp(() {
+    sequence = [];
+    events = [];
+    store = _MemoryCommandStore(sequence);
+    repository = _RecordingIdentificationRepository(sequence);
+  });
+
+  IdentificationSyncService service({DateTime? now}) =>
+      IdentificationSyncService(
+        environment: 'local',
+        store: store,
+        repository: repository,
+        retryPolicy: const SyncRetryPolicy(jitterFraction: 0),
+        now: () => now ?? DateTime.utc(2026, 9, 2),
+        commandId: () => 'durable-command-1',
+        jitterUnit: () => 0.5,
+        logEvent: (event, _, {data}) => events.add(event),
+        scheduleRetry: (_, __) => _FakeTimer(),
+      );
+
+  test('persists before dispatch and removes only after canonical apply', () async {
+    final plan = testIdentificationPlan();
+    final result = testIdentificationResult(plan);
+    repository.results.add(result);
+
+    final committed = await service().commit(
+      plan,
+      playerId: testPlayerId,
+      applyCanonicalResult: (_) async => sequence.add('apply'),
+    );
+
+    expect(committed, same(result));
+    expect(sequence, ['enqueue', 'update:dispatching', 'commit', 'apply', 'remove']);
+    expect(store.commands, isEmpty);
+    expect(events, containsAllInOrder([
+      'sync.command.enqueued',
+      'sync.command.dispatch_started',
+      'sync.command.confirmed',
+    ]));
+  });
+
+  test('response loss keeps the exact command for idempotent recovery', () async {
+    final plan = testIdentificationPlan();
+    final result = testIdentificationResult(plan);
+    repository.errors.add(
+      const IdentificationCommitFailure(IdentificationFailureKind.network),
+    );
+    repository.results.add(result);
+    final sync = service();
+
+    await expectLater(
+      sync.commit(
+        plan,
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncPending>()),
+    );
+    final retained = store.commands.single;
+    expect(retained.state, PendingCommandState.retryWait);
+    expect(retained.attemptCount, 1);
+
+    await sync.recover(
+      playerId: testPlayerId,
+      applyCanonicalResult: (_) async => sequence.add('recovered-apply'),
+      forceEligible: true,
+    );
+
+    expect(repository.plans, hasLength(2));
+    expect(repository.plans[1], repository.plans[0]);
+    expect(store.commands, isEmpty);
+    expect(events, contains('sync.recovery.completed'));
+  });
+
+  test('wrong Player cannot load or dispatch another Player command', () async {
+    store.commands.add(testPendingCommand());
+
+    await expectLater(
+      service().recover(
+        playerId: 'player-2',
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncTerminal>()),
+    );
+    expect(repository.plans, isEmpty);
+    expect(store.commands.single.playerId, testPlayerId);
+  });
+
+  test('terminal failure is inspectable and never automatically retries', () async {
+    final plan = testIdentificationPlan();
+    repository.errors.add(
+      const IdentificationCommitFailure(IdentificationFailureKind.contract),
+    );
+
+    await expectLater(
+      service().commit(
+        plan,
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncTerminal>()),
+    );
+
+    expect(store.commands.single.state, PendingCommandState.terminal);
+    expect(events, contains('sync.command.terminal'));
+  });
+
+  test('purge cancels retries and emits success only after storage clears', () async {
+    final scheduled = <void Function()>[];
+    final sync = IdentificationSyncService(
+      environment: 'local',
+      store: store,
+      repository: repository,
+      retryPolicy: const SyncRetryPolicy(jitterFraction: 0),
+      now: () => DateTime.utc(2026, 9, 2),
+      commandId: () => 'durable-command-1',
+      jitterUnit: () => 0.5,
+      logEvent: (event, _, {data}) => events.add(event),
+      scheduleRetry: (_, callback) {
+        scheduled.add(callback);
+        return _FakeTimer();
+      },
+    );
+    repository.errors.add(
+      const IdentificationCommitFailure(IdentificationFailureKind.network),
+    );
+    await expectLater(
+      sync.commit(
+        testIdentificationPlan(),
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncPending>()),
+    );
+
+    await sync.purge(playerId: testPlayerId);
+
+    expect(store.commands, isEmpty);
+    expect(events.last, 'sync.queue.purged');
+    expect(scheduled, hasLength(1));
+  });
+}
+
+final class _MemoryCommandStore implements PendingCommandStore {
+  _MemoryCommandStore(this.sequence);
+
+  final List<String> sequence;
+  final List<PendingCommand> commands = [];
+
+  @override
+  Future<void> enqueue(PendingCommand command) async {
+    sequence.add('enqueue');
+    commands.add(command);
+  }
+
+  @override
+  Future<List<PendingCommand>> load({
+    required String environment,
+    required String playerId,
+    required DateTime now,
+  }) async => List.unmodifiable(commands);
+
+  @override
+  Future<void> remove(PendingCommand command) async {
+    sequence.add('remove');
+    commands.removeWhere((entry) => entry.commandId == command.commandId);
+  }
+
+  @override
+  Future<void> replace(PendingCommand command) async {
+    sequence.add('update:${command.state.wireName}');
+    final index = commands.indexWhere(
+      (entry) => entry.commandId == command.commandId,
+    );
+    commands[index] = command;
+  }
+
+  @override
+  Future<void> purge({required String environment, required String playerId}) async {
+    commands.removeWhere(
+      (entry) => entry.environment == environment && entry.playerId == playerId,
+    );
+  }
+}
+
+final class _RecordingIdentificationRepository
+    implements IdentificationRepository {
+  _RecordingIdentificationRepository(this.sequence);
+
+  final List<String> sequence;
+  final List<ItemIdentificationResult> results = [];
+  final List<Object> errors = [];
+  final List<ItemIdentificationPlan> plans = [];
+
+  @override
+  Future<IdentificationPreparation> prepare(
+    ItemKnowledgeItemId itemId, {
+    String? traceId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ItemIdentificationResult> commit(
+    ItemIdentificationPlan plan, {
+    String? traceId,
+  }) async {
+    sequence.add('commit');
+    plans.add(plan);
+    if (errors.isNotEmpty) throw errors.removeAt(0);
+    return results.removeAt(0);
+  }
+}
+
+final class _FakeTimer implements Timer {
+  @override
+  bool get isActive => true;
+
+  @override
+  int get tick => 0;
+
+  @override
+  void cancel() {}
+}
