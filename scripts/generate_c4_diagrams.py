@@ -474,18 +474,19 @@ def outputs() -> dict[str, str]:
         ),
         '10-deployment-delivery.mmd': mmd(
             '''
-            flowchart LR
-                operator["<b>Operator</b><br/>[Person]<br/>Authors, reviews, and manually dispatches a selected SHA"]
+            flowchart TB
+                operator["<b>Operator</b><br/>[Person]<br/>Authors, reviews, merges, and owns deployment policy"]
                 tooling["<b>Local environment</b><br/>[Deployment Node: mise]<br/>Managed authoring, validation, and import toolchain"]
                 repo["<b>geo-app revision</b><br/>[Artifact: GitHub repository]<br/>Code, migrations, functions, generated C4, tests, ADRs"]
                 checks["<b>CI workflow</b><br/>[Build Process: GitHub Actions]<br/>Push and pull-request analysis, architecture checks, coverage"]
-                deploy["<b>deploy-prod workflow</b><br/>[Deployment Process: GitHub Actions]<br/>Checks out manual commit_sha with no CI or ancestry gate"]
+                deploy["<b>deploy-prod workflow</b><br/>[Deployment Process: GitHub Actions]<br/>Deploys the exact successful main-push CI head SHA<br/>Manual exact-SHA rollback remains available"]
                 targets["<b>Production targets</b><br/>[Deployment Nodes]<br/>Migrations, then every Edge Function, then Railway nginx"]
 
                 operator --> tooling
                 tooling --> repo
                 repo --> checks
-                repo --> deploy
+                checks -->|Successful push CI on main| deploy
+                operator -.->|Manual recovery or rollback| deploy
                 deploy --> targets
 
                 class operator person
@@ -566,7 +567,7 @@ def outputs() -> dict[str, str]:
             | [`07a-dynamic-exploration-v3.mmd`](07a-dynamic-exploration-v3.mmd) | Dynamic | Gated v3-authoritative Visit persistence, client selection, pending/manual, and automatic Outcome commits |
             | [`08-dynamic-item-examination.mmd`](08-dynamic-item-examination.mmd) | Dynamic | Exact-version examination journal followed by separate prepared Identification and first durable Discovery |
             | [`09-dynamic-app-readiness.mmd`](09-dynamic-app-readiness.mmd) | Dynamic | Warm hydration/background refresh and cold required-fetch readiness paths |
-            | [`10-deployment-delivery.mmd`](10-deployment-delivery.mmd) | Deployment | Repository CI evidence plus ungated manual selected-SHA Railway/Supabase release order |
+            | [`10-deployment-delivery.mmd`](10-deployment-delivery.mmd) | Deployment | Guarded successful-main-CI exact-SHA deployment plus manual recovery and Supabase-before-Railway order |
             | [`11-deployment-prod-runtime.mmd`](11-deployment-prod-runtime.mmd) | Deployment | `prod` browser, Railway, Supabase runtime/storage, automation, and providers |
             | [`12-deployment-local-runtime.mmd`](12-deployment-local-runtime.mmd) | Deployment | `local` Flutter Chrome using production data, browser storage, Supabase, and providers |
 

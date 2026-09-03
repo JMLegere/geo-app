@@ -1044,3 +1044,9 @@
 - The local implementation adds a player/environment-scoped, bounded, versioned SharedPreferences pending-command store separate from the Client Working Set; serialized command dispatch; strict restart recovery; safe auth pause; retry/backoff for classified network, 429, and 5xx failures; fail-closed terminal handling; pre-sign-out purge; and provider-lifetime canonical Pack/CWS application.
 - The existing `identify_v3_item` RPC and receipt semantics were audited as sufficient: the stored procedure locks the Item and receipt, validates exact immutable input identity, atomically writes the canonical aggregate and receipt, and returns the same aggregate for an exact replay. No SQL or remote data mutation is required.
 - The C4 generator now distinguishes current and approved target container views and records the four approved player personas, Jeremy's Developer/Sole Director role, and the full EarthNova product boundary. CI, merge, exact-SHA deployment, and production verification are still pending.
+
+## In progress 2026-09-03 — Issue #592 Phase 3 automatic delivery amendment
+
+- Jeremy explicitly superseded the manual-only production delivery policy: successful CI for updates pushed to `main` must deploy automatically using repository YAML.
+- The amendment remains limited to delivery. It adds no command kind, gameplay, schema, dependency, secret, provider, target, or destructive production change.
+- PR #594 begins with a test-only commit. CI run 1218 recorded the expected red baseline: Analyze and EAC passed; 1,610 tests passed and the sole failure proved `deploy-prod.yml` lacked the required `workflow_run` trigger.

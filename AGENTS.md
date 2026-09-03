@@ -129,7 +129,7 @@ class FooNotifier extends ObservableNotifier<FooState> {
 
 ### Vertical Slices
 
-Build one complete, user-verifiable feature slice end-to-end (model → application logic → adapter → screen → focused test) before starting another. Keep slices local and explicit; prod deployment is a separate manual human-authorized action.
+Build one complete, user-verifiable feature slice end-to-end (model → application logic → adapter → screen → focused test) before starting another. Keep slices local and explicit; prod deployment policy requires a human-approved Outcome Contract, and successful `main` CI then deploys the exact tested SHA automatically under ADR 0011. Manual exact-SHA dispatch remains the recovery path.
 
 ---
 

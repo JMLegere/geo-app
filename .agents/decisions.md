@@ -18,6 +18,13 @@
 - Legacy beta infrastructure/data remains untouched as archival evidence pending separate destructive authorization; it is not an active release stage.
 - Compatibility literals and historical evidence retain old beta wording where renaming would break auth or rewrite history.
 
+## 2026-09-03 — deploy green main revisions automatically
+- ADR 0011 supersedes only the manual production-delivery clause of ADR 0009.
+- A successful `CI` workflow caused by a push to `main` automatically invokes `deploy-prod.yml` for that run's exact `head_sha`.
+- Pull-request, failed, cancelled, manually dispatched, and non-`main` CI runs cannot trigger production deployment.
+- Supabase remains ordered before Railway, and the non-cancelling production concurrency group remains serialized.
+- Manual `workflow_dispatch` with an optional exact SHA remains available for rollback and operator recovery.
+
 ## 2026-05-03 — per-cell geometry substrate source of truth
 - Missing fog on beta is caused by missing true per-cell geometry, not frontend fog logic.
 - Do not use district/admin boundaries as cell polygons; `districts.boundary_json` is not a valid cell geometry source.

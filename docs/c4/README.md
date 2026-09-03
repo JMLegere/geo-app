@@ -22,7 +22,7 @@ These files are generated, not inferred at runtime. The generator is the single 
 | [`07a-dynamic-exploration-v3.mmd`](07a-dynamic-exploration-v3.mmd) | Dynamic | Gated v3-authoritative Visit persistence, client selection, pending/manual, and automatic Outcome commits |
 | [`08-dynamic-item-examination.mmd`](08-dynamic-item-examination.mmd) | Dynamic | Exact-version examination journal followed by separate prepared Identification and first durable Discovery |
 | [`09-dynamic-app-readiness.mmd`](09-dynamic-app-readiness.mmd) | Dynamic | Warm hydration/background refresh and cold required-fetch readiness paths |
-| [`10-deployment-delivery.mmd`](10-deployment-delivery.mmd) | Deployment | Repository CI evidence plus ungated manual selected-SHA Railway/Supabase release order |
+| [`10-deployment-delivery.mmd`](10-deployment-delivery.mmd) | Deployment | Guarded successful-main-CI exact-SHA deployment plus manual recovery and Supabase-before-Railway order |
 | [`11-deployment-prod-runtime.mmd`](11-deployment-prod-runtime.mmd) | Deployment | `prod` browser, Railway, Supabase runtime/storage, automation, and providers |
 | [`12-deployment-local-runtime.mmd`](12-deployment-local-runtime.mmd) | Deployment | `local` Flutter Chrome using production data, browser storage, Supabase, and providers |
 
