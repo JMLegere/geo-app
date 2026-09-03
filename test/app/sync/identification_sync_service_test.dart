@@ -98,6 +98,54 @@ void main() {
     expect(events, contains('sync.recovery.completed'));
   });
 
+  test('a repeated player action cannot bypass retry backoff', () async {
+    final plan = testIdentificationPlan();
+    repository.errors.add(
+      IdentificationCommitFailure(IdentificationFailureKind.network),
+    );
+    final sync = service();
+
+    await expectLater(
+      sync.commit(
+        plan,
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncPending>()),
+    );
+    await expectLater(
+      sync.commit(
+        plan,
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncPending>()),
+    );
+
+    expect(repository.plans, hasLength(1));
+    expect(store.commands.single.state, PendingCommandState.retryWait);
+  });
+
+  test('a same-key different plan is persisted as terminal', () async {
+    store.commands.add(testPendingCommand());
+    final changedPlan = testIdentificationPlan(
+      villagerDisplayName: 'Different Villager',
+    );
+
+    await expectLater(
+      service().commit(
+        changedPlan,
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncTerminal>()),
+    );
+
+    expect(repository.plans, isEmpty);
+    expect(store.commands.single.state, PendingCommandState.terminal);
+    expect(store.commands.single.lastFailure, SyncFailureKind.contract);
+  });
+
   test('wrong Player cannot load or dispatch another Player command', () async {
     store.commands.add(testPendingCommand());
 
@@ -110,6 +158,7 @@ void main() {
     );
     expect(repository.plans, isEmpty);
     expect(store.commands.single.playerId, testPlayerId);
+    expect(store.commands.single.state, PendingCommandState.terminal);
   });
 
   test('terminal failure is inspectable and never automatically retries', () async {

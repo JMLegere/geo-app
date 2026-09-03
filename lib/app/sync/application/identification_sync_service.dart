@@ -86,8 +86,25 @@ final class IdentificationSyncService {
         if (matches.isNotEmpty) {
           command = matches.single;
           if (command.payload.plan != plan) {
-            _terminalEvent(command, reason: 'payload_mismatch');
+            await _markTerminal(
+              command,
+              failure: SyncFailureKind.contract,
+              reason: 'payload_mismatch',
+            );
             throw const IdentificationSyncTerminal();
+          }
+          switch (command.state) {
+            case PendingCommandState.terminal:
+              throw const IdentificationSyncTerminal();
+            case PendingCommandState.retryWait:
+            case PendingCommandState.pausedAuth:
+            case PendingCommandState.dispatching:
+              throw const IdentificationSyncPending();
+            case PendingCommandState.confirmed:
+              await _store.remove(command);
+              throw const IdentificationSyncPending();
+            case PendingCommandState.pending:
+              break;
           }
         } else {
           command = PendingCommand(
@@ -135,11 +152,18 @@ final class IdentificationSyncService {
           if (command.environment != _environment ||
               command.playerId != playerId ||
               command.payload.plan.item.playerId != playerId) {
-            _terminalEvent(command, reason: 'owner_mismatch');
+            await _markTerminal(
+              command,
+              failure: SyncFailureKind.ownership,
+              reason: 'owner_mismatch',
+            );
             throw const IdentificationSyncTerminal();
           }
+          if (command.state == PendingCommandState.confirmed) {
+            await _store.remove(command);
+            continue;
+          }
           if (command.state == PendingCommandState.terminal ||
-              command.state == PendingCommandState.confirmed ||
               command.state == PendingCommandState.pausedAuth) {
             continue;
           }
@@ -388,6 +412,20 @@ final class IdentificationSyncService {
         'reason': reason,
       },
     );
+  }
+
+  Future<void> _markTerminal(
+    PendingCommand command, {
+    required SyncFailureKind failure,
+    required String reason,
+  }) async {
+    final terminal = command.copyWith(
+      state: PendingCommandState.terminal,
+      clearNextEligibleAttemptAt: true,
+      lastFailure: failure,
+    );
+    await _store.replace(terminal);
+    _terminalEvent(terminal, reason: reason);
   }
 
   void _event(String event, {Map<String, Object?>? data}) {
