@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:earth_nova/features/identification/data/repositories/supabase_identification_repository.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
+import 'package:earth_nova/features/identification/domain/repositories/identification_repository.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/plan_item_identification.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:flutter_test/flutter_test.dart';
