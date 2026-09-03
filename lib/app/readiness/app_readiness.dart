@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/app/sync/application/identification_sync_provider.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
@@ -94,6 +95,9 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
     );
     try {
       await ref
+          .read(identificationSyncServiceProvider)
+          ?.purge(playerId: userId);
+      await ref
           .read(clientWorkingSetStoreProvider)
           .purge(environment: _environment, userId: userId);
       if (generation == _generation) {
@@ -123,6 +127,12 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
       }
       return false;
     }
+  }
+
+  Future<void> persistCurrent() {
+    final userId = _userId;
+    if (userId == null) return Future.value();
+    return _commit(_generation, userId);
   }
 
   Future<void> _start(String userId) async {
@@ -203,6 +213,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
       'app.readiness.state_usable',
     );
     _flow(TelemetryFlowPhase.completed, eventName: 'app.readiness.usable');
+    unawaited(_recoverPendingIdentification(generation, userId));
   }
 
   Future<void> _refreshFromSnapshot(
@@ -244,6 +255,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
         dependency: 'working_set',
         reason: error,
       );
+      unawaited(_recoverPendingIdentification(generation, snapshot.userId));
       return;
     }
 
@@ -255,6 +267,33 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
     );
     _flow(TelemetryFlowPhase.completed,
         eventName: 'app.readiness.refresh_completed');
+    unawaited(_recoverPendingIdentification(generation, snapshot.userId));
+  }
+
+  Future<void> _recoverPendingIdentification(
+    int generation,
+    String userId,
+  ) async {
+    final sync = ref.read(identificationSyncServiceProvider);
+    if (sync == null || !_isCurrent(generation)) return;
+    try {
+      await sync.resumeAfterAuthentication(
+        playerId: userId,
+        applyCanonicalResult: (result) async {
+          if (!_isCurrent(generation)) return;
+          ref
+              .read(itemsProvider.notifier)
+              .registerOwnedDiscovery(result.committedItem);
+          await _commit(generation, userId);
+        },
+      );
+    } catch (error, stack) {
+      ref.read(appObservabilityProvider).logError(
+            error,
+            stack,
+            event: 'sync.recovery.failed',
+          );
+    }
   }
 
   Future<void> _commit(int generation, String userId) async {

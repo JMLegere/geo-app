@@ -4,7 +4,8 @@ sequenceDiagram
     autonumber
     actor Explorer
     participant Pack as Pack UI / ItemsNotifier
-    participant Adapter as Item Repositories
+    participant Sync as Local State and Sync
+    participant Adapter as Identification Repository
     participant Commands as Item RPCs
     participant DB as PostgreSQL
 
@@ -24,9 +25,13 @@ sequenceDiagram
     Commands-->>Adapter: Identification plan
     Adapter-->>Pack: Prepared plan
     Explorer->>Pack: Hold to reveal
-    Pack->>Adapter: Commit prepared plan
+    Pack->>Sync: Commit prepared plan
+    Sync->>Sync: Persist exact validated command before dispatch
+    Sync->>Adapter: Dispatch same command identity and plan
     Adapter->>Commands: identify_v3_item with expected identities
     Commands->>DB: Commit first Identification Discovery and Property values
     DB-->>Commands: Identified Item and durable Discovery
-    Commands-->>Adapter: Committed aggregate
-    Adapter-->>Pack: Reload identified Item
+    Commands-->>Adapter: Canonical committed aggregate or idempotent replay
+    Adapter-->>Sync: Canonical result
+    Sync->>Pack: Apply identified Item
+    Sync->>Sync: Persist confirmation, then remove command

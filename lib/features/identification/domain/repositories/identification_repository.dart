@@ -17,3 +17,26 @@ abstract interface class IdentificationRepository {
     String? traceId,
   });
 }
+
+/// Safe transport/authorization classification for durable commit policy.
+///
+/// This deliberately carries no provider message, token, payload, or raw HTTP
+/// response. Unknown failures remain terminal until explicitly classified.
+enum IdentificationFailureKind {
+  network,
+  rateLimited,
+  transientServer,
+  auth,
+  validation,
+  permission,
+  ownership,
+  contract,
+  unknown,
+}
+
+final class IdentificationCommitFailure extends StateError {
+  IdentificationCommitFailure(this.kind)
+    : super('Item Identification commit failed.');
+
+  final IdentificationFailureKind kind;
+}

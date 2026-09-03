@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the current EarthNova C4 architecture diagrams."""
+"""Generate EarthNova's current and approved target C4 architecture diagrams."""
 
 from __future__ import annotations
 
@@ -38,21 +38,30 @@ def outputs() -> dict[str, str]:
     return {
         '01-system-context.mmd': mmd(
             '''
-            flowchart LR
-                explorer["<b>Explorer</b><br/>[Person]<br/>Explores and resolves Encounters using GPS or Desktop Traversal"]
-                operator["<b>Operator</b><br/>[Person]<br/>Publishes, deploys, imports, diagnoses, and monitors"]
-                earthnova["<b>EarthNova</b><br/>[Software System]<br/>Turns Player Position into Visits and Encounters<br/>then exact-version Items, Pack knowledge, Town, and Home"]
+            flowchart TB
+                subgraph players["Player personas"]
+                    direction LR
+                    field["<b>Field Explorer</b><br/>[Person]<br/>Enjoys place-based discovery, nature, and Niantic-style movement"]
+                    cozy["<b>Cozy Cultivator</b><br/>[Person]<br/>Enjoys gentle routines, collecting, Home, and Town relationships"]
+                    progress["<b>Patient Progressor</b><br/>[Person]<br/>Enjoys long-horizon mastery, idle progress, and completion"]
+                    community["<b>Community Regular</b><br/>[Person]<br/>Enjoys shared spaces, light cooperation, and recurring rituals"]
+                end
+                jeremy["<b>Jeremy</b><br/>[Developer and Sole Director]<br/>Designs, builds, operates, and directs EarthNova"]
+                earthnova["<b>EarthNova</b><br/>[Software System]<br/>A cozy real-world game for exploration, collection,<br/>Home, Town, progression, and social systems"]
                 maps["<b>Map and geospatial providers</b><br/>[External Systems]<br/>Serve tiles, glyphs, and geography"]
                 enrichment["<b>Content enrichment providers</b><br/>[External Systems]<br/>Serve language and image APIs to the live legacy queue"]
                 ntfy["<b>ntfy</b><br/>[External System]<br/>Receives pipeline-health summaries"]
 
-                explorer --> earthnova
-                operator --> earthnova
+                field --> earthnova
+                cozy --> earthnova
+                progress --> earthnova
+                community --> earthnova
+                jeremy --> earthnova
                 earthnova --> maps
                 earthnova --> enrichment
                 earthnova --> ntfy
 
-                class explorer,operator person
+                class field,cozy,progress,community,jeremy person
                 class earthnova system
                 class maps,enrichment,ntfy external
                 classDef person fill:#084c61,color:#ffffff,stroke:#063c4d,stroke-width:2px;
@@ -63,26 +72,59 @@ def outputs() -> dict[str, str]:
         ),
         '02-container.mmd': mmd(
             '''
-            flowchart LR
-                explorer["<b>Explorer</b><br/>[Person]<br/>Opens the app and supplies GPS, keyboard, and choices"]
+            flowchart TB
+                player["<b>Player</b><br/>[Person]<br/>Explores, collects, and uses EarthNova"]
                 web["<b>Static Web Host</b><br/>[Container: Railway + nginx]<br/>Serves the versioned Flutter SPA"]
                 client["<b>Flutter Web Client</b><br/>[Container: Flutter + Riverpod + MapLibre]<br/>UI, readiness, canonical position, gameplay slices"]
-                working[("<b>Client Working Set</b><br/>[Container: Browser storage]<br/>Bounded environment-and-Player snapshot")]
+                working[("<b>Local State and Sync</b><br/>[Container: SharedPreferences]<br/>Bounded Client Working Set plus durable Identification recovery")]
                 supabase["<b>Supabase Runtime</b><br/>[Container Group]<br/>Auth, PostgREST, Edge Functions, PostgreSQL/PostGIS, Storage"]
                 maps["<b>Map providers</b><br/>[External Systems]<br/>Tiles and glyphs"]
                 operations["<b>Operational providers</b><br/>[External Systems]<br/>Geography, enrichment, and health APIs"]
 
-                explorer --> web
+                player --> web
                 web --> client
                 client --> working
                 client --> supabase
                 client --> maps
                 supabase --> operations
 
-                class explorer person
+                class player person
                 class web,client,supabase container
                 class working database
                 class maps,operations external
+                classDef person fill:#084c61,color:#ffffff,stroke:#063c4d,stroke-width:2px;
+                classDef container fill:#438dd5,color:#ffffff,stroke:#1d5f9b,stroke-width:2px;
+                classDef database fill:#2f95c8,color:#ffffff,stroke:#1d5f7d,stroke-width:2px;
+                classDef external fill:#e2e8f0,color:#0f172a,stroke:#64748b,stroke-width:2px;
+                linkStyle default stroke:#475569,color:#0f172a,stroke-width:1.5px;
+            '''
+        ),
+        '02c-container-target.mmd': mmd(
+            '''
+            flowchart TB
+                player["<b>Player</b><br/>[Person]<br/>Explores, collects, builds Home, visits Town, and joins social play"]
+                app["<b>Player App</b><br/>[Target responsibility]<br/>Responsive Flutter experience and application use cases"]
+                local[("<b>Local State and Sync</b><br/>[Target responsibility]<br/>Bounded working set, safe pending commands, recovery")]
+                api["<b>Identity and Game API</b><br/>[Target responsibility]<br/>Sessions, owner-bound reads, idempotent commands"]
+                world[("<b>Game World Store</b><br/>[Target responsibility]<br/>Authoritative versioned world and Player state")]
+                background["<b>Background World Services</b><br/>[Target responsibility]<br/>Telemetry, enrichment, processing, health, notifications"]
+                assets[("<b>Asset Delivery</b><br/>[Target responsibility]<br/>Static and generated art delivery")]
+                providers["<b>External providers</b><br/>[External systems]<br/>Maps, geography, language, image, and notification APIs"]
+
+                player --> app
+                app --> local
+                app --> api
+                app --> assets
+                api --> world
+                background --> world
+                background --> assets
+                app --> providers
+                background --> providers
+
+                class player person
+                class app,api,background container
+                class local,world,assets database
+                class providers external
                 classDef person fill:#084c61,color:#ffffff,stroke:#063c4d,stroke-width:2px;
                 classDef container fill:#438dd5,color:#ffffff,stroke:#1d5f9b,stroke-width:2px;
                 classDef database fill:#2f95c8,color:#ffffff,stroke:#1d5f7d,stroke-width:2px;
@@ -102,6 +144,7 @@ def outputs() -> dict[str, str]:
                     api["<b>Data API and RPC Gateway</b><br/>[Container: PostgREST]<br/>RLS projections and authenticated commands"]
                     edge["<b>Edge Functions</b><br/>[Container: Supabase Deno]<br/>Telemetry, scoped writes, provider calls"]
                     db[("<b>Game Database</b><br/>[Container: PostgreSQL + PostGIS]<br/>Production source of truth; v3 and legacy coexist")]
+                    assets[("<b>Asset Delivery</b><br/>[Container: Supabase Storage]<br/>Public static and generated species art")]
 
                     api --> db
                     edge --> db
@@ -110,11 +153,13 @@ def outputs() -> dict[str, str]:
                 client --> auth
                 client --> api
                 client --> edge
+                client --> assets
                 edge --> operations
+                edge --> assets
 
                 class client,operations external
                 class auth,api,edge container
-                class db database
+                class db,assets database
                 classDef container fill:#438dd5,color:#ffffff,stroke:#1d5f9b,stroke-width:2px;
                 classDef database fill:#2f95c8,color:#ffffff,stroke:#1d5f7d,stroke-width:2px;
                 classDef external fill:#e2e8f0,color:#0f172a,stroke:#64748b,stroke-width:2px;
@@ -155,7 +200,7 @@ def outputs() -> dict[str, str]:
                     lifecycle["<b>Application Lifecycle</b><br/>[Component]<br/>Bootstrap, adapter selection, ProviderScope, observability start"]
                     auth_component["<b>Auth and Session</b><br/>[Component]<br/>Normalize phone and call Supabase Auth"]
                     readiness["<b>App Readiness</b><br/>[Component]<br/>Refresh projections and gate startup"]
-                    working[("<b>Working Set Persistence</b><br/>[Component]<br/>Commit/hydrate browser snapshots")]
+                    working[("<b>Local State and Sync</b><br/>[Component]<br/>Commit/hydrate snapshots; persist and replay safe commands")]
                     adapters["<b>Repository Adapters</b><br/>[Component]<br/>Call Supabase reads and commands"]
                     shell["<b>Tab Shell</b><br/>[Component]<br/>Map, Pack, Settings, transitions, wake lock"]
                     observability["<b>Observability</b><br/>[Component]<br/>Flush startup, screen, interaction, error logs/spans"]
@@ -356,7 +401,8 @@ def outputs() -> dict[str, str]:
                 autonumber
                 actor Explorer
                 participant Pack as Pack UI / ItemsNotifier
-                participant Adapter as Item Repositories
+                participant Sync as Local State and Sync
+                participant Adapter as Identification Repository
                 participant Commands as Item RPCs
                 participant DB as PostgreSQL
 
@@ -376,12 +422,16 @@ def outputs() -> dict[str, str]:
                 Commands-->>Adapter: Identification plan
                 Adapter-->>Pack: Prepared plan
                 Explorer->>Pack: Hold to reveal
-                Pack->>Adapter: Commit prepared plan
+                Pack->>Sync: Commit prepared plan
+                Sync->>Sync: Persist exact validated command before dispatch
+                Sync->>Adapter: Dispatch same command identity and plan
                 Adapter->>Commands: identify_v3_item with expected identities
                 Commands->>DB: Commit first Identification Discovery and Property values
                 DB-->>Commands: Identified Item and durable Discovery
-                Commands-->>Adapter: Committed aggregate
-                Adapter-->>Pack: Reload identified Item
+                Commands-->>Adapter: Canonical committed aggregate or idempotent replay
+                Adapter-->>Sync: Canonical result
+                Sync->>Pack: Apply identified Item
+                Sync->>Sync: Persist confirmation, then remove command
             '''
         ),
         '09-dynamic-app-readiness.mmd': mmd(
@@ -392,6 +442,7 @@ def outputs() -> dict[str, str]:
                 participant Auth as Auth Notifier
                 participant Ready as App Readiness Gate
                 participant Cache as Client Working Set
+                participant Sync as Pending Command Queue
                 participant API as Supabase API/RPC
                 participant Shell as Tab Shell
 
@@ -401,17 +452,20 @@ def outputs() -> dict[str, str]:
                 API-->>Auth: Authenticated Player
                 Auth->>Ready: Start readiness
                 Ready->>Cache: Load last bounded snapshot
+                Ready->>Sync: Validate Player/environment queue
                 Cache-->>Ready: Valid snapshot or missing
                 alt valid warm snapshot
                     Ready->>Shell: Hydrate and release usable session
                     Ready->>API: Background refresh
                     API-->>Ready: Refresh result
                     Ready->>Cache: Commit successful refresh
+                    Ready->>Sync: Recover eligible Identification commits
                 else cold start without valid snapshot
                     Ready->>API: Required cold-start fetch
                     API-->>Ready: Cold-start result
                     Ready->>Cache: Commit first valid snapshot
                     Ready->>Shell: Release cold-start session
+                    Ready->>Sync: Recover eligible Identification commits
                 end
                 Shell-->>App: Usable session
                 App-->>Explorer: Render usable session
@@ -491,7 +545,7 @@ def outputs() -> dict[str, str]:
             '''
             # EarthNova C4 Architecture
 
-            > **Role: CURRENT-SCOPED.** These views describe observed current architecture from repository code, executable schema history, accepted ADRs, and current constraints. They do not override `CONTEXT.md`, accepted `docs/adr/`, or a current approved Outcome Contract.
+            > **Role: CURRENT-SCOPED.** Current views describe observed runtime architecture; the separately labeled target view describes approved responsibility boundaries, not separate deployment processes. They do not override `CONTEXT.md`, accepted `docs/adr/`, or a current approved Outcome Contract.
 
             These files are generated, not inferred at runtime. The generator is the single editable architecture model; generated files must not be hand-edited.
 
@@ -499,10 +553,11 @@ def outputs() -> dict[str, str]:
 
             | File | C4 view | Scope |
             |---|---|---|
-            | [`01-system-context.mmd`](01-system-context.mmd) | System Context | People, EarthNova, and external runtime systems |
-            | [`02-container.mmd`](02-container.mmd) | Container | Flutter/Railway/Supabase runtime and data boundaries |
+            | [`01-system-context.mmd`](01-system-context.mmd) | System Context | Four Player personas, Jeremy as Developer and Sole Director, full-product EarthNova scope, and external systems |
+            | [`02-container.mmd`](02-container.mmd) | Current Container | Current Flutter/Railway/Supabase/SharedPreferences runtime and data boundaries |
             | [`02a-container-supabase.mmd`](02a-container-supabase.mmd) | Container | Supabase Auth, PostgREST, Edge Functions, PostgreSQL/PostGIS, and operational providers |
             | [`02b-container-species-art.mmd`](02b-container-species-art.mmd) | Container | Generated-image provider, enrichment Edge Function, Supabase Storage, and public client delivery |
+            | [`02c-container-target.mmd`](02c-container-target.mmd) | Target Container | Six approved software responsibility boundaries; no process or deployment split is implied |
             | [`03-component-flutter-lifecycle.mmd`](03-component-flutter-lifecycle.mmd) | Component | Flutter bootstrap, auth, readiness, persistence, integration, navigation, and observability |
             | [`04-component-flutter-gameplay.mmd`](04-component-flutter-gameplay.mmd) | Component | Map, position, Encounters, Pack, item knowledge, projections, and gateways |
             | [`05-component-supabase-gameplay.mmd`](05-component-supabase-gameplay.mmd) | Component | PostgreSQL/PostGIS gameplay RPC, persistence, versioned-world, knowledge, Item Index, Town, and Venue Visit components |
@@ -515,7 +570,7 @@ def outputs() -> dict[str, str]:
             | [`11-deployment-prod-runtime.mmd`](11-deployment-prod-runtime.mmd) | Deployment | `prod` browser, Railway, Supabase runtime/storage, automation, and providers |
             | [`12-deployment-local-runtime.mmd`](12-deployment-local-runtime.mmd) | Deployment | `local` Flutter Chrome using production data, browser storage, Supabase, and providers |
 
-            This is the complete maintained set of C4 System Context, Container, Component, Dynamic, and Deployment views. Structural and decision views use Mermaid flowcharts with explicit C4 stereotypes and scope labels; sequential Dynamic views use Mermaid sequence diagrams. This avoids the experimental Mermaid C4 renderer's fixed-layout collisions while preserving C4 semantics. Per-class code diagrams are intentionally omitted because the maintained architecture seams are repository interfaces and vertical slices, not individual classes.
+            This is the complete maintained set of **16 diagrams**: System Context, Current and Target Container, Component, Dynamic, and Deployment views. The table above is the review contact sheet and authoritative count. Structural and decision views use Mermaid flowcharts with explicit C4 stereotypes and scope labels; sequential Dynamic views use Mermaid sequence diagrams. This avoids the experimental Mermaid C4 renderer's fixed-layout collisions while preserving C4 semantics. Per-class code diagrams are intentionally omitted because the maintained architecture seams are repository interfaces and vertical slices, not individual classes.
 
             ## Generate
 
@@ -543,7 +598,7 @@ def outputs() -> dict[str, str]:
             - `supabase/migrations/`, `supabase/functions/`, and the Flutter Supabase repository adapters;
             - `Dockerfile`, `nginx.conf`, `.github/workflows/`, `mise.toml`, `features/`, `product/`, and focused tests.
 
-            Historical diagrams and aspirational Motivation/Multiplayer/world-event catalogs were excluded. Legacy tables and enrichment are shown only where live code, migrations, or scheduled functions still use them. The exact bounded-context partition remains deliberately unresolved, so component boundaries follow observed modules and accepted runtime responsibilities rather than asserting a new domain map.
+            Historical diagrams and aspirational Motivation/Multiplayer/world-event catalogs were excluded. Legacy tables and enrichment are shown only where live code, migrations, or scheduled functions still use them. The exact bounded-context partition remains deliberately unresolved, so the target containers are responsibility seams that can remain co-deployed; they do not settle the final domain map.
             '''
         ),
     }

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/desktop_controls_provider.dart';
@@ -209,13 +212,29 @@ class SettingsScreen extends ConsumerWidget {
               actionType: 'confirm_sign_out',
               telemetryOnlyReason:
                   'Sign-out confirmation is account chrome outside the SuperBDD gameplay action catalog.',
-              callback: () {
-                Navigator.of(context).pop();
-                ref.read(authProvider.notifier).signOut();
-              },
+              callback: () => unawaited(_signOut(context, ref)),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    final user = ref.read(authProvider).user;
+    Navigator.of(context).pop();
+    if (user == null) return;
+    final purged = await ref
+        .read(appReadinessProvider.notifier)
+        .purge(user.id);
+    if (purged) {
+      await ref.read(authProvider.notifier).signOut();
+      return;
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Couldn't safely sign out. Try again."),
       ),
     );
   }

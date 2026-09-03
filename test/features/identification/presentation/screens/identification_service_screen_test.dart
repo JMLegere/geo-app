@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show SemanticsAction;
 
+import 'package:earth_nova/app/sync/application/identification_sync_service.dart';
 import 'package:earth_nova/core/domain/content/base_item_content.dart';
 import 'package:earth_nova/core/domain/content/content_identity.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
@@ -295,6 +296,34 @@ void main() {
 
       expect(commitCalls, 2);
       expect(find.text('Identification revealed'), findsOneWidget);
+    });
+
+    testWidgets('queued commit shows non-technical recovery status', (
+      tester,
+    ) async {
+      final item = _examinedItem();
+      await tester.pumpWidget(
+        _serviceHost(
+          item: item,
+          prepare: (_) async => _preparation(item.id),
+          commit: (_) async => throw const IdentificationSyncPending(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Start identification'));
+      await tester.pump();
+      await tester.longPress(find.byKey(const Key('hold-to-reveal')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Identification saved'), findsOneWidget);
+      expect(
+        find.text(
+          'We will finish revealing it when your connection is ready.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('queue'), findsNothing);
+      expect(find.byKey(const Key('hold-to-reveal')), findsNothing);
     });
 
     testWidgets(

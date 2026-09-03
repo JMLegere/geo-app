@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:earth_nova/features/identification/data/repositories/supabase_identification_repository.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
+import 'package:earth_nova/features/identification/domain/repositories/identification_repository.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/plan_item_identification.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 const _itemId = '11111111-1111-4111-8111-111111111111';
 const _playerId = '22222222-2222-4222-8222-222222222222';
@@ -16,6 +20,38 @@ const _committedAt = '2026-07-20T12:01:00.000Z';
 
 void main() {
   group('SupabaseIdentificationRepository', () {
+    test('classifies commit timeouts for durable retry without provider text', () async {
+      final plan = await _plan(await prepareFrom(preparationResponse()));
+      final repository = SupabaseIdentificationRepository(
+        client: null,
+        rpcCaller: (_, __) async => throw TimeoutException('provider secret'),
+      );
+
+      await expectLater(
+        repository.commit(plan),
+        throwsA(
+          isA<IdentificationCommitFailure>()
+              .having((error) => error.kind, 'kind', IdentificationFailureKind.network)
+              .having((error) => error.toString(), 'safe message', isNot(contains('secret'))),
+        ),
+      );
+    });
+
+    test('classifies only explicit PostgREST status families', () {
+      IdentificationFailureKind kind(String code) =>
+          identificationFailureKindFor(
+            PostgrestException(message: 'provider detail', code: code),
+          );
+
+      expect(kind('429'), IdentificationFailureKind.rateLimited);
+      expect(kind('503'), IdentificationFailureKind.transientServer);
+      expect(kind('401'), IdentificationFailureKind.auth);
+      expect(kind('42501'), IdentificationFailureKind.permission);
+      expect(kind('409'), IdentificationFailureKind.validation);
+      expect(kind('23505'), IdentificationFailureKind.contract);
+      expect(kind('unexpected'), IdentificationFailureKind.unknown);
+    });
+
     test('prepares only through the named RPC with exact params', () async {
       late String name;
       late Map<String, dynamic> params;
