@@ -126,6 +126,125 @@ void main() {
     expect(store.commands.single.state, PendingCommandState.retryWait);
   });
 
+  test('existing durable lifecycle states never duplicate dispatch', () async {
+    final plan = testIdentificationPlan();
+    for (final state in const [
+      PendingCommandState.terminal,
+      PendingCommandState.dispatching,
+      PendingCommandState.pausedAuth,
+    ]) {
+      sequence = [];
+      events = [];
+      store = _MemoryCommandStore(sequence)..commands.add(
+        testPendingCommand(state: state),
+      );
+      repository = _RecordingIdentificationRepository(sequence);
+
+      await expectLater(
+        service().commit(
+          plan,
+          playerId: testPlayerId,
+          applyCanonicalResult: (_) async {},
+        ),
+        throwsA(
+          state == PendingCommandState.terminal
+              ? isA<IdentificationSyncTerminal>()
+              : isA<IdentificationSyncPending>(),
+        ),
+      );
+      expect(repository.plans, isEmpty);
+    }
+
+    sequence = [];
+    events = [];
+    store = _MemoryCommandStore(sequence)..commands.add(
+      testPendingCommand(state: PendingCommandState.confirmed),
+    );
+    repository = _RecordingIdentificationRepository(sequence);
+    await expectLater(
+      service().commit(
+        plan,
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<IdentificationSyncPending>()),
+    );
+    expect(store.commands, isEmpty);
+
+    sequence = [];
+    events = [];
+    store = _MemoryCommandStore(sequence)..commands.add(testPendingCommand());
+    repository = _RecordingIdentificationRepository(sequence)
+      ..results.add(testIdentificationResult(plan));
+    await service().commit(
+      plan,
+      playerId: testPlayerId,
+      applyCanonicalResult: (_) async {},
+    );
+    expect(repository.plans, [plan]);
+  });
+
+  test('recovery skips paused states and retains a newly retryable command', () async {
+    store.commands.addAll([
+      testPendingCommand(
+        commandId: 'terminal-command',
+        itemId: 'terminal-item',
+        state: PendingCommandState.terminal,
+      ),
+      testPendingCommand(
+        commandId: 'paused-command',
+        itemId: 'paused-item',
+        state: PendingCommandState.pausedAuth,
+      ),
+    ]);
+
+    expect(
+      await service().recover(
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      isEmpty,
+    );
+    expect(repository.plans, isEmpty);
+
+    store.commands.add(
+      testPendingCommand(commandId: 'pending-command', itemId: 'pending-item'),
+    );
+    repository.errors.add(
+      IdentificationCommitFailure(IdentificationFailureKind.network),
+    );
+    expect(
+      await service().recover(
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+        forceEligible: true,
+      ),
+      isEmpty,
+    );
+    expect(
+      store.commands.singleWhere(
+        (command) => command.commandId == 'pending-command',
+      ).state,
+      PendingCommandState.retryWait,
+    );
+  });
+
+  test('commit rejects blank and cross-Player ownership before enqueue', () async {
+    final plan = testIdentificationPlan();
+    for (final playerId in ['', 'player-2']) {
+      await expectLater(
+        service().commit(
+          plan,
+          playerId: playerId,
+          applyCanonicalResult: (_) async {},
+        ),
+        throwsA(isA<IdentificationSyncTerminal>()),
+      );
+    }
+    expect(store.commands, isEmpty);
+    expect(repository.plans, isEmpty);
+  });
+
   test('a same-key different plan is persisted as terminal', () async {
     store.commands.add(testPendingCommand());
     final changedPlan = testIdentificationPlan(

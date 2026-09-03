@@ -112,6 +112,82 @@ void main() {
     );
   });
 
+  test('replace and remove preserve explicit command identity', () async {
+    final original = testPendingCommand();
+    await store.enqueue(original);
+    final terminal = original.copyWith(
+      state: PendingCommandState.terminal,
+      lastFailure: SyncFailureKind.contract,
+    );
+
+    await store.replace(terminal);
+    expect(
+      (await store.load(
+        environment: 'local',
+        playerId: testPlayerId,
+        now: DateTime.utc(2026, 9, 2),
+      )).single.state,
+      PendingCommandState.terminal,
+    );
+
+    final missing = testPendingCommand(
+      commandId: 'missing-command',
+      itemId: 'missing-item',
+    );
+    await expectLater(store.replace(missing), throwsArgumentError);
+    await store.remove(missing);
+    expect(preferences.getKeys(), isNotEmpty);
+
+    await store.remove(terminal);
+    expect(preferences.getKeys(), isEmpty);
+  });
+
+  test('rejects mismatched and oversized persisted queue envelopes', () async {
+    final key = 'pending_commands.v1.local.$testPlayerId';
+    Future<void> reject(Map<String, Object?> root, Matcher failure) async {
+      await preferences.setString(key, jsonEncode(root));
+      await expectLater(
+        store.load(
+          environment: 'local',
+          playerId: testPlayerId,
+          now: DateTime.utc(2026, 9, 2),
+        ),
+        throwsA(failure),
+      );
+      expect(preferences.containsKey(key), isFalse);
+    }
+
+    await reject(
+      {
+        'version': 2,
+        'environment': 'local',
+        'playerId': testPlayerId,
+        'commands': const [],
+      },
+      isA<QueueCorruptFailure>(),
+    );
+    await reject(
+      {
+        'version': 1,
+        'environment': 'prod',
+        'playerId': testPlayerId,
+        'commands': const [],
+      },
+      isA<QueueCorruptFailure>(),
+    );
+
+    await preferences.setString(key, List.filled(256 * 1024 + 1, 'x').join());
+    await expectLater(
+      store.load(
+        environment: 'local',
+        playerId: testPlayerId,
+        now: DateTime.utc(2026, 9, 2),
+      ),
+      throwsA(isA<QueueBoundFailure>()),
+    );
+    expect(preferences.containsKey(key), isFalse);
+  });
+
   test('round trips terminal, auth-paused, and confirmed lifecycle states', () async {
     await store.enqueue(
       testPendingCommand(
