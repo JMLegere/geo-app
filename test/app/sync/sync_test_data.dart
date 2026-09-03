@@ -104,6 +104,9 @@ PendingCommand testPendingCommand({
   String environment = 'local',
   PendingCommandState state = PendingCommandState.pending,
   int attemptCount = 0,
+  DateTime? enqueuedAt,
+  DateTime? nextEligibleAttemptAt,
+  SyncFailureKind? lastFailure,
 }) =>
     PendingCommand(
       schemaVersion: PendingCommand.currentSchemaVersion,
@@ -116,7 +119,9 @@ PendingCommand testPendingCommand({
       ),
       environment: environment,
       playerId: playerId,
-      enqueuedAt: DateTime.utc(2026, 9, 1),
+      enqueuedAt: enqueuedAt ?? DateTime.utc(2026, 9, 1),
       attemptCount: attemptCount,
+      nextEligibleAttemptAt: nextEligibleAttemptAt,
+      lastFailure: lastFailure,
       state: state,
     );

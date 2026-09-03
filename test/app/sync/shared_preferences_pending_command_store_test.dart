@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:earth_nova/app/sync/data/shared_preferences_pending_command_store.dart';
 import 'package:earth_nova/app/sync/domain/pending_command.dart';
 import 'package:earth_nova/app/sync/domain/pending_command_store.dart';
@@ -69,6 +71,28 @@ void main() {
     );
 
     expect(loaded.single.state, PendingCommandState.pending);
+  });
+
+  test('round trips retry timing and safe failure classification', () async {
+    final eligibleAt = DateTime.utc(2026, 9, 2, 0, 5);
+    await store.enqueue(
+      testPendingCommand(
+        state: PendingCommandState.retryWait,
+        attemptCount: 3,
+        nextEligibleAttemptAt: eligibleAt,
+        lastFailure: SyncFailureKind.rateLimited,
+      ),
+    );
+
+    final loaded = await store.load(
+      environment: 'local',
+      playerId: testPlayerId,
+      now: DateTime.utc(2026, 9, 2),
+    );
+
+    expect(loaded.single.attemptCount, 3);
+    expect(loaded.single.nextEligibleAttemptAt, eligibleAt);
+    expect(loaded.single.lastFailure, SyncFailureKind.rateLimited);
   });
 
   test('rejects an oversized payload and preserves the last queue', () async {
@@ -151,6 +175,41 @@ void main() {
     expect(preferences.containsKey(key), isFalse);
   });
 
+  test('removes a queue timestamped implausibly in the future', () async {
+    await store.enqueue(
+      testPendingCommand(enqueuedAt: DateTime.utc(2026, 9, 4)),
+    );
+
+    await expectLater(
+      store.load(
+        environment: 'local',
+        playerId: testPlayerId,
+        now: DateTime.utc(2026, 9, 2),
+      ),
+      throwsA(isA<QueueBoundFailure>()),
+    );
+    expect(preferences.getKeys(), isEmpty);
+  });
+
+  test('rejects unknown scopes and a non-UTC load clock', () async {
+    await expectLater(
+      store.load(
+        environment: 'beta',
+        playerId: testPlayerId,
+        now: DateTime.utc(2026, 9, 2),
+      ),
+      throwsArgumentError,
+    );
+    await expectLater(
+      store.load(
+        environment: 'local',
+        playerId: testPlayerId,
+        now: DateTime(2026, 9, 2),
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('purges current and prior queue versions for one owner only', () async {
     await store.enqueue(testPendingCommand());
     await preferences.setString(
@@ -167,4 +226,3 @@ void main() {
     );
   });
 }
-import 'dart:convert';

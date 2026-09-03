@@ -238,6 +238,81 @@ void main() {
     expect(repository.plans, isEmpty);
   });
 
+  test('future retry waits and schedules without dispatching', () async {
+    final scheduled = <Duration>[];
+    store.commands.add(
+      testPendingCommand(
+        state: PendingCommandState.retryWait,
+        nextEligibleAttemptAt: DateTime.utc(2026, 9, 2, 0, 1),
+        lastFailure: SyncFailureKind.network,
+      ),
+    );
+    final sync = IdentificationSyncService(
+      environment: 'local',
+      store: store,
+      repository: repository,
+      retryPolicy: const SyncRetryPolicy(jitterFraction: 0),
+      now: () => DateTime.utc(2026, 9, 2),
+      commandId: () => 'durable-command-1',
+      jitterUnit: () => 0.5,
+      logEvent: (event, _, {data}) => events.add(event),
+      scheduleRetry: (delay, _) {
+        scheduled.add(delay);
+        return _FakeTimer();
+      },
+    );
+
+    expect(
+      await sync.recover(
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      isEmpty,
+    );
+
+    expect(scheduled, [const Duration(minutes: 1)]);
+    expect(repository.plans, isEmpty);
+  });
+
+  test('queue bound and corruption failures emit safe diagnostics', () async {
+    store.enqueueError = const QueueBoundFailure();
+    await expectLater(
+      service().commit(
+        testIdentificationPlan(),
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<QueueBoundFailure>()),
+    );
+    expect(events, contains('sync.queue.bound_exceeded'));
+    expect(events, contains('sync.command.enqueue_rejected'));
+
+    events.clear();
+    store.enqueueError = null;
+    store.loadError = const QueueCorruptFailure();
+    await expectLater(
+      service().recover(
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<QueueCorruptFailure>()),
+    );
+    expect(events, contains('sync.queue.corrupt_removed'));
+    expect(events, contains('sync.queue.load_failed'));
+  });
+
+  test('disposed service refuses new serialized work', () async {
+    final sync = service()..dispose();
+
+    await expectLater(
+      sync.recover(
+        playerId: testPlayerId,
+        applyCanonicalResult: (_) async {},
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test('wrong Player cannot load or dispatch another Player command', () async {
     store.commands.add(testPendingCommand());
 
@@ -313,9 +388,13 @@ final class _MemoryCommandStore implements PendingCommandStore {
 
   final List<String> sequence;
   final List<PendingCommand> commands = [];
+  Object? enqueueError;
+  Object? loadError;
 
   @override
   Future<void> enqueue(PendingCommand command) async {
+    final error = enqueueError;
+    if (error != null) throw error;
     sequence.add('enqueue');
     commands.add(command);
   }
@@ -325,7 +404,11 @@ final class _MemoryCommandStore implements PendingCommandStore {
     required String environment,
     required String playerId,
     required DateTime now,
-  }) async => List.unmodifiable(commands);
+  }) async {
+    final error = loadError;
+    if (error != null) throw error;
+    return List.unmodifiable(commands);
+  }
 
   @override
   Future<void> remove(PendingCommand command) async {

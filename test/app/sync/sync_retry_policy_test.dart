@@ -44,5 +44,33 @@ void main() {
       expect(policy.delayForAttempt(2, jitterUnit: 0.5), const Duration(seconds: 4));
       expect(policy.delayForAttempt(20, jitterUnit: 0.5), const Duration(minutes: 5));
     });
+
+    test('rejects invalid attempt and jitter inputs', () {
+      expect(
+        () => policy.delayForAttempt(0, jitterUnit: 0.5),
+        throwsArgumentError,
+      );
+      for (final jitter in [-0.1, 1.1, double.nan]) {
+        expect(
+          () => policy.delayForAttempt(1, jitterUnit: jitter),
+          throwsArgumentError,
+        );
+      }
+    });
+
+    test('every permanent classification remains terminal', () {
+      for (final kind in const [
+        IdentificationFailureKind.validation,
+        IdentificationFailureKind.permission,
+        IdentificationFailureKind.ownership,
+        IdentificationFailureKind.contract,
+        IdentificationFailureKind.unknown,
+      ]) {
+        expect(
+          policy.classify(IdentificationCommitFailure(kind)),
+          SyncFailureDisposition.terminal,
+        );
+      }
+    });
   });
 }
