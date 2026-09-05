@@ -4,6 +4,7 @@
   "type": "commonjs",
   "scripts": {
     "superbdd:cucumber": "cucumber-js --config cucumber.mjs",
+    "spec:ui596:check": "node --test test/specifications/ui596_contract.test.cjs && node scripts/validate-ui596-spec.cjs",
     "eac:collect-ui-actions": "dart run tool/eac_collect_ui_actions.dart",
     "eac:check": "npm run eac:collect-ui-actions && eac check"
   },
