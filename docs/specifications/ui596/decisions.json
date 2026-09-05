@@ -1,0 +1,1760 @@
+{
+  "schema_version": 1,
+  "issue": "https://github.com/JMLegere/geo-app/issues/596",
+  "answer_sheet": "https://github.com/JMLegere/geo-app/issues/596#issuecomment-5554192054",
+  "base_commit": "f96a841b4eba5468ee9c0958b36c52d67c60b3b7",
+  "scope": "BDD encoding only; solution-direction interview follows; no phased implementation plan",
+  "questions": [
+    {
+      "answer": "Keep search, sort, and filter together above the grid; preserve visible category browsing and usable text-search width.",
+      "basis": "V+B",
+      "id": "Q001",
+      "question": "Toolbar arrangement — previously skipped",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Use the reference’s light inset search field with dark text/icon, via palette roles.",
+      "basis": "V",
+      "id": "Q002",
+      "question": "Search-field contrast — unanswered",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Let search take the space left by compact sort/filter controls; do not copy a fixed screenshot percentage if it impairs typing.",
+      "basis": "V",
+      "id": "Q003",
+      "question": "Search-field width",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Place the search icon at the right edge, matching the reference.",
+      "basis": "V",
+      "id": "Q004",
+      "question": "Search-icon position",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Use “Search Pack…”; explicitly show the current category/all-Pack scope.",
+      "basis": "B",
+      "id": "Q005",
+      "question": "Search placeholder wording",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-014"
+      ]
+    },
+    {
+      "answer": "Use bold search-field text, consistent with the reference and approved typography.",
+      "basis": "V",
+      "id": "Q006",
+      "question": "Search-field text weight",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Filter client-resident results as the Player types; debounce only expensive work without delaying meaningful local feedback.",
+      "basis": "B",
+      "id": "Q007",
+      "question": "Search submission",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-014"
+      ]
+    },
+    {
+      "answer": "Search the current category by default, with an explicit all-Pack scope option; never silently change scope.",
+      "basis": "B",
+      "id": "Q008",
+      "question": "Search scope",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-014"
+      ]
+    },
+    {
+      "answer": "Show an in-field clear control when text is present.",
+      "basis": "B",
+      "id": "Q009",
+      "question": "Clearing search",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-014"
+      ]
+    },
+    {
+      "answer": "Show the active sort property as text, matching the reference.",
+      "basis": "V",
+      "id": "Q010",
+      "question": "Sort-control presentation",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Use a separate sort-direction button next to the property.",
+      "basis": "V",
+      "id": "Q011",
+      "question": "Sort-direction control",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Use a filled direction triangle, matching the reference.",
+      "basis": "V",
+      "id": "Q012",
+      "question": "Sort-direction symbol",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Use an anchored sorting menu; selecting a sort immediately updates the view.",
+      "basis": "B",
+      "id": "Q013",
+      "question": "Sorting-menu layout",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-016"
+      ]
+    },
+    {
+      "answer": "Use the reference’s adjustment-sliders filter icon.",
+      "basis": "V",
+      "id": "Q014",
+      "question": "Filter-control icon",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    },
+    {
+      "answer": "Use a bottom sheet for filters, retaining the underlying Pack context.",
+      "basis": "B",
+      "id": "Q015",
+      "question": "Filter-panel layout",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-017"
+      ]
+    },
+    {
+      "answer": "Apply reversible filters immediately, without an extra Apply step.",
+      "basis": "B",
+      "id": "Q016",
+      "question": "Applying filters",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-017"
+      ]
+    },
+    {
+      "answer": "Show an active-filter count on the button and a clear/reset route in the filter sheet.",
+      "basis": "B",
+      "id": "Q017",
+      "question": "Active-filter indication",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-017"
+      ]
+    },
+    {
+      "answer": "Show a compact result count beneath the retrieval controls, avoiding a grid-obscuring overlay; retrieval and attention are the primary jobs.",
+      "basis": "F+B",
+      "id": "Q018",
+      "question": "Collection-result count",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-013"
+      ]
+    },
+    {
+      "answer": "Count matching owned Items against the applicable owned Pack total; keep discovered-entry completion semantics in Index.",
+      "basis": "F",
+      "id": "Q019",
+      "question": "Meaning of the collection count",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-013"
+      ]
+    },
+    {
+      "answer": "Use shared-scale outer gutters; preserve at least 44px targets and five columns rather than blindly copying screenshot margins.",
+      "basis": "V",
+      "id": "Q020",
+      "question": "Grid outer margins",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Use tight, consistent card gaps like the reference.",
+      "basis": "V",
+      "id": "Q021",
+      "question": "Grid gap size",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Use portrait cards with dedicated artwork and property regions; calibrate their height at actual iPhone size.",
+      "basis": "V",
+      "id": "Q022",
+      "question": "Pack-card proportions",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Use small rounded card corners consistent with the approved panels.",
+      "basis": "V",
+      "id": "Q023",
+      "question": "Pack-card corner shape",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Use a clear tier frame, visually substantial but thinner than a main-panel bevel.",
+      "basis": "V",
+      "id": "Q024",
+      "question": "Pack-card border thickness",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Existing rarity/tier owns the strongest persistent card accent, where applicable; propose neutral framing where none exists.",
+      "basis": "F",
+      "id": "Q025",
+      "question": "Meaning of Pack-card border color",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-005",
+        "UI596-051"
+      ]
+    },
+    {
+      "answer": "Use quiet shaded card backgrounds; no habitat vignette that competes with the small animal artwork.",
+      "basis": "F+V",
+      "id": "Q026",
+      "question": "Pack-card background treatment",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Use a thin raised card edge and small shadow, matching the reference.",
+      "basis": "V",
+      "id": "Q027",
+      "question": "Pack-card depth",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Prioritize artwork over secondary badges; separately trial 12px/16px square animal icons without treating either as the adopted default.",
+      "basis": "F",
+      "id": "Q028",
+      "question": "Artwork occupancy",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044",
+        "UI596-045"
+      ]
+    },
+    {
+      "answer": "Optically center artwork to preserve the recognizable silhouette.",
+      "basis": "F+V",
+      "id": "Q029",
+      "question": "Artwork positioning",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044"
+      ]
+    },
+    {
+      "answer": "Normalize each illustration for recognition rather than preserving real-world relative body size.",
+      "basis": "F+V",
+      "id": "Q030",
+      "question": "Artwork scale across Items",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044"
+      ]
+    },
+    {
+      "answer": "Choose the most recognizable species/type view; exaggerate real distinguishing features.",
+      "basis": "F+V",
+      "id": "Q031",
+      "question": "Artwork perspective",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044"
+      ]
+    },
+    {
+      "answer": "For small animal trials, simplify colors while preserving distinctive real features. Do not infer a mandatory pixel-art style.",
+      "basis": "F",
+      "id": "Q032",
+      "question": "Artwork rendering finish",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044"
+      ]
+    },
+    {
+      "answer": "Use clear outlines for small animal icons; measure thickness in the visual trial.",
+      "basis": "F",
+      "id": "Q033",
+      "question": "Artwork outline strength",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044",
+        "UI596-045"
+      ]
+    },
+    {
+      "answer": "Use consistent upper-side lighting, with restrained highlights so tiny artwork remains readable.",
+      "basis": "V",
+      "id": "Q034",
+      "question": "Artwork lighting",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044"
+      ]
+    },
+    {
+      "answer": "Let artwork float against its quiet card field, matching the reference.",
+      "basis": "V",
+      "id": "Q035",
+      "question": "Artwork grounding",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044"
+      ]
+    },
+    {
+      "answer": "Unknown artwork is the actual icon rendered as a solid black silhouette; Unknown is Player × stable Base Item inspection knowledge.",
+      "basis": "F",
+      "id": "Q036",
+      "question": "Unidentified artwork",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-021",
+        "UI596-022"
+      ]
+    },
+    {
+      "answer": "Use an Unknown corner ribbon informed by IMG_1314, alongside the explicitly approved black silhouette. Derive ribbon geometry from the reference through V.",
+      "basis": "V",
+      "id": "Q037",
+      "question": "Unidentified badge",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-005",
+        "UI596-022"
+      ]
+    },
+    {
+      "answer": "Use the existing Base-Item Unknown mechanic and label only. Apply a compact reference-style Unknown ribbon alongside the black silhouette; create no separate per-Item New marker.",
+      "basis": "F (final naming decision)",
+      "id": "Q038",
+      "question": "New-Item badge",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-021"
+      ]
+    },
+    {
+      "answer": "Place the Unknown ribbon at the upper-left edge, matching the reference ribbon geometry. The original New label in this question title is superseded.",
+      "basis": "V",
+      "id": "Q039",
+      "question": "New-Item badge placement",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-005",
+        "UI596-021"
+      ]
+    },
+    {
+      "answer": "Unknown clears after this Player first inspects the stable Base Item, across all its owned and future Item instances. There is no second New clearing event.",
+      "basis": "F (final naming decision)",
+      "id": "Q040",
+      "question": "When “New” clears",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-021"
+      ]
+    },
+    {
+      "answer": "Put the small category icon in a fixed lower artwork corner, leaving the main ribbon position free.",
+      "basis": "V",
+      "id": "Q041",
+      "question": "Category-badge placement",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-005"
+      ]
+    },
+    {
+      "answer": "Use ribbon/tab treatment for status labels and shaded outlined symbols for category/property icons, derived from the reference grammar.",
+      "basis": "V",
+      "id": "Q042",
+      "question": "Badge treatment",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-005"
+      ]
+    },
+    {
+      "answer": "Move less-important badges into inspection before shrinking artwork. Unknown/attention takes priority over redundant category badges when crowded; eliminate duplicate New indicators.",
+      "basis": "F",
+      "id": "Q043",
+      "question": "Badge crowding",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-005"
+      ]
+    },
+    {
+      "answer": "Use one compact, bold text line for the property strip.",
+      "basis": "V",
+      "id": "Q044",
+      "question": "Property-strip height",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Relate the strip’s surface to the tier frame while retaining readable semantic text contrast.",
+      "basis": "V",
+      "id": "Q045",
+      "question": "Property-strip contrast",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Use a short property label plus value, matching the reference. Keep the same property within each category; consider icon/value only if the five-column visual trial demonstrates a need.",
+      "basis": "V",
+      "id": "Q046",
+      "question": "Property formatting in the Pack",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004"
+      ]
+    },
+    {
+      "answer": "Start with one fixed existing property per category that expresses natural differences. Actual schema-grounded mapping is evidence work, not permission to invent properties.",
+      "basis": "F",
+      "id": "Q047",
+      "question": "Which property each category displays",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-050"
+      ]
+    },
+    {
+      "answer": "Show “?” for a value not yet revealed; do not show unrolled or hidden values.",
+      "basis": "F+V",
+      "id": "Q048",
+      "question": "Missing or unrevealed property values",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-023",
+        "UI596-050"
+      ]
+    },
+    {
+      "answer": "Include card progress only where a defined requirement materially helps identify an available action; do not import a progress system solely to match the screenshot.",
+      "basis": "F",
+      "id": "Q049",
+      "question": "Progress bars on Pack cards",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-051",
+        "UI596-052"
+      ]
+    },
+    {
+      "answer": "Use a subtle surface/lift cue plus a selection edge distinct from the persistent tier accent.",
+      "basis": "V",
+      "id": "Q050",
+      "question": "Selected-card treatment",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-005"
+      ]
+    },
+    {
+      "answer": "Place category controls directly above the grid and adjacent to search/filter controls.",
+      "basis": "F+V",
+      "id": "Q051",
+      "question": "Category-switcher placement",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Use separate beveled illustrated category-icon buttons, drawing from the reference’s navigation-button grammar.",
+      "basis": "V",
+      "id": "Q052",
+      "question": "Category-switcher container",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Use a brighter face and selection border for the active category.",
+      "basis": "V",
+      "id": "Q053",
+      "question": "Selected-category indication",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Keep empty categories visible and openable, with a clear empty-state explanation.",
+      "basis": "B",
+      "id": "Q054",
+      "question": "Empty categories",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-013"
+      ]
+    },
+    {
+      "answer": "Keep category counts secondary; show them with Help labels rather than adding permanent badge clutter.",
+      "basis": "F+V",
+      "id": "Q055",
+      "question": "Category counts",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Remember position separately for each category and restore it on return; ordinary navigation is not an implicit reset.",
+      "basis": "B",
+      "id": "Q056",
+      "question": "Scroll-position memory",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-018"
+      ]
+    },
+    {
+      "answer": "Use a narrow scrollbar track and highlighted thumb, matching the reference; avoid displacing required card width.",
+      "basis": "V",
+      "id": "Q057",
+      "question": "Collection scrollbar",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-019"
+      ]
+    },
+    {
+      "answer": "Clip the grid cleanly at its viewport edges, with no decorative fade over readable information.",
+      "basis": "V",
+      "id": "Q058",
+      "question": "Scroll-edge treatment",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-019"
+      ]
+    },
+    {
+      "answer": "Keep balance/progression and navigation visible; let the ribbon scroll away; retain compact retrieval/category access while browsing.",
+      "basis": "F+B",
+      "id": "Q059",
+      "question": "Controls that stay visible while scrolling",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-019"
+      ]
+    },
+    {
+      "answer": "Add a secondary collection tab only for a distinct defined EarthNova view; do not invent Relics or merge Pack and Index.",
+      "basis": "F",
+      "id": "Q060",
+      "question": "Secondary collection tabs",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-013",
+        "UI596-051"
+      ]
+    },
+    {
+      "answer": "Use individually beveled navigation buttons, matching the reference.",
+      "basis": "V",
+      "id": "Q061",
+      "question": "Navigation-button containers",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Use substantial illustrated navigation icons; do not apply the animal-only 12–16px experiment to navigation.",
+      "basis": "F+V",
+      "id": "Q062",
+      "question": "Navigation-icon size",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Use a brighter face and border for selected navigation, matching the reference.",
+      "basis": "V",
+      "id": "Q063",
+      "question": "Navigation selection treatment",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Use a compact attention badge only for a meaningful outstanding state; do not create pressure or clear it merely on sight.",
+      "basis": "V+B",
+      "id": "Q064",
+      "question": "Navigation notification badge",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Place Help at an end of the navigation area with an adequate tap target.",
+      "basis": "V",
+      "id": "Q065",
+      "question": "Help-control placement",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Reveal labels beneath the navigation icons when Help is active.",
+      "basis": "F+V",
+      "id": "Q066",
+      "question": "Temporary navigation-label placement",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006"
+      ]
+    },
+    {
+      "answer": "Keep Help labels visible until the Player dismisses Help or selects a destination; no arbitrary timeout.",
+      "basis": "B",
+      "id": "Q067",
+      "question": "When Help labels disappear",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-030"
+      ]
+    },
+    {
+      "answer": "Use compact dark resource capsules, matching the reference.",
+      "basis": "V",
+      "id": "Q068",
+      "question": "Resource-counter containers",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-007"
+      ]
+    },
+    {
+      "answer": "Use bold readable numerals in the agreed compact, stable balance/progression strip.",
+      "basis": "F+V",
+      "id": "Q069",
+      "question": "Resource-counter typography",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-007"
+      ]
+    },
+    {
+      "answer": "Use full digits without grouping separators as shown in the reference; calibrate fit before adopting abbreviations, and make the exact balance available if abbreviation becomes necessary.",
+      "basis": "V",
+      "id": "Q070",
+      "question": "Large-number formatting",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-007"
+      ]
+    },
+    {
+      "answer": "Place the resource icon after the amount, reusing the already approved action-cost convention.",
+      "basis": "F+V",
+      "id": "Q071",
+      "question": "Resource-counter icon order",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-007"
+      ]
+    },
+    {
+      "answer": "Let the counter open details and any already-defined acquisition actions; omit unsupported plus/purchase controls.",
+      "basis": "B",
+      "id": "Q072",
+      "question": "Resource acquisition shortcut",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-031",
+        "UI596-052"
+      ]
+    },
+    {
+      "answer": "Present applicable existing Discipline progression compactly; do not invent a universal Player level.",
+      "basis": "F",
+      "id": "Q073",
+      "question": "Player-level display",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-051",
+        "UI596-052"
+      ]
+    },
+    {
+      "answer": "Where a level badge applies, use a faceted hexagonal treatment from the reference.",
+      "basis": "V",
+      "id": "Q074",
+      "question": "Player-level badge shape",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-007"
+      ]
+    },
+    {
+      "answer": "Use a compact safe-area-aware top strip, not the screenshot’s unused top space.",
+      "basis": "F+V",
+      "id": "Q075",
+      "question": "Top-bar height",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-007"
+      ]
+    },
+    {
+      "answer": "Place a concise identity/category row beside the artwork; prioritize natural distinguishing characteristics and keep unknown data hidden.",
+      "basis": "F+V",
+      "id": "Q076",
+      "question": "Inspection secondary identity details",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-008"
+      ]
+    },
+    {
+      "answer": "Wrap secondary metadata onto additional lines; do not horizontally scroll or shrink every metadata field.",
+      "basis": "B",
+      "id": "Q077",
+      "question": "Inspection metadata overflow",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-027"
+      ]
+    },
+    {
+      "answer": "Start near one-quarter of the inspection’s inner width for the reused card; validate alongside long single-line names.",
+      "basis": "V",
+      "id": "Q078",
+      "question": "Inspection artwork size",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-008"
+      ]
+    },
+    {
+      "answer": "Use generous shared outer panel padding and tighter spacing within related sections.",
+      "basis": "V",
+      "id": "Q079",
+      "question": "Inspection content padding",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-008"
+      ]
+    },
+    {
+      "answer": "Use a large dark × as approved, with an invisible hit area at least 44px.",
+      "basis": "F+V",
+      "id": "Q080",
+      "question": "Close-control size",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-008"
+      ]
+    },
+    {
+      "answer": "A backdrop tap dismisses inspection and restores context as a reversible in-place interaction default. It never cancels an already-submitted authoritative mutation.",
+      "basis": "B",
+      "id": "Q081",
+      "question": "Closing through the backdrop",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-025",
+        "UI596-026"
+      ]
+    },
+    {
+      "answer": "Scroll long inspection content while keeping Close and the action footer fixed and reachable; reserve content padding so the footer does not cover the final content.",
+      "basis": "B",
+      "id": "Q082",
+      "question": "Long inspection content",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-027"
+      ]
+    },
+    {
+      "answer": "Use a short fade with slight scale-up; never gate input behind the animation.",
+      "basis": "F+B",
+      "id": "Q083",
+      "question": "Inspection opening motion",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-025"
+      ]
+    },
+    {
+      "answer": "Use a shorter fade to close, without delaying the requested navigation.",
+      "basis": "F+B",
+      "id": "Q084",
+      "question": "Inspection closing motion",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-025"
+      ]
+    },
+    {
+      "answer": "Prefer meaningful short stat labels. If no accurate short label fits, wrap to a second line; do not transfer the special Item-name shrinking rule to stat labels.",
+      "basis": "B",
+      "id": "Q085",
+      "question": "Long stat labels",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-027"
+      ]
+    },
+    {
+      "answer": "Keep the primary value readable and move secondary units/rates onto a second line. If still overflowing, expose precise expanded detail; do not silently truncate a consequential value.",
+      "basis": "B",
+      "id": "Q086",
+      "question": "Long stat values and units",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-027"
+      ]
+    },
+    {
+      "answer": "Use a stable category-specific stat order emphasizing natural differences; do not introduce a strongest-stat ranking.",
+      "basis": "F",
+      "id": "Q087",
+      "question": "Stat ordering",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-050"
+      ]
+    },
+    {
+      "answer": "Distinguish unrevealed (“?”) from inapplicable (omitted); reserve layout consistently among comparable Items.",
+      "basis": "F+B",
+      "id": "Q088",
+      "question": "Unknown or inapplicable inspection stats",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-023",
+        "UI596-050"
+      ]
+    },
+    {
+      "answer": "Use tabular numerals for aligned numeric comparisons, while keeping the rounded type style.",
+      "basis": "V",
+      "id": "Q089",
+      "question": "Numeral widths",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-010"
+      ]
+    },
+    {
+      "answer": "Use a subtle dark shadow for bold description text rather than copying the title’s heavy outline everywhere.",
+      "basis": "V",
+      "id": "Q090",
+      "question": "Description-text edge treatment",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-011"
+      ]
+    },
+    {
+      "answer": "Use tight but collision-free line height sized for the approved slightly taller inline icons.",
+      "basis": "V",
+      "id": "Q091",
+      "question": "Description line height",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-011"
+      ]
+    },
+    {
+      "answer": "Use an anchored contextual legend from the information control, with current-panel symbols and a Full glossary route; expand to a sheet when space requires it while preserving Item context.",
+      "basis": "B",
+      "id": "Q092",
+      "question": "Legend presentation",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-029"
+      ]
+    },
+    {
+      "answer": "Explain current symbols first, with access to the full glossary.",
+      "basis": "F",
+      "id": "Q093",
+      "question": "Legend contents",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-029"
+      ]
+    },
+    {
+      "answer": "Use current/requirement for known count requirements; use the metric appropriate to an existing progression mechanic rather than importing one.",
+      "basis": "F+V",
+      "id": "Q094",
+      "question": "Progress-number format",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012",
+        "UI596-052"
+      ]
+    },
+    {
+      "answer": "Keep completed progress full and show the completed fraction; add an accessible completion cue where needed. Do not auto-execute the next action.",
+      "basis": "V+B",
+      "id": "Q095",
+      "question": "Completed-progress appearance",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012"
+      ]
+    },
+    {
+      "answer": "Use a semantic positive-emphasis heading for the existing outcome preview, as in the reference.",
+      "basis": "V",
+      "id": "Q096",
+      "question": "Outcome-preview emphasis",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012"
+      ]
+    },
+    {
+      "answer": "Use the design-system primary-action fill for available main actions.",
+      "basis": "V",
+      "id": "Q097",
+      "question": "Available primary-button emphasis",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012"
+      ]
+    },
+    {
+      "answer": "Use a quieter semantic fill for secondary actions while preserving the approved equal width and beveled geometry.",
+      "basis": "V",
+      "id": "Q098",
+      "question": "Secondary-button emphasis",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012"
+      ]
+    },
+    {
+      "answer": "Explain an unavailable action inline beside/above its action area, keeping the Item visible.",
+      "basis": "B",
+      "id": "Q099",
+      "question": "Unavailable-action explanation",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-032"
+      ]
+    },
+    {
+      "answer": "Keep button dimensions stable, add a spinner/status, and prevent duplicate submission; pending is not success.",
+      "basis": "B",
+      "id": "Q100",
+      "question": "Action processing state",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-026",
+        "UI596-034"
+      ]
+    },
+    {
+      "answer": "Identification success briefly highlights newly revealed properties. Use local in-place feedback as the derived default for other outcomes, subject to their defined result semantics.",
+      "basis": "F+B",
+      "id": "Q101",
+      "question": "Action-result feedback placement",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-034",
+        "UI596-035"
+      ]
+    },
+    {
+      "answer": "Keep a valid loaded Pack visible during refresh with a small progress/status indicator; use a matching initial skeleton only when no usable content is available.",
+      "basis": "B",
+      "id": "Q102",
+      "question": "Loading presentation",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-039",
+        "UI596-040"
+      ]
+    },
+    {
+      "answer": "Show a small contextual empty illustration, concise explanation, and an applicable next action; never invent an action.",
+      "basis": "B",
+      "id": "Q103",
+      "question": "Empty Pack presentation",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-041"
+      ]
+    },
+    {
+      "answer": "Show no-match explanation, active constraints, and a clear/reset route without presenting a network error.",
+      "basis": "B",
+      "id": "Q104",
+      "question": "No search/filter results",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-041"
+      ]
+    },
+    {
+      "answer": "Show a local notice and Retry while usable content remains; use the required blocking recovery state only when no valid working set supports entry.",
+      "basis": "B",
+      "id": "Q105",
+      "question": "Error presentation",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-039",
+        "UI596-040"
+      ]
+    },
+    {
+      "answer": "Stagger subtle idle motion among only a few visible Items at once; preserve the approved living-art effect without simultaneous distraction.",
+      "basis": "F+B",
+      "id": "Q106",
+      "question": "Idle-motion coordination",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-046"
+      ]
+    },
+    {
+      "answer": "With reduced motion, use still artwork and minimal essential progress feedback; suppress decorative transforms and highlight travel.",
+      "basis": "B",
+      "id": "Q107",
+      "question": "Reduced-motion treatment",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-047"
+      ]
+    },
+    {
+      "answer": "Honor larger text with more height/scrolling and preserved touch targets. Retain five columns by default; any alternate density needs explicit review. Preserve the accepted single-line Item-name shrink exception.",
+      "basis": "F+B",
+      "id": "Q108",
+      "question": "Larger-text accommodation",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-048"
+      ]
+    },
+    {
+      "answer": "Use the existing shared spacing vocabulary and calibrate a small named scale in the iPhone prototype; avoid independent per-screen values.",
+      "basis": "V",
+      "id": "Q109",
+      "question": "Exact spacing-token scale",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-045",
+        "UI596-049"
+      ]
+    },
+    {
+      "answer": "Derive reusable border/radius/shadow tokens from the accepted strong-bevel/small-radius/thin-outline treatments, then validate visually.",
+      "basis": "V",
+      "id": "Q110",
+      "question": "Exact border, radius, and shadow values",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-045",
+        "UI596-049"
+      ]
+    },
+    {
+      "answer": "Derive a shared rounded bold type scale and short interruptible motion scale; calibrate in actual-size visual/motion samples.",
+      "basis": "F+V+B",
+      "id": "Q111",
+      "question": "Exact typography sizes and motion durations",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-045",
+        "UI596-049"
+      ]
+    }
+  ],
+  "baseline": [
+    {
+      "answer": "Pack: five columns on iPhone; one Item Category at a time, selected through category icons. Artwork and key properties are visible; Item names appear only on selection.",
+      "id": "A001",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004",
+        "UI596-013"
+      ]
+    },
+    {
+      "answer": "Card signals: Unknown (the earlier New label is the same mechanic), category/class, Identification state, and the same category-specific property on every identified Item within its category. The actual category-to-property mapping is unresolved; “highest stat” was superseded.",
+      "id": "A002",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-004",
+        "UI596-005",
+        "UI596-021",
+        "UI596-050"
+      ]
+    },
+    {
+      "answer": "Inspection: open and close each Item individually. Nearly full-width panel with narrow side margins. Artwork left; name and identifying details right. Reuse the Pack card with badges and property strip.",
+      "id": "A003",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-008",
+        "UI596-025"
+      ]
+    },
+    {
+      "answer": "Art: original EarthNova artwork applying the reference’s iconography principles. Exaggerate real distinguishing features for recognition; no invented scientific traits. Stat icons are shaded miniature objects with highlights and outlines.",
+      "id": "A004",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-044",
+        "UI596-045"
+      ]
+    },
+    {
+      "answer": "Motion: subtle Item idle animation (animals breathe, plants sway, highlights shimmer). Input interrupts presentation immediately. Button press moves the button down and removes its shadow; release returns quickly and smoothly without overshoot.",
+      "id": "A005",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-025",
+        "UI596-033",
+        "UI596-043",
+        "UI596-046",
+        "UI596-047"
+      ]
+    },
+    {
+      "answer": "Sound: gameplay outcomes only when enabled—acquisition, Identification, Encounter results.",
+      "id": "A006",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-037"
+      ]
+    },
+    {
+      "answer": "Main navigation: icons only, with a Help control that temporarily labels all icons. Accessible names remain required.",
+      "id": "A007",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-006",
+        "UI596-030",
+        "UI596-048"
+      ]
+    },
+    {
+      "answer": "Encounters: mark on Map and let the Player open them; no automatic interruption.",
+      "id": "A008",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-038"
+      ]
+    },
+    {
+      "answer": "Unavailable actions remain visible, look unavailable, and explain why when tapped.",
+      "id": "A009",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-032"
+      ]
+    },
+    {
+      "answer": "First Discovery: same Identification reveal, plus a small first-Discovery badge; no extra celebration screen.",
+      "id": "A010",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-034",
+        "UI596-036"
+      ]
+    },
+    {
+      "answer": "Surfaces: subtle texture noticeable only on close inspection; deep forest green direction; strong sculpted bevels; small rounded corners; thin dark outlines.",
+      "id": "A011",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-001",
+        "UI596-049"
+      ]
+    },
+    {
+      "answer": "Inspection: strong soft outer shadow; heavily dimmed but recognizable backdrop. Keep a relevant background resource counter bright when an action has a resource cost.",
+      "id": "A012",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-007",
+        "UI596-008",
+        "UI596-028"
+      ]
+    },
+    {
+      "answer": "Close control: dark × directly on the panel, with no visible button frame. Check contrast and retain a generous tap target.",
+      "id": "A013",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-008",
+        "UI596-048"
+      ]
+    },
+    {
+      "answer": "Item-name typography: rounded and slightly playful; extra-bold; clearly visible dark outline; warm cream role. Starts around twice the stat-value size, never wraps, and keeps shrinking until the complete name fits, even below a normal minimum. This is an explicitly accepted readability tradeoff, not an accidental implementation fallback.",
+      "id": "A014",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-009",
+        "UI596-048",
+        "UI596-049"
+      ]
+    },
+    {
+      "answer": "Stat labels: emphasis role (gold direction) distinct from cream-value role. Labels above bars, aligned with the value area.",
+      "id": "A015",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-010"
+      ]
+    },
+    {
+      "answer": "Stats: three columns, continuing onto more rows; dark inset bars with small rounded corners; large icons overlap the left edge; values centered in the remaining space.",
+      "id": "A016",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-010"
+      ]
+    },
+    {
+      "answer": "Description/effects: one shared dark inset panel. Headings and key numbers use the emphasis role; body text uses the primary-text role. Bold throughout. Tight spacing within sections, generous gaps between them.",
+      "id": "A017",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-011"
+      ]
+    },
+    {
+      "answer": "Effects: small round bullets; recurring property/effect names replaced by inline icons slightly taller than surrounding letters.",
+      "id": "A018",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-011"
+      ]
+    },
+    {
+      "answer": "Help: a panel-level information button opens a symbol legend. Raised circular information-role button (blue direction) with cream “i,” overlapping the panel’s upper-right border.",
+      "id": "A019",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-011",
+        "UI596-029"
+      ]
+    },
+    {
+      "answer": "Progress bars: wide shallow rectangles, small rounded corners, centered numbers, glossy fill with bright upper edge. Resource icon overlaps the left end.",
+      "id": "A020",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012"
+      ]
+    },
+    {
+      "answer": "Outcome preview: separate raised panel with beveled edges, only for an already-defined action outcome.",
+      "id": "A021",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012",
+        "UI596-052"
+      ]
+    },
+    {
+      "answer": "Main action buttons: strong bevels, thick lower edge; extra-bold rounded outlined labels. Unavailable state uses a neutral face and muted lettering while retaining bevels.",
+      "id": "A022",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012",
+        "UI596-032",
+        "UI596-033"
+      ]
+    },
+    {
+      "answer": "Costs: inside the action button below its name, text roughly two-thirds the action-name size; resource icon follows the amount.",
+      "id": "A023",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012",
+        "UI596-052"
+      ]
+    },
+    {
+      "answer": "Two actions: equal-width buttons side by side. A known reward appears directly below its associated button.",
+      "id": "A024",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-012",
+        "UI596-052"
+      ]
+    },
+    {
+      "answer": "Pack title: illustrated ribbon with folded ends, roughly half the screen width; light surface and dark text roles; clean smooth edges without wear. Bold rounded lettering without a prominent outline.",
+      "id": "A025",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-002"
+      ]
+    },
+    {
+      "answer": "Palette instruction supersedes independent component color picking: resolve all colors through EarthNova’s design-system palette and semantic roles. Forest green, cream, gold, blue, neutral, outline, shadow, and state choices are role directions, not hard-coded hex values.",
+      "id": "A026",
+      "status": "target_specified_not_implemented",
+      "scenario_ids": [
+        "UI596-001",
+        "UI596-049",
+        "UI596-053"
+      ]
+    },
+    {
+      "answer": "The skipped toolbar and search-field choices were subsequently resolved by the accepted visual and interaction rules; group visible search/sort/filter controls and use the light reference search field.",
+      "id": "A027",
+      "source_answer": "Toolbar arrangement was skipped and remains open. Search-field contrast was asked but not answered.",
+      "status": "superseded_then_resolved",
+      "scenario_ids": [
+        "UI596-003"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "UI596-001",
+      "title": "Shared surfaces use the approved palette and depth",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-002",
+      "title": "Pack title uses a clean illustrated ribbon",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-003",
+      "title": "Retrieval controls follow the reference vocabulary",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-004",
+      "title": "Cards allocate space to artwork and consistent properties",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-005",
+      "title": "Card state cues have distinct meanings",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-006",
+      "title": "Category controls and navigation share the illustrated button grammar",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-007",
+      "title": "Balance counters are compact and preserve precise values",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-008",
+      "title": "Inspection retains the Item card beside its name",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-009",
+      "title": "Long Item names stay complete on one line",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-010",
+      "title": "Stat cells keep labels icons and values aligned",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-011",
+      "title": "Descriptions use one readable inset panel",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-012",
+      "title": "Progress outcome and action surfaces use the agreed hierarchy",
+      "file": "features/ui596/presentation.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-013",
+      "title": "Category-first Pack preserves Item identity",
+      "file": "features/ui596/pack-browsing.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-014",
+      "title": "Name search updates in place without changing scope",
+      "file": "features/ui596/pack-browsing.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-015",
+      "title": "Search does not disclose Unknown identity",
+      "file": "features/ui596/pack-browsing.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-016",
+      "title": "Sort selection is immediately reversible",
+      "file": "features/ui596/pack-browsing.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-017",
+      "title": "Filters apply directly and expose their active state",
+      "file": "features/ui596/pack-browsing.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-018",
+      "title": "Returning to a category restores browsing context",
+      "file": "features/ui596/pack-browsing.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-019",
+      "title": "Scrolling keeps important controls available",
+      "file": "features/ui596/pack-browsing.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-020",
+      "title": "View controls never clear Unknown",
+      "file": "features/ui596/pack-browsing.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-021",
+      "title": "Unknown is shared by Player and stable Base Item",
+      "file": "features/ui596/knowledge.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-022",
+      "title": "Unknown artwork uses the actual silhouette",
+      "file": "features/ui596/knowledge.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-023",
+      "title": "Examination remains separate from Identification",
+      "file": "features/ui596/knowledge.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-024",
+      "title": "Failed examination does not fabricate known state",
+      "file": "features/ui596/knowledge.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-025",
+      "title": "Inspection can close before its presentation animation finishes",
+      "file": "features/ui596/inspection.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-026",
+      "title": "Pending authoritative work survives dismissal",
+      "file": "features/ui596/inspection.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-027",
+      "title": "Long inspection content stays reachable",
+      "file": "features/ui596/inspection.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-028",
+      "title": "Inspection backdrop keeps only relevant counters prominent",
+      "file": "features/ui596/inspection.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-029",
+      "title": "Help starts with current symbols and offers a full glossary",
+      "file": "features/ui596/inspection.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-030",
+      "title": "Help labels remain under Player control",
+      "file": "features/ui596/inspection.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-031",
+      "title": "Resource details remain contextual",
+      "file": "features/ui596/inspection.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-032",
+      "title": "Unavailable actions remain visible and explain requirements",
+      "file": "features/ui596/feedback.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-033",
+      "title": "Buttons respond to pressure without bounce",
+      "file": "features/ui596/feedback.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-034",
+      "title": "Processing and success are visibly different",
+      "file": "features/ui596/feedback.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-035",
+      "title": "Failure never receives success feedback",
+      "file": "features/ui596/feedback.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-036",
+      "title": "First Discovery adds only a small badge",
+      "file": "features/ui596/feedback.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-037",
+      "title": "Sounds represent gameplay outcomes only",
+      "file": "features/ui596/feedback.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-038",
+      "title": "A new Encounter does not take over the current task",
+      "file": "features/ui596/feedback.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-039",
+      "title": "Refresh failure keeps a usable Pack visible",
+      "file": "features/ui596/resilience.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-040",
+      "title": "Initial loading is different from readiness failure",
+      "file": "features/ui596/resilience.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-041",
+      "title": "Empty collection and no matches have different recovery",
+      "file": "features/ui596/resilience.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-042",
+      "title": "Context remains scoped to the signed-in Player",
+      "file": "features/ui596/resilience.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-043",
+      "title": "Meaningful local response remains within the existing target",
+      "file": "features/ui596/resilience.feature",
+      "verification": "measurement",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-044",
+      "title": "Original small animal art emphasizes true identifying features",
+      "file": "features/ui596/art-and-accessibility.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-045",
+      "title": "The 12 and 16 pixel animal icons are trials not defaults",
+      "file": "features/ui596/art-and-accessibility.feature",
+      "verification": "calibration",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-046",
+      "title": "Idle motion is subtle staggered and interruptible",
+      "file": "features/ui596/art-and-accessibility.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-047",
+      "title": "Reduced motion keeps the same information",
+      "file": "features/ui596/art-and-accessibility.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-048",
+      "title": "Larger text and tiny art do not shrink touch targets",
+      "file": "features/ui596/art-and-accessibility.feature",
+      "verification": "visual_review",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-049",
+      "title": "Shared tokens are measured without inventing values",
+      "file": "features/ui596/art-and-accessibility.feature",
+      "verification": "calibration",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-050",
+      "title": "Category comparison uses defined natural differences",
+      "file": "features/ui596/domain-boundaries.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-051",
+      "title": "Rarity styling does not relabel conservation status",
+      "file": "features/ui596/domain-boundaries.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-052",
+      "title": "Costs rewards and counters reflect existing systems",
+      "file": "features/ui596/domain-boundaries.feature",
+      "verification": "behavior",
+      "automation_status": "unbound_target_specification"
+    },
+    {
+      "id": "UI596-053",
+      "title": "The design system remains one shared component vocabulary",
+      "file": "features/ui596/domain-boundaries.feature",
+      "verification": "specification",
+      "automation_status": "unbound_target_specification"
+    }
+  ]
+}
+
