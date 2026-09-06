@@ -1,0 +1,9 @@
+Atom: AppProgress
+Status: canonical
+Role: group
+Interaction policy: display
+Exports: lib/shared/design/primitives/app_progress.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Known requirement progress without automatic action execution.

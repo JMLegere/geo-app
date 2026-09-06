@@ -155,3 +155,7 @@ e2e/test-results/
 e2e/playwright-report/
 e2e/.cache/
 .playwright-mcp/
+# Issue #596 review renders are generated locally and attached to review
+# surfaces rather than committed, because binary patches are not portable
+# through every pull-request creation path.
+docs/specifications/ui596/review/*.png

@@ -15,16 +15,24 @@ void showSpeciesCard(
   Item item, {
   void Function(Item item)? onOpenIdentificationService,
 }) {
-  showDialog<void>(
+  showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Close species card',
-    useSafeArea: true,
-    traversalEdgeBehavior: TraversalEdgeBehavior.closedLoop,
-    requestFocus: true,
-    builder: (_) => SpeciesCard(
+    barrierColor: DesignPalette.shadow.withValues(
+      alpha: DesignMetrics.backdropOpacity,
+    ),
+    transitionDuration: DesignMotion.of(context, DesignMotion.open),
+    pageBuilder: (_, _, _) => SpeciesCard(
       item: item,
       onOpenIdentificationService: onOpenIdentificationService,
+    ),
+    transitionBuilder: (_, animation, _, child) => FadeTransition(
+      opacity: animation,
+      child: ScaleTransition(
+        scale: Tween(begin: .98, end: 1.0).animate(animation),
+        child: child,
+      ),
     ),
   );
 }
@@ -81,30 +89,11 @@ class _SpeciesCardState extends State<SpeciesCard> {
           )
         : _UnexaminedSpeciesContent(item: item, onDismiss: _dismiss);
 
-    return SafeArea(
-      child: Center(
-        child: NotificationListener<ScrollNotification>(
-          onNotification: _onScrollNotification,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Semantics(
-                scopesRoute: true,
-                namesRoute: true,
-                explicitChildNodes: true,
-                label: item.isExamined
-                    ? 'Species details for ${item.visibleDisplayName}'
-                    : 'Unexamined ${item.category.label.toLowerCase()} Item',
-                child: KeyedSubtree(
-                  key: ValueKey('species-card-${item.id}'),
-                  child: content,
-                ),
-              ),
-            ),
-          ),
-        ),
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: KeyedSubtree(
+        key: ValueKey('species-card-${item.id}'),
+        child: content,
       ),
     );
   }
@@ -122,28 +111,16 @@ class _UnexaminedSpeciesContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = 'Unexamined ${item.category.label.toLowerCase()} Item';
-    return AppCard(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Align(
-            alignment: Alignment.centerRight,
-            // eac-clickable-ignore: Species-card dismissal closes local detail chrome without creating product state.
-            child: IconButton(
-              key: const Key('species-card-close'),
-              autofocus: true,
-              tooltip: 'Close species card',
-              onPressed: onDismiss,
-              icon: const Icon(Icons.close),
-            ),
-          ),
-          AppNotice(
-            title: label,
-            message:
-                'Identity and field details are unavailable until this Item has been examined.',
-          ),
-        ],
+    return AppInspectionPanel(
+      semanticLabel: label,
+      title: ExcludeSemantics(
+        child: AppText(label, role: AppTextRole.itemName),
+      ),
+      onClose: onDismiss,
+      child: const AppNotice(
+        title: 'Identity unavailable',
+        message:
+            'Identity and field details are unavailable until this Item has been examined.',
       ),
     );
   }
@@ -164,50 +141,42 @@ class _ExaminedSpeciesContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final mobile = MediaQuery.sizeOf(context).width < 700;
     final media = _SpeciesMedia(item: item);
-    final details = _SpeciesDetails(
-      item: item,
-      onOpenIdentificationService: onOpenIdentificationService,
-    );
+    final details = _SpeciesDetails(item: item);
 
-    return AppCard(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.visibleDisplayName,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    if (item.visibleScientificName != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        item.visibleScientificName!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ],
+    final footer = item.isUnidentified && onOpenIdentificationService != null
+        ? ProductActionSurface(
+            actionId: PlayerActions.openIdentificationService,
+            child: AppButton(
+              key: const Key('open-identification-service'),
+              label: 'Open identification service',
+              expand: true,
+              onPressed: () => onOpenIdentificationService!(item),
+            ),
+          )
+        : null;
+
+    return AppInspectionPanel(
+      semanticLabel: 'Species details for ${item.visibleDisplayName}',
+      title: ExcludeSemantics(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppText(item.visibleDisplayName, role: AppTextRole.itemName),
+            if (item.visibleScientificName != null)
+              Text(
+                item.visibleScientificName!,
+                style: DesignTypography.body.copyWith(
+                  fontStyle: FontStyle.italic,
                 ),
               ),
-              // eac-clickable-ignore: Species-card dismissal closes local detail chrome without creating product state.
-              IconButton(
-                key: const Key('species-card-close'),
-                autofocus: true,
-                tooltip: 'Close species card',
-                onPressed: onDismiss,
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          ],
+        ),
+      ),
+      onClose: onDismiss,
+      footer: footer,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           if (mobile)
             Column(
               key: const Key('species-card-mobile-layout'),
@@ -292,7 +261,7 @@ class _SpeciesMedia extends StatelessWidget {
               children: [
                 const Icon(Icons.image_not_supported_outlined, size: 56),
                 const SizedBox(height: 8),
-                Text(label),
+                AppText(label),
               ],
             ),
           ),
@@ -303,13 +272,9 @@ class _SpeciesMedia extends StatelessWidget {
 }
 
 class _SpeciesDetails extends StatelessWidget {
-  const _SpeciesDetails({
-    required this.item,
-    required this.onOpenIdentificationService,
-  });
+  const _SpeciesDetails({required this.item});
 
   final Item item;
-  final void Function(Item item)? onOpenIdentificationService;
 
   @override
   Widget build(BuildContext context) {
@@ -360,18 +325,6 @@ class _SpeciesDetails extends StatelessWidget {
         AppFieldRow(label: 'Acquired', value: _formatDate(item.acquiredAt)),
         if (item.acquiredInCellId != null)
           const AppFieldRow(label: 'Provenance', value: 'Map exploration'),
-        if (item.isUnidentified && onOpenIdentificationService != null) ...[
-          const SizedBox(height: 12),
-          ProductActionSurface(
-            actionId: PlayerActions.openIdentificationService,
-            child: AppButton(
-              key: const Key('open-identification-service'),
-              label: 'Open identification service',
-              expand: true,
-              onPressed: () => onOpenIdentificationService!(item),
-            ),
-          ),
-        ],
       ],
     );
   }

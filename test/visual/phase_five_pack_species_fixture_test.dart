@@ -458,7 +458,7 @@ void main() {
         expect(find.text(fixture.item.scientificName!), findsNothing);
         expect(find.text('Unexamined fauna Item'), findsOneWidget);
       } else {
-        expect(find.text(fixture.item.displayName), findsOneWidget);
+        expect(find.text(fixture.item.displayName), findsNWidgets(2));
         expect(find.text(fixture.item.scientificName!), findsOneWidget);
         expect(
           find.text(fixture.item.isUnidentified ? 'Examined' : 'Identified'),
@@ -505,7 +505,7 @@ void main() {
           if (!fixture.item.isExamined) {
             expect(find.text('Unexamined fauna Item'), findsOneWidget);
           } else {
-            expect(find.text(fixture.item.displayName), findsOneWidget);
+            expect(find.text(fixture.item.displayName), findsNWidgets(2));
             expect(
               find.text(
                 fixture.item.isUnidentified ? 'Examined' : 'Identified',

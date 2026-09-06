@@ -1,0 +1,9 @@
+Molecule: AppActionRow
+Status: canonical
+Role: group
+Interaction policy: display
+Exports: lib/shared/design/composites/app_action_row.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Equal-width action group with per-action costs and rewards.

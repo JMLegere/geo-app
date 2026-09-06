@@ -15,6 +15,8 @@
 
 - **Discipline tuning:** What XP amount does each completed automatic or explicit Identification grant, and what thresholds derive each visible numeric Level?
 - **Orb behavior:** What, if anything, may an Orb do? Currency, crafting, stacking, production, and consumption remain intentionally unassigned.
+- **Issue #596 representative art:** Jeremy must accept or revise the D003/S04 art-direction candidate before routine production assets and knowledge-safe black silhouettes are created.
+- **Issue #596 category comparison properties:** The current Pack `Item` projection exposes legacy Fauna descriptors but not resolved Variable Property Values for all seven categories. Which existing schema-grounded property should each applicable category compare after the authoritative projection is available? Missing categories must remain not-applicable or blocked rather than gaining invented properties.
 
 ### Living world and Home
 

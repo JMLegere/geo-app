@@ -25,7 +25,7 @@ void main() {
 
       await _pumpCard(tester, item, onOpenIdentificationService: (_) {});
 
-      expect(find.text('Red Fox'), findsOneWidget);
+      expect(find.text('Red Fox'), findsNWidgets(2));
       expect(find.text('Vulpes vulpes'), findsOneWidget);
       expect(find.text('Identified'), findsOneWidget);
       expect(find.text('EN · Endangered'), findsOneWidget);
@@ -94,7 +94,7 @@ void main() {
           onOpenIdentificationService: (value) => openedItem = value,
         );
 
-        expect(find.text('Amberwing Warbler'), findsOneWidget);
+        expect(find.text('Amberwing Warbler'), findsNWidgets(2));
         expect(find.text('Setophaga aestiva'), findsOneWidget);
         expect(find.text('Examined'), findsOneWidget);
         expect(
@@ -175,7 +175,10 @@ void main() {
 
       expect(find.byKey(const ValueKey('species-card-test-1')), findsOneWidget);
       final close = tester.widget<IconButton>(
-        find.byKey(const Key('species-card-close')),
+        find.descendant(
+          of: find.byKey(const Key('inspection-close')),
+          matching: find.byType(IconButton),
+        ),
       );
       expect(close.autofocus, isTrue);
 
@@ -206,7 +209,7 @@ void main() {
       await _openDialog(tester, _item());
 
       await tester.drag(
-        find.byKey(const ValueKey('species-card-test-1')),
+        find.byKey(const Key('inspection-scroll-view')),
         const Offset(0, 400),
       );
       await tester.pumpAndSettle();

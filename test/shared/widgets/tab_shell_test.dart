@@ -230,6 +230,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets(
+    'Help labels are explicit, persistent, and dismissed by a destination',
+    (tester) async {
+      await pumpNeutralShell(tester);
+      expect(find.text('Map'), findsNothing);
+      expect(find.text('Pack'), findsNothing);
+      await tester.tap(find.byKey(const Key('tab-shell-nav-help')));
+      await tester.pumpAndSettle();
+      expect(find.text('Map'), findsOneWidget);
+      expect(find.text('Pack'), findsOneWidget);
+      await tester.pump(const Duration(minutes: 1));
+      expect(find.text('Pack'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-map')));
+      await tester.pumpAndSettle();
+      expect(find.text('Map'), findsNothing);
+    },
+  );
+
   group('TabShell navigation observability', () {
     testWidgets('logs tab screen changes exactly once per transition', (
       tester,
@@ -265,10 +283,10 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Pack'));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-pack')));
       await tester.pump();
 
-      await tester.tap(find.text('Pack'));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-pack')));
       await tester.pump();
 
       final screenChangedEvents = transitions
@@ -312,7 +330,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Pack'));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-pack')));
       await tester.pump();
 
       final tabSelectionEvents = interactions.events
@@ -573,7 +591,7 @@ void main() {
         expect(nav.color, colors.surface);
         expect(nav.elevation, 0);
         expect(navBorder.top.color, colors.outlineVariant);
-        expect(find.byType(ShadButton), findsNWidgets(2));
+        expect(find.byType(ShadButton), findsNWidgets(3));
         expect(
           find.byKey(const Key('tab-shell-nav-selected-map')),
           findsOneWidget,
@@ -715,7 +733,7 @@ void main() {
       expect(find.byType(IndexedStack), findsOneWidget);
 
       // Tap Pack (index 1).
-      await tester.tap(find.text('Pack'));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-pack')));
       await tester.pumpAndSettle();
 
       expect(transitions, hasLength(1));
@@ -723,7 +741,7 @@ void main() {
       expect(transitions.last['to_screen'], 'pack_screen');
 
       // Tap back to Map (index 0).
-      await tester.tap(find.text('Map'));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-map')));
       await tester.pumpAndSettle();
 
       expect(transitions, hasLength(2));
@@ -766,11 +784,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap same tab multiple times
-      await tester.tap(find.text('Map'));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-map')));
       await tester.pump();
-      await tester.tap(find.text('Map'));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-map')));
       await tester.pump();
-      await tester.tap(find.text('Map'));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-button-map')));
       await tester.pump();
 
       // Should have no transitions (already on Map tab)

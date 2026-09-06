@@ -11,8 +11,7 @@ void main() {
 
   test('preserves the migration contract', () {
     final appRoot = read('lib/main.dart');
-    expect(appRoot, contains('brightness: Brightness.dark'));
-    expect(appRoot, contains('colorScheme: const ShadZincColorScheme.dark()'));
+    expect(appRoot, contains('theme: AppDesignTheme.dark()'));
     expect(appRoot, contains('themeMode: ThemeMode.dark'));
     expect(appRoot, contains('theme: Theme.of(context)'));
     expect(appRoot, contains("supportedLocales: const [Locale('en', 'US')]"));
@@ -116,8 +115,7 @@ void main() {
     expect(appRoot, contains("package:shadcn_ui/shadcn_ui.dart"));
 
     for (final requiredRootContract in const [
-      'brightness: Brightness.dark',
-      'colorScheme: const ShadZincColorScheme.dark()',
+      'theme: AppDesignTheme.dark()',
       'themeMode: ThemeMode.dark',
       'theme: Theme.of(context)',
       "supportedLocales: const [Locale('en', 'US')]",

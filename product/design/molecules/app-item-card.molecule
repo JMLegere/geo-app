@@ -1,0 +1,9 @@
+Molecule: AppItemCard
+Status: canonical
+Role: region
+Interaction policy: delegates-to-children
+Exports: lib/shared/design/composites/app_item_card.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Shared knowledge-safe card presentation; the feature supplies authorized artwork and exact Item actions.

@@ -1051,3 +1051,28 @@
 - The amendment remains limited to delivery. It adds no command kind, gameplay, schema, dependency, secret, provider, target, or destructive production change.
 - PR #594 begins with a test-only commit. CI run 1218 recorded the expected red baseline: Analyze and EAC passed; 1,610 tests passed and the sole failure proved `deploy-prod.yml` lacked the required `workflow_run` trigger.
 - The implementation adds a guarded `workflow_run` path for successful push-triggered `main` CI, deploys that run's exact `head_sha`, preserves Supabase-before-Railway ordering and non-cancelling concurrency, and retains manual exact-SHA recovery. ADR 0011, the runbook, PRD, decision/question registries, workflow contract tests, and generated delivery diagram are aligned.
+
+
+## 2026-09-06 — Issue 596 recovery and shared foundation
+
+The resumed workspace did not contain the previous local implementation or patch. Recovered all 1,099 main source blobs and verified the complete tree against `12ecddcb01920c23c0c3b41b142a026fc78ad90b`. Explicit continuation after the publishing request allowed creation of branch `implementation/596-design-system` and draft PR #598.
+
+Reconstructed the Shad-default typed Dart foundation, root override, bundled Nunito, tactile/unavailable/busy actions, shared text/progress/ribbon/navigation/action-row controls, inspection stat variant, and actual Map/Pack Help navigation. Preserved the 150-decision target specification and added YAML CI enforcement.
+
+Fresh full regression: 1,629 passed, 136 existing skips, zero failures; filtered coverage 7,736/8,131 (95.142%). EAC no diagnostics; 9 specification and 6 boundary tests pass; existing Cucumber 24 scenarios/148 steps pass. Rendered review caught and fixed a falsely full partial-progress track. Native component contracts and registry remain aligned. 100 exact pre-existing presentation-debt occurrences remain.
+
+This is a foundation checkpoint, not completion of issue 596. Actual Pack cards/browsing, safe silhouette delivery, inspection integration, feedback, whole-app migration, art approval, and iPhone acceptance remain. See docs/specifications/ui596/execution-status.yaml and execution-report.md.
+
+## 2026-09-06 — Issue 596 Pack checkpoint
+
+Actual Pack now uses shared five-column cards, accessible names reserved visually for inspection, Unknown marker, explicit search scope, anchored reversible sorting, live filter sheet/count/reset, category Help, retained category query/filter/order/scroll, visible scrollbar, and loaded-refresh recovery. Shared Shad-based retrieval controls and their native contracts are added. Hidden metadata cannot affect Unknown filter membership. Actual black silhouettes, production artwork, full category property mapping, inspection/outcome integration and app-wide adoption remain incomplete.
+
+Fresh full regression: 1,645 passed, 136 existing skips, zero failures; CI-filtered coverage 7,926/8,320 (95.264%). All 150 decisions have execution owner/slice fields; 34 partial and 116 unassessed, no false verified status. 93 exact legacy presentation-debt occurrences remain. Real Flutter render fixtures cover 320/390/900 widths and doubled text. PRD D003 requires Jeremy to approve the representative board before routine asset production; see review/art-direction-candidate.png under docs/specifications/ui596. No merge/deployment or PRD closure.
+
+## 2026-09-06 — Issue #596 inspection execution checkpoint
+
+- Integrated the three tested foundation/Pack commits from draft PR #598 onto the active completion branch without treating the draft checkpoint as final acceptance.
+- Added the canonical `AppInspectionPanel` and migrated the real Species Card so feature content scrolls independently from its autofocus Close control and optional action footer.
+- Applied the shared Item-name and field typography, the approved dimmed backdrop, and interruptible fade/scale entrance while preserving exact Item handoff, knowledge-safe unexamined disclosure, keyboard/backdrop/pull dismissal, and responsive layouts.
+- Reduced exact presentation debt from 93 to 92 and added a deterministic 390x844 Flutter review renderer. Generated PNG evidence is attached out of band rather than committed because binary patches are unsupported by some PR creation paths. S06 remains implementing; actual-iPhone acceptance has not occurred.
+- Routine production art remains gated by D003 approval. The category comparison mapping remains gated by absent all-category Property Value projection and a product choice among schema-grounded properties; no property or Orb behavior was invented.

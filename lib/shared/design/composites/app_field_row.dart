@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../foundations/spacing.dart';
+import '../primitives/app_text.dart';
+
 class AppFieldRow extends StatelessWidget {
   const AppFieldRow({
     required this.label,
@@ -17,7 +20,7 @@ class AppFieldRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -25,17 +28,20 @@ class AppFieldRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label),
-                const SizedBox(height: 4),
-                Text(value),
+                AppText(label, role: AppTextRole.label),
+                const SizedBox(height: Spacing.xs),
+                AppText(value, role: AppTextRole.value),
                 if (helper != null) ...[
-                  const SizedBox(height: 4),
-                  Text(helper!),
+                  const SizedBox(height: Spacing.xs),
+                  AppText(helper!, role: AppTextRole.compact),
                 ],
               ],
             ),
           ),
-          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+          if (trailing != null) ...[
+            const SizedBox(width: Spacing.sm),
+            trailing!,
+          ],
         ],
       ),
     );

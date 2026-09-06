@@ -174,6 +174,16 @@ export const productCapabilities = {
       "features/exploration-discovery-mvp-loop.feature",
       "features/exploration-discovery-pack.feature",
       "features/exploration-discovery-identification.feature",
+      "features/ui596/art-and-accessibility.feature",
+      "features/ui596/domain-boundaries.feature",
+      "features/ui596/feedback.feature",
+      "features/ui596/inspection.feature",
+      "features/ui596/knowledge.feature",
+      "features/ui596/pack-browsing.feature",
+      "features/ui596/presentation.feature",
+      "features/ui596/resilience.feature",
+      "features/ui596/solution-direction.feature",
+
     ],
     requiredActions: [
       playerActions.resolvePresentEncounter,

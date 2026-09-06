@@ -1,0 +1,12 @@
+Organism: AppInspectionPanel
+Status: canonical
+Role: item-detail-overlay
+Interaction policy: action-required
+Exports: lib/shared/design/patterns/app_inspection_panel.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Shared nearly-full-width Item detail surface whose feature-owned content
+  scrolls independently while Close and the optional action footer remain
+  visible and reachable. Dismissal changes presentation context only and does
+  not cancel an authoritative action that has already been submitted.

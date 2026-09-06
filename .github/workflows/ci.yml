@@ -8,6 +8,19 @@ on:
   workflow_dispatch:
 
 jobs:
+  design-contract:
+    name: Design contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run spec:ui596:check
+      - run: npm run design:check
+
   analyze:
     name: Analyze
     runs-on: ubuntu-latest

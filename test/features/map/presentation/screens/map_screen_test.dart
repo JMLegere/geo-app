@@ -493,7 +493,13 @@ void main() {
         'lib/shared/design/primitives/app_button.dart',
       ).readAsStringSync();
 
-      expect(buttonSource, contains('height: 44'));
+      expect(buttonSource, contains('DesignMetrics.touchTarget'));
+      expect(
+        File(
+          'lib/shared/design/foundations/app_design_theme.dart',
+        ).readAsStringSync(),
+        contains('touchTarget = 44.0'),
+      );
     });
 
     test(
