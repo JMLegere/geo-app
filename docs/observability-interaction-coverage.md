@@ -10,7 +10,7 @@
 | lib/features/pack/presentation/screens/pack_screen.dart:211 | ObservableInteraction.log | filter_region_toggled | action_type,screen_name,widget_name,region,active_after |
 | lib/features/pack/presentation/screens/pack_screen.dart:219 | ObservableInteraction.log | filter_rarity_toggled | action_type,screen_name,widget_name,rarity,active_after |
 | lib/features/pack/presentation/screens/pack_screen.dart:227 | ObservableInteraction.log | clear_filters | action_type,screen_name,widget_name,active_filter_count |
-| lib/features/pack/presentation/screens/pack_screen.dart:234 | ObservableInteraction.log | toggle_filter_panel | action_type,screen_name,widget_name,expanded_after |
+| lib/features/pack/presentation/screens/pack_screen.dart:234 | ObservableInteraction.log | open_filters | action_type,screen_name,widget_name |
 | lib/features/pack/presentation/screens/pack_screen.dart:241 | ObservableInteraction.log | search_changed | action_type,screen_name,widget_name,query_length,had_previous_query |
 | lib/features/pack/presentation/screens/pack_screen.dart:250 | ObservableInteraction.log | open_species_card | action_type,screen_name,widget_name,item_id,category,rarity,has_frame2 |
 | lib/features/profile/presentation/screens/settings_screen.dart:58 | ObservableInteraction.wrapValueChanged | toggle_debug_mode | action_type,screen_name,widget_name,enabled |

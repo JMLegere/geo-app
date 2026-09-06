@@ -13,6 +13,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -23,6 +41,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -33,6 +69,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -43,6 +97,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -53,6 +125,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-014"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -63,6 +153,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -73,6 +181,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-014"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -83,6 +209,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-014"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -93,6 +237,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-014"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -103,6 +265,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -113,6 +293,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -123,6 +321,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -133,6 +349,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-016"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -143,6 +377,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-003"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -153,6 +405,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-017"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -163,6 +433,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-017"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -173,6 +461,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-017"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -183,6 +489,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-013"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -193,6 +517,24 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-013"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -203,6 +545,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
+      ],
+      "owners": [
+        "CARD",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -213,6 +574,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
+      ],
+      "owners": [
+        "CARD",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -223,6 +603,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
+      ],
+      "owners": [
+        "CARD",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -233,6 +632,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
+      ],
+      "owners": [
+        "CARD",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -243,6 +661,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
+      ],
+      "owners": [
+        "CARD",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -254,6 +691,25 @@
       "scenario_ids": [
         "UI596-005",
         "UI596-051"
+      ],
+      "owners": [
+        "CARD",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -264,6 +720,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
+      ],
+      "owners": [
+        "CARD",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -274,6 +749,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
+      ],
+      "owners": [
+        "CARD",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -285,7 +779,14 @@
       "scenario_ids": [
         "UI596-044",
         "UI596-045"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Optically center artwork to preserve the recognizable silhouette.",
@@ -295,7 +796,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-044"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Normalize each illustration for recognition rather than preserving real-world relative body size.",
@@ -305,7 +813,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-044"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Choose the most recognizable species/type view; exaggerate real distinguishing features.",
@@ -315,7 +830,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-044"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "For small animal trials, simplify colors while preserving distinctive real features. Do not infer a mandatory pixel-art style.",
@@ -325,7 +847,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-044"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use clear outlines for small animal icons; measure thickness in the visual trial.",
@@ -336,7 +865,14 @@
       "scenario_ids": [
         "UI596-044",
         "UI596-045"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use consistent upper-side lighting, with restrained highlights so tiny artwork remains readable.",
@@ -346,7 +882,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-044"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Let artwork float against its quiet card field, matching the reference.",
@@ -356,7 +899,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-044"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Unknown artwork is the actual icon rendered as a solid black silhouette; Unknown is Player × stable Base Item inspection knowledge.",
@@ -367,7 +917,15 @@
       "scenario_ids": [
         "UI596-021",
         "UI596-022"
-      ]
+      ],
+      "owners": [
+        "ART",
+        "CARD"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use an Unknown corner ribbon informed by IMG_1314, alongside the explicitly approved black silhouette. Derive ribbon geometry from the reference through V.",
@@ -378,7 +936,15 @@
       "scenario_ids": [
         "UI596-005",
         "UI596-022"
-      ]
+      ],
+      "owners": [
+        "ART",
+        "CARD"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use the existing Base-Item Unknown mechanic and label only. Apply a compact reference-style Unknown ribbon alongside the black silhouette; create no separate per-Item New marker.",
@@ -388,7 +954,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-021"
-      ]
+      ],
+      "owners": [
+        "ART",
+        "CARD"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Place the Unknown ribbon at the upper-left edge, matching the reference ribbon geometry. The original New label in this question title is superseded.",
@@ -399,7 +973,15 @@
       "scenario_ids": [
         "UI596-005",
         "UI596-021"
-      ]
+      ],
+      "owners": [
+        "ART",
+        "CARD"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Unknown clears after this Player first inspects the stable Base Item, across all its owned and future Item instances. There is no second New clearing event.",
@@ -409,7 +991,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-021"
-      ]
+      ],
+      "owners": [
+        "ART",
+        "CARD"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Put the small category icon in a fixed lower artwork corner, leaving the main ribbon position free.",
@@ -419,7 +1009,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-005"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use ribbon/tab treatment for status labels and shaded outlined symbols for category/property icons, derived from the reference grammar.",
@@ -429,7 +1027,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-005"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Move less-important badges into inspection before shrinking artwork. Unknown/attention takes priority over redundant category badges when crowded; eliminate duplicate New indicators.",
@@ -439,7 +1045,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-005"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use one compact, bold text line for the property strip.",
@@ -449,7 +1063,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Relate the strip’s surface to the tier frame while retaining readable semantic text contrast.",
@@ -459,7 +1081,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a short property label plus value, matching the reference. Keep the same property within each category; consider icon/value only if the five-column visual trial demonstrates a need.",
@@ -469,7 +1099,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-004"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Start with one fixed existing property per category that expresses natural differences. Actual schema-grounded mapping is evidence work, not permission to invent properties.",
@@ -479,7 +1117,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-050"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Show “?” for a value not yet revealed; do not show unrolled or hidden values.",
@@ -490,7 +1136,15 @@
       "scenario_ids": [
         "UI596-023",
         "UI596-050"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Include card progress only where a defined requirement materially helps identify an available action; do not import a progress system solely to match the screenshot.",
@@ -501,7 +1155,15 @@
       "scenario_ids": [
         "UI596-051",
         "UI596-052"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a subtle surface/lift cue plus a selection edge distinct from the persistent tier accent.",
@@ -511,7 +1173,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-005"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Place category controls directly above the grid and adjacent to search/filter controls.",
@@ -521,7 +1191,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use separate beveled illustrated category-icon buttons, drawing from the reference’s navigation-button grammar.",
@@ -531,7 +1209,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a brighter face and selection border for the active category.",
@@ -541,7 +1227,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Keep empty categories visible and openable, with a clear empty-state explanation.",
@@ -551,6 +1245,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-013"
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -561,7 +1274,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Remember position separately for each category and restore it on return; ordinary navigation is not an implicit reset.",
@@ -571,6 +1292,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-018"
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -581,6 +1321,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-019"
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -591,6 +1350,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-019"
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -601,6 +1379,25 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-019"
+      ],
+      "owners": [
+        "RET",
+        "NAV"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -612,6 +1409,24 @@
       "scenario_ids": [
         "UI596-013",
         "UI596-051"
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/features/pack/presentation/screens/pack_screen.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/features/pack/presentation/screens/pack_screen_test.dart"
+        },
+        {
+          "kind": "review_candidate",
+          "path": "docs/specifications/ui596/review/pack-390-1x.png"
+        }
       ]
     },
     {
@@ -622,7 +1437,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "NAV",
+        "INT"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use substantial illustrated navigation icons; do not apply the animal-only 12–16px experiment to navigation.",
@@ -632,7 +1455,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "NAV",
+        "INT"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a brighter face and border for selected navigation, matching the reference.",
@@ -642,7 +1473,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "NAV",
+        "INT"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a compact attention badge only for a meaningful outstanding state; do not create pressure or clear it merely on sight.",
@@ -652,7 +1491,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "NAV",
+        "INT"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Place Help at an end of the navigation area with an adequate tap target.",
@@ -662,7 +1509,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "NAV",
+        "INT"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Reveal labels beneath the navigation icons when Help is active.",
@@ -672,7 +1527,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-006"
-      ]
+      ],
+      "owners": [
+        "NAV",
+        "INT"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Keep Help labels visible until the Player dismisses Help or selects a destination; no arbitrary timeout.",
@@ -682,7 +1545,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-030"
-      ]
+      ],
+      "owners": [
+        "NAV",
+        "INT"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use compact dark resource capsules, matching the reference.",
@@ -692,7 +1563,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-007"
-      ]
+      ],
+      "owners": [
+        "HUD"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use bold readable numerals in the agreed compact, stable balance/progression strip.",
@@ -702,7 +1580,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-007"
-      ]
+      ],
+      "owners": [
+        "HUD"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use full digits without grouping separators as shown in the reference; calibrate fit before adopting abbreviations, and make the exact balance available if abbreviation becomes necessary.",
@@ -712,7 +1597,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-007"
-      ]
+      ],
+      "owners": [
+        "HUD"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Place the resource icon after the amount, reusing the already approved action-cost convention.",
@@ -722,7 +1614,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-007"
-      ]
+      ],
+      "owners": [
+        "HUD"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Let the counter open details and any already-defined acquisition actions; omit unsupported plus/purchase controls.",
@@ -733,7 +1632,14 @@
       "scenario_ids": [
         "UI596-031",
         "UI596-052"
-      ]
+      ],
+      "owners": [
+        "HUD"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Present applicable existing Discipline progression compactly; do not invent a universal Player level.",
@@ -744,7 +1650,14 @@
       "scenario_ids": [
         "UI596-051",
         "UI596-052"
-      ]
+      ],
+      "owners": [
+        "HUD"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Where a level badge applies, use a faceted hexagonal treatment from the reference.",
@@ -754,7 +1667,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-007"
-      ]
+      ],
+      "owners": [
+        "HUD"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a compact safe-area-aware top strip, not the screenshot’s unused top space.",
@@ -764,7 +1684,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-007"
-      ]
+      ],
+      "owners": [
+        "HUD"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Place a concise identity/category row beside the artwork; prioritize natural distinguishing characteristics and keep unknown data hidden.",
@@ -774,7 +1701,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-008"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Wrap secondary metadata onto additional lines; do not horizontally scroll or shrink every metadata field.",
@@ -784,7 +1718,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-027"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Start near one-quarter of the inspection’s inner width for the reused card; validate alongside long single-line names.",
@@ -794,7 +1735,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-008"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use generous shared outer panel padding and tighter spacing within related sections.",
@@ -804,7 +1752,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-008"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a large dark × as approved, with an invisible hit area at least 44px.",
@@ -814,7 +1769,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-008"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "A backdrop tap dismisses inspection and restores context as a reversible in-place interaction default. It never cancels an already-submitted authoritative mutation.",
@@ -825,7 +1787,14 @@
       "scenario_ids": [
         "UI596-025",
         "UI596-026"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Scroll long inspection content while keeping Close and the action footer fixed and reachable; reserve content padding so the footer does not cover the final content.",
@@ -835,7 +1804,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-027"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a short fade with slight scale-up; never gate input behind the animation.",
@@ -845,7 +1821,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-025"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a shorter fade to close, without delaying the requested navigation.",
@@ -855,7 +1838,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-025"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Prefer meaningful short stat labels. If no accurate short label fits, wrap to a second line; do not transfer the special Item-name shrinking rule to stat labels.",
@@ -865,7 +1855,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-027"
-      ]
+      ],
+      "owners": [
+        "STAT",
+        "TXT"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Keep the primary value readable and move secondary units/rates onto a second line. If still overflowing, expose precise expanded detail; do not silently truncate a consequential value.",
@@ -875,7 +1873,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-027"
-      ]
+      ],
+      "owners": [
+        "STAT",
+        "TXT"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a stable category-specific stat order emphasizing natural differences; do not introduce a strongest-stat ranking.",
@@ -885,7 +1891,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-050"
-      ]
+      ],
+      "owners": [
+        "STAT",
+        "TXT"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Distinguish unrevealed (“?”) from inapplicable (omitted); reserve layout consistently among comparable Items.",
@@ -896,7 +1910,15 @@
       "scenario_ids": [
         "UI596-023",
         "UI596-050"
-      ]
+      ],
+      "owners": [
+        "STAT",
+        "TXT"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use tabular numerals for aligned numeric comparisons, while keeping the rounded type style.",
@@ -906,7 +1928,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-010"
-      ]
+      ],
+      "owners": [
+        "STAT",
+        "TXT"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a subtle dark shadow for bold description text rather than copying the title’s heavy outline everywhere.",
@@ -916,7 +1946,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-011"
-      ]
+      ],
+      "owners": [
+        "DESC"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use tight but collision-free line height sized for the approved slightly taller inline icons.",
@@ -926,7 +1963,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-011"
-      ]
+      ],
+      "owners": [
+        "DESC"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use an anchored contextual legend from the information control, with current-panel symbols and a Full glossary route; expand to a sheet when space requires it while preserving Item context.",
@@ -936,7 +1980,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-029"
-      ]
+      ],
+      "owners": [
+        "DESC"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Explain current symbols first, with access to the full glossary.",
@@ -946,7 +1997,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-029"
-      ]
+      ],
+      "owners": [
+        "DESC"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use current/requirement for known count requirements; use the metric appropriate to an existing progression mechanic rather than importing one.",
@@ -957,7 +2015,15 @@
       "scenario_ids": [
         "UI596-012",
         "UI596-052"
-      ]
+      ],
+      "owners": [
+        "ACT",
+        "INT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Keep completed progress full and show the completed fraction; add an accessible completion cue where needed. Do not auto-execute the next action.",
@@ -967,7 +2033,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-012"
-      ]
+      ],
+      "owners": [
+        "ACT",
+        "INT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a semantic positive-emphasis heading for the existing outcome preview, as in the reference.",
@@ -977,7 +2051,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-012"
-      ]
+      ],
+      "owners": [
+        "ACT",
+        "INT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use the design-system primary-action fill for available main actions.",
@@ -987,7 +2069,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-012"
-      ]
+      ],
+      "owners": [
+        "ACT",
+        "INT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use a quieter semantic fill for secondary actions while preserving the approved equal width and beveled geometry.",
@@ -997,7 +2087,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-012"
-      ]
+      ],
+      "owners": [
+        "ACT",
+        "INT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Explain an unavailable action inline beside/above its action area, keeping the Item visible.",
@@ -1007,7 +2105,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-032"
-      ]
+      ],
+      "owners": [
+        "ACT",
+        "INT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Keep button dimensions stable, add a spinner/status, and prevent duplicate submission; pending is not success.",
@@ -1018,7 +2124,15 @@
       "scenario_ids": [
         "UI596-026",
         "UI596-034"
-      ]
+      ],
+      "owners": [
+        "ACT",
+        "INT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Identification success briefly highlights newly revealed properties. Use local in-place feedback as the derived default for other outcomes, subject to their defined result semantics.",
@@ -1029,7 +2143,15 @@
       "scenario_ids": [
         "UI596-034",
         "UI596-035"
-      ]
+      ],
+      "owners": [
+        "MOT",
+        "ACT"
+      ],
+      "slice": "S07",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Keep a valid loaded Pack visible during refresh with a small progress/status indicator; use a matching initial skeleton only when no usable content is available.",
@@ -1040,7 +2162,14 @@
       "scenario_ids": [
         "UI596-039",
         "UI596-040"
-      ]
+      ],
+      "owners": [
+        "STATE"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Show a small contextual empty illustration, concise explanation, and an applicable next action; never invent an action.",
@@ -1050,7 +2179,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-041"
-      ]
+      ],
+      "owners": [
+        "STATE"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Show no-match explanation, active constraints, and a clear/reset route without presenting a network error.",
@@ -1060,7 +2196,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-041"
-      ]
+      ],
+      "owners": [
+        "STATE"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Show a local notice and Retry while usable content remains; use the required blocking recovery state only when no valid working set supports entry.",
@@ -1071,7 +2214,14 @@
       "scenario_ids": [
         "UI596-039",
         "UI596-040"
-      ]
+      ],
+      "owners": [
+        "STATE"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Stagger subtle idle motion among only a few visible Items at once; preserve the approved living-art effect without simultaneous distraction.",
@@ -1081,7 +2231,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-046"
-      ]
+      ],
+      "owners": [
+        "MOT",
+        "ART"
+      ],
+      "slice": "S07",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "With reduced motion, use still artwork and minimal essential progress feedback; suppress decorative transforms and highlight travel.",
@@ -1091,7 +2249,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-047"
-      ]
+      ],
+      "owners": [
+        "MOT",
+        "ART"
+      ],
+      "slice": "S07",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Honor larger text with more height/scrolling and preserved touch targets. Retain five columns by default; any alternate density needs explicit review. Preserve the accepted single-line Item-name shrink exception.",
@@ -1101,7 +2267,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-048"
-      ]
+      ],
+      "owners": [
+        "LAY",
+        "TXT"
+      ],
+      "slice": "S08",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Use the existing shared spacing vocabulary and calibrate a small named scale in the iPhone prototype; avoid independent per-screen values.",
@@ -1112,7 +2286,15 @@
       "scenario_ids": [
         "UI596-045",
         "UI596-049"
-      ]
+      ],
+      "owners": [
+        "FND",
+        "GOV"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Derive reusable border/radius/shadow tokens from the accepted strong-bevel/small-radius/thin-outline treatments, then validate visually.",
@@ -1123,7 +2305,15 @@
       "scenario_ids": [
         "UI596-045",
         "UI596-049"
-      ]
+      ],
+      "owners": [
+        "FND",
+        "GOV"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Derive a shared rounded bold type scale and short interruptible motion scale; calibrate in actual-size visual/motion samples.",
@@ -1134,7 +2324,15 @@
       "scenario_ids": [
         "UI596-045",
         "UI596-049"
-      ]
+      ],
+      "owners": [
+        "FND",
+        "GOV"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     }
   ],
   "baseline": [
@@ -1145,7 +2343,15 @@
       "scenario_ids": [
         "UI596-004",
         "UI596-013"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Card signals: Unknown (the earlier New label is the same mechanic), category/class, Identification state, and the same category-specific property on every identified Item within its category. The actual category-to-property mapping is unresolved; “highest stat” was superseded.",
@@ -1156,7 +2362,15 @@
         "UI596-005",
         "UI596-021",
         "UI596-050"
-      ]
+      ],
+      "owners": [
+        "CARD",
+        "STAT"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Inspection: open and close each Item individually. Nearly full-width panel with narrow side margins. Artwork left; name and identifying details right. Reuse the Pack card with badges and property strip.",
@@ -1165,7 +2379,14 @@
       "scenario_ids": [
         "UI596-008",
         "UI596-025"
-      ]
+      ],
+      "owners": [
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Art: original EarthNova artwork applying the reference’s iconography principles. Exaggerate real distinguishing features for recognition; no invented scientific traits. Stat icons are shaded miniature objects with highlights and outlines.",
@@ -1174,7 +2395,14 @@
       "scenario_ids": [
         "UI596-044",
         "UI596-045"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Motion: subtle Item idle animation (animals breathe, plants sway, highlights shimmer). Input interrupts presentation immediately. Button press moves the button down and removes its shadow; release returns quickly and smoothly without overshoot.",
@@ -1186,7 +2414,15 @@
         "UI596-043",
         "UI596-046",
         "UI596-047"
-      ]
+      ],
+      "owners": [
+        "MOT",
+        "INT"
+      ],
+      "slice": "S07",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Sound: gameplay outcomes only when enabled—acquisition, Identification, Encounter results.",
@@ -1194,7 +2430,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-037"
-      ]
+      ],
+      "owners": [
+        "MOT"
+      ],
+      "slice": "S07",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Main navigation: icons only, with a Help control that temporarily labels all icons. Accessible names remain required.",
@@ -1204,7 +2447,14 @@
         "UI596-006",
         "UI596-030",
         "UI596-048"
-      ]
+      ],
+      "owners": [
+        "NAV"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Encounters: mark on Map and let the Player open them; no automatic interruption.",
@@ -1212,7 +2462,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-038"
-      ]
+      ],
+      "owners": [
+        "MOT",
+        "NAV"
+      ],
+      "slice": "S07",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Unavailable actions remain visible, look unavailable, and explain why when tapped.",
@@ -1220,7 +2478,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-032"
-      ]
+      ],
+      "owners": [
+        "INT",
+        "ACT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "First Discovery: same Identification reveal, plus a small first-Discovery badge; no extra celebration screen.",
@@ -1229,7 +2495,15 @@
       "scenario_ids": [
         "UI596-034",
         "UI596-036"
-      ]
+      ],
+      "owners": [
+        "MOT",
+        "ACT"
+      ],
+      "slice": "S07",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Surfaces: subtle texture noticeable only on close inspection; deep forest green direction; strong sculpted bevels; small rounded corners; thin dark outlines.",
@@ -1238,7 +2512,15 @@
       "scenario_ids": [
         "UI596-001",
         "UI596-049"
-      ]
+      ],
+      "owners": [
+        "FND",
+        "LAY"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Inspection: strong soft outer shadow; heavily dimmed but recognizable backdrop. Keep a relevant background resource counter bright when an action has a resource cost.",
@@ -1248,7 +2530,15 @@
         "UI596-007",
         "UI596-008",
         "UI596-028"
-      ]
+      ],
+      "owners": [
+        "INS",
+        "HUD"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Close control: dark × directly on the panel, with no visible button frame. Check contrast and retain a generous tap target.",
@@ -1257,7 +2547,15 @@
       "scenario_ids": [
         "UI596-008",
         "UI596-048"
-      ]
+      ],
+      "owners": [
+        "INS",
+        "INT"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Item-name typography: rounded and slightly playful; extra-bold; clearly visible dark outline; warm cream role. Starts around twice the stat-value size, never wraps, and keeps shrinking until the complete name fits, even below a normal minimum. This is an explicitly accepted readability tradeoff, not an accidental implementation fallback.",
@@ -1267,7 +2565,15 @@
         "UI596-009",
         "UI596-048",
         "UI596-049"
-      ]
+      ],
+      "owners": [
+        "TXT",
+        "INS"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Stat labels: emphasis role (gold direction) distinct from cream-value role. Labels above bars, aligned with the value area.",
@@ -1275,7 +2581,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-010"
-      ]
+      ],
+      "owners": [
+        "STAT",
+        "TXT"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Stats: three columns, continuing onto more rows; dark inset bars with small rounded corners; large icons overlap the left edge; values centered in the remaining space.",
@@ -1283,7 +2597,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-010"
-      ]
+      ],
+      "owners": [
+        "STAT"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Description/effects: one shared dark inset panel. Headings and key numbers use the emphasis role; body text uses the primary-text role. Bold throughout. Tight spacing within sections, generous gaps between them.",
@@ -1291,7 +2612,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-011"
-      ]
+      ],
+      "owners": [
+        "DESC"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Effects: small round bullets; recurring property/effect names replaced by inline icons slightly taller than surrounding letters.",
@@ -1299,7 +2627,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-011"
-      ]
+      ],
+      "owners": [
+        "DESC",
+        "ART"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Help: a panel-level information button opens a symbol legend. Raised circular information-role button (blue direction) with cream “i,” overlapping the panel’s upper-right border.",
@@ -1308,7 +2644,14 @@
       "scenario_ids": [
         "UI596-011",
         "UI596-029"
-      ]
+      ],
+      "owners": [
+        "DESC"
+      ],
+      "slice": "S06",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Progress bars: wide shallow rectangles, small rounded corners, centered numbers, glossy fill with bright upper edge. Resource icon overlaps the left end.",
@@ -1316,7 +2659,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-012"
-      ]
+      ],
+      "owners": [
+        "ACT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Outcome preview: separate raised panel with beveled edges, only for an already-defined action outcome.",
@@ -1325,7 +2675,14 @@
       "scenario_ids": [
         "UI596-012",
         "UI596-052"
-      ]
+      ],
+      "owners": [
+        "ACT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Main action buttons: strong bevels, thick lower edge; extra-bold rounded outlined labels. Unavailable state uses a neutral face and muted lettering while retaining bevels.",
@@ -1335,7 +2692,15 @@
         "UI596-012",
         "UI596-032",
         "UI596-033"
-      ]
+      ],
+      "owners": [
+        "INT",
+        "ACT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Costs: inside the action button below its name, text roughly two-thirds the action-name size; resource icon follows the amount.",
@@ -1344,7 +2709,14 @@
       "scenario_ids": [
         "UI596-012",
         "UI596-052"
-      ]
+      ],
+      "owners": [
+        "ACT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Two actions: equal-width buttons side by side. A known reward appears directly below its associated button.",
@@ -1353,7 +2725,14 @@
       "scenario_ids": [
         "UI596-012",
         "UI596-052"
-      ]
+      ],
+      "owners": [
+        "ACT"
+      ],
+      "slice": "S02",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Pack title: illustrated ribbon with folded ends, roughly half the screen width; light surface and dark text roles; clean smooth edges without wear. Bold rounded lettering without a prominent outline.",
@@ -1361,7 +2740,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-002"
-      ]
+      ],
+      "owners": [
+        "NAV"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "Palette instruction supersedes independent component color picking: resolve all colors through EarthNova’s design-system palette and semantic roles. Forest green, cream, gold, blue, neutral, outline, shadow, and state choices are role directions, not hard-coded hex values.",
@@ -1371,7 +2757,14 @@
         "UI596-001",
         "UI596-049",
         "UI596-053"
-      ]
+      ],
+      "owners": [
+        "FND"
+      ],
+      "slice": "S01",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "answer": "The skipped toolbar and search-field choices were subsequently resolved by the accepted visual and interaction rules; group visible search/sort/filter controls and use the light reference search field.",
@@ -1380,7 +2773,14 @@
       "status": "superseded_then_resolved",
       "scenario_ids": [
         "UI596-003"
-      ]
+      ],
+      "owners": [
+        "RET"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     }
   ],
   "scenarios": [
@@ -1794,7 +3194,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-054"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D002",
@@ -1803,7 +3210,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-055"
-      ]
+      ],
+      "owners": [
+        "GOV"
+      ],
+      "slice": "S09",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D003",
@@ -1812,7 +3226,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-054"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D004",
@@ -1821,7 +3242,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-055"
-      ]
+      ],
+      "owners": [
+        "GOV"
+      ],
+      "slice": "S01",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D005",
@@ -1830,7 +3258,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-056"
-      ]
+      ],
+      "owners": [
+        "ART",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D006",
@@ -1839,7 +3275,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-056"
-      ]
+      ],
+      "owners": [
+        "ART",
+        "LAY"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D007",
@@ -1848,7 +3292,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-056"
-      ]
+      ],
+      "owners": [
+        "LAY"
+      ],
+      "slice": "S03",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D008",
@@ -1857,7 +3308,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-057"
-      ]
+      ],
+      "owners": [
+        "ART"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D009",
@@ -1866,7 +3324,15 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-057"
-      ]
+      ],
+      "owners": [
+        "ART",
+        "CARD"
+      ],
+      "slice": "S04",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D010",
@@ -1875,7 +3341,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-058"
-      ]
+      ],
+      "owners": [
+        "LAY"
+      ],
+      "slice": "S05",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D011",
@@ -1884,7 +3357,14 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-059"
-      ]
+      ],
+      "owners": [
+        "GOV"
+      ],
+      "slice": "S01",
+      "implementation_status": "unassessed",
+      "consumers": [],
+      "evidence": []
     },
     {
       "id": "D012",
@@ -1893,6 +3373,21 @@
       "status": "target_specified_not_implemented",
       "scenario_ids": [
         "UI596-059"
+      ],
+      "owners": [
+        "FND"
+      ],
+      "slice": "S02",
+      "implementation_status": "partial",
+      "consumers": [
+        "lib/shared/design/foundations/app_design_theme.dart",
+        "lib/main.dart"
+      ],
+      "evidence": [
+        {
+          "kind": "widget_test",
+          "path": "test/shared/design/app_design_theme_test.dart"
+        }
       ]
     }
   ]

@@ -540,41 +540,6 @@
   },
   {
     "path": "lib/features/pack/presentation/screens/pack_screen.dart",
-    "source": "duration: const Duration(milliseconds: 200),",
-    "owner": "issue-596",
-    "slice": "S08",
-    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
-  },
-  {
-    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
-    "source": "duration: const Duration(milliseconds: 180),",
-    "owner": "issue-596",
-    "slice": "S08",
-    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
-  },
-  {
-    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
-    "source": "padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),",
-    "owner": "issue-596",
-    "slice": "S08",
-    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
-  },
-  {
-    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
-    "source": "padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),",
-    "owner": "issue-596",
-    "slice": "S08",
-    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
-  },
-  {
-    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
-    "source": "duration: const Duration(milliseconds: 180),",
-    "owner": "issue-596",
-    "slice": "S08",
-    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
-  },
-  {
-    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
     "source": "padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),",
     "owner": "issue-596",
     "slice": "S08",
@@ -583,20 +548,6 @@
   {
     "path": "lib/features/pack/presentation/screens/pack_screen.dart",
     "source": "padding: const EdgeInsets.only(bottom: 12),",
-    "owner": "issue-596",
-    "slice": "S08",
-    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
-  },
-  {
-    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
-    "source": "padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),",
-    "owner": "issue-596",
-    "slice": "S08",
-    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
-  },
-  {
-    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
-    "source": "padding: const EdgeInsets.all(12),",
     "owner": "issue-596",
     "slice": "S08",
     "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."

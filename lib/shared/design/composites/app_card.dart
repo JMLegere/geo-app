@@ -24,6 +24,7 @@ class AppCard extends StatelessWidget {
       decoration: DesignSurfaces.panel(tone),
       child: ShadCard(
         backgroundColor: Colors.transparent,
+        padding: tone == AppSurfaceTone.card ? EdgeInsets.zero : null,
         title: title == null ? null : Text(title!),
         description: description == null ? null : Text(description!),
         footer: footer,

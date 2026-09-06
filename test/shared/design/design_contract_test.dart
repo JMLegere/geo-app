@@ -69,6 +69,13 @@ void main() {
       expect(
         publicDesignComponentNames,
         unorderedEquals(const {
+          'AppSearchField',
+          'AppIconButton',
+          'AppChoiceMenu',
+          'AppFilterSheet',
+          'AppToggleChip',
+          'AppItemCard',
+          'AppCollectionGrid',
           'AppBadge',
           'AppNavButton',
           'AppRibbon',

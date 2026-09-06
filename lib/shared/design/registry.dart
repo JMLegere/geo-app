@@ -23,6 +23,57 @@ class DesignComponentDefinition {
 // treat it as the standalone source of truth.
 const designComponentRegistry = <DesignComponentDefinition>[
   DesignComponentDefinition(
+    name: 'AppToggleChip',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.canonical,
+    purpose:
+        'Immediate accessible filter selection using the shared Shad foundation.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppFilterSheet',
+    category: DesignComponentCategory.pattern,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Shared immediate accessible retrieval control.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppChoiceMenu',
+    category: DesignComponentCategory.composite,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Shared immediate accessible retrieval control.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppIconButton',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Shared immediate accessible retrieval control.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppSearchField',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Shared immediate accessible retrieval control.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppItemCard',
+    category: DesignComponentCategory.composite,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Shared knowledge-safe card presentation with one Unknown marker.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppCollectionGrid',
+    category: DesignComponentCategory.composite,
+    status: DesignComponentStatus.canonical,
+    purpose:
+        'Responsive collection geometry with five phone columns and text scaling.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
     name: 'AppNavButton',
     category: DesignComponentCategory.primitive,
     status: DesignComponentStatus.canonical,

@@ -4,6 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  testWidgets('Help labels remain readable in compact category navigation at large text', (tester) async {
+    await tester.pumpWidget(ShadApp(theme: AppDesignTheme.dark(), home: MediaQuery(
+      data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+      child: Scaffold(body: SizedBox(width: 48, child: AppNavButton(
+        label: 'Mineral', icon: const Icon(Icons.diamond_outlined),
+        showLabel: true, onPressed: () {},
+      ))),
+    )));
+    expect(find.text('Mineral'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'navigation symbols keep their intended size and accessible names',
     (tester) async {

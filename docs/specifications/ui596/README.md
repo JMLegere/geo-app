@@ -15,3 +15,7 @@ Use one typed Dart token source. The PRD explicitly permits this alternative to 
 `npm run design:check` rejects new raw presentation values outside the shared library. The exact per-file/source baseline is temporary debt, owned by issue 596 and retired as screens migrate. It is never reset to admit new violations.
 
 The target scenarios imported from draft PR #597 remain specifications until real production-boundary tests or reviewed visuals verify them. Native EAC contracts and Flutter registry parity remain mandatory.
+
+## Pack checkpoint
+
+The actual Pack now uses shared cards, responsive grid, search, menus, filter sheet, category Help and retained browsing context. See `execution-report.md` for tested scope and limitations. The execution validator checks owners and evidence paths for all 150 decisions; unassessed/partial status remains distinct from verified acceptance. The representative-art gate in PRD D003 remains open.
