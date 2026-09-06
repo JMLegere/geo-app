@@ -1,0 +1,26 @@
+# Execution status is evidence, not authorization or acceptance by itself.
+issue: https://github.com/JMLegere/geo-app/issues/596
+source_commit: f96a841b4eba5468ee9c0958b36c52d67c60b3b7
+branch: implementation/596-design-system
+overall: implementing
+recovery:
+  reason: Previous local implementation and patch are absent from this workspace.
+  source_tree_verified: 12ecddcb01920c23c0c3b41b142a026fc78ad90b
+  previous_test_results_reusable: false
+slices:
+  S01: implementing
+  S02: pending
+  S03: pending
+  S04: pending
+  S05: pending
+  S06: pending
+  S07: pending
+  S08: pending
+  S09: pending
+evidence:
+  specification_validator_tests: 9
+  target_scenarios_parsed: 59
+  decisions_traced: 150
+  target_acceptance_executed: false
+  flutter_regression: pending
+  iphone_acceptance: pending
