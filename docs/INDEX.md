@@ -60,6 +60,7 @@ Every Markdown file in the repository must match exactly one row below. A docume
 | `docs/c4/README.md` | `CURRENT-SCOPED` | Generated current C4 architecture views and maintenance instructions |
 | `docs/prd-target-container-migration.md` | `CURRENT-SCOPED` | Approved Issue #592 migration requirements; only the explicitly authorized first deployable slice is active |
 | `docs/prd-shadcn-ui-reset.md` | `CURRENT-SCOPED` | Phases 1–7 complete locally; final [Phase 7 acceptance](../.agents/qa/2026-09-02-shadcn-reset-phase-7-final-acceptance.md) passed; production deployment remains unauthorized |
+| `docs/issue-596-finish-plan.md` | `CURRENT-SCOPED` | Issue #596 delivery sequence; implementation evidence and acceptance remain tracked separately |
 | `lib/shared/design/README.md` | `CURRENT-SCOPED` | Shared design-library usage |
 | `2026-04-03-*.md` | `HISTORICAL-EVIDENCE` | Dated v3 planning and backlog |
 | `docs/design.md`, `docs/map-design.md`, `docs/prd-game-systems*.md` | `HISTORICAL-EVIDENCE` | Prior product and implementation intent |
@@ -69,6 +70,8 @@ Every Markdown file in the repository must match exactly one row below. A docume
 | `.agents/mocks/**/*.md`, `.agents/qa/**/*.md`, `.agents/top-down/**/*.md` | `HISTORICAL-EVIDENCE` | Dated mock, QA, and planning evidence |
 | `.claude/agent_notes/**/*.md`, `.opencode/plans/**/*.md` | `HISTORICAL-EVIDENCE` | Legacy agent notes and plans |
 | `ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md` | `GENERATED/VENDOR` | Flutter platform asset guidance |
+
+| `docs/specifications/ui596/**/*.md` | `CURRENT-SCOPED` | Issue 596 acceptance specification and execution evidence; PRD remains in GitHub issue 596 |
 
 ## Non-Markdown Evidence
 

@@ -17,7 +17,7 @@ import 'package:earth_nova/core/domain/entities/game_region.dart';
 ///   - **AND across dimensions** — mammals + forest = mammals in forests
 ///   - **Non-fauna items always pass** type/habitat/region filters —
 ///     minerals, fossils, etc. have no taxonomic data
-///   - **Rarity filter applies to all categories** — every item has rarity
+///   - **Conservation filter** — applies only where an IUCN status exists
 ///
 /// The [matches] predicate is the single source of truth for filtering.
 /// Screens never implement their own filter logic.
@@ -81,13 +81,12 @@ class PackFilterState {
     Set<Habitat>? activeHabitats,
     Set<GameRegion>? activeRegions,
     Set<IucnStatus>? activeRarities,
-  }) =>
-      PackFilterState(
-        activeTypes: activeTypes ?? this.activeTypes,
-        activeHabitats: activeHabitats ?? this.activeHabitats,
-        activeRegions: activeRegions ?? this.activeRegions,
-        activeRarities: activeRarities ?? this.activeRarities,
-      );
+  }) => PackFilterState(
+    activeTypes: activeTypes ?? this.activeTypes,
+    activeHabitats: activeHabitats ?? this.activeHabitats,
+    activeRegions: activeRegions ?? this.activeRegions,
+    activeRarities: activeRarities ?? this.activeRarities,
+  );
 
   // ── The core filter predicate ──────────────────────────────────────────
 
@@ -97,6 +96,9 @@ class PackFilterState {
   /// always pass type/habitat/region — they have no data to filter against.
   /// Rarity filter applies to ALL categories.
   bool matches(Item item) {
+    // Unknown membership must be independent of concealed intrinsic metadata.
+    // A constrained result cannot assert that an Unknown Item matches it.
+    if (!item.isExamined) return !hasActiveFilters;
     // Type filter: skip if no active types OR if item has no taxonomic data
     if (activeTypes.isNotEmpty && item.taxonomicClass != null) {
       if (!activeTypes.contains(item.taxonomicGroup)) return false;
@@ -104,8 +106,10 @@ class PackFilterState {
 
     // Habitat filter: skip if no active habitats OR if item has no habitats
     if (activeHabitats.isNotEmpty && item.habitats.isNotEmpty) {
-      final itemHabitatSet =
-          item.habitats.map(Habitat.fromString).whereType<Habitat>().toSet();
+      final itemHabitatSet = item.habitats
+          .map(Habitat.fromString)
+          .whereType<Habitat>()
+          .toSet();
       if (itemHabitatSet.intersection(activeHabitats).isEmpty) return false;
     }
 
@@ -141,11 +145,11 @@ class PackFilterState {
 
   @override
   int get hashCode => Object.hashAll([
-        ...activeTypes,
-        ...activeHabitats,
-        ...activeRegions,
-        ...activeRarities,
-      ]);
+    ...activeTypes,
+    ...activeHabitats,
+    ...activeRegions,
+    ...activeRarities,
+  ]);
 }
 
 bool _setEquals<T>(Set<T> a, Set<T> b) =>

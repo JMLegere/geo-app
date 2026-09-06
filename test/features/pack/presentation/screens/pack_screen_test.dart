@@ -15,6 +15,203 @@ import 'package:earth_nova/shared/product/player_actions.dart';
 
 void main() {
   group('PackScreen', () {
+    testWidgets(
+      'cards reserve names for inspection and retain accessible identity',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        await _pumpPack(tester, [
+          _item('1', 'Red Fox', ItemCategory.fauna),
+        ], size: const Size(390, 844));
+        expect(find.text('Red Fox'), findsNothing);
+        expect(find.bySemanticsLabel('Red Fox'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byKey(const ValueKey('pack-item-1')));
+        await tester.pumpAndSettle();
+        expect(find.text('Red Fox'), findsNWidgets(2));
+        semantics.dispose();
+      },
+    );
+
+    testWidgets(
+      'returning to a category restores its query and filtered Items',
+      (tester) async {
+        await _pumpPack(tester, [
+          _item('1', 'Red Fox', ItemCategory.fauna),
+          _item('2', 'Gray Wolf', ItemCategory.fauna),
+          _item('3', 'Oak Tree', ItemCategory.flora),
+        ]);
+        await tester.enterText(find.byType(EditableText), 'Fox');
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('pack-category-flora')));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<EditableText>(find.byType(EditableText))
+              .controller
+              .text,
+          '',
+        );
+        await tester.enterText(find.byType(EditableText), 'Oak');
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('pack-category-fauna')));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<EditableText>(find.byType(EditableText))
+              .controller
+              .text,
+          'Fox',
+        );
+        expect(find.byKey(const ValueKey('pack-item-1')), findsOneWidget);
+        expect(find.byKey(const ValueKey('pack-item-2')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Unknown is the only newness marker and conservation is not a rarity frame',
+      (tester) async {
+        await _pumpPack(tester, [
+          _item(
+            '1',
+            'Secret Animal',
+            ItemCategory.fauna,
+            identificationState: ItemIdentificationState.unidentified,
+            examinationState: ItemExaminationState.unexamined,
+          ),
+          _item('2', 'Red Fox', ItemCategory.fauna, rarity: 'leastConcern'),
+        ], size: const Size(390, 844));
+        expect(find.text('Unknown'), findsOneWidget);
+        expect(find.text('New'), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('pack-item-2')),
+            matching: find.text('LC'),
+          ),
+          findsNothing,
+        );
+        expect(find.text('Secret Animal'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('refresh and refresh failure retain usable Items and retry', (
+      tester,
+    ) async {
+      final notifier = _RefreshItemsNotifier([
+        _item('1', 'Red Fox', ItemCategory.fauna),
+      ]);
+      await _pumpPackWithNotifier(tester, notifier);
+      notifier.refreshing();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('pack-item-1')), findsOneWidget);
+      expect(find.text('Refreshing Pack'), findsOneWidget);
+      notifier.fail();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('pack-item-1')), findsOneWidget);
+      expect(find.text('Could not refresh Pack'), findsOneWidget);
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+      expect(notifier.retryCalls, 1);
+    });
+
+    testWidgets('category changes preserve grid scroll independently', (
+      tester,
+    ) async {
+      await _pumpPack(tester, [
+        for (var i = 1; i <= 120; i++)
+          _item('$i', 'Animal $i', ItemCategory.fauna),
+        _item('121', 'Oak', ItemCategory.flora),
+      ], size: const Size(390, 844));
+      final grid = find.byType(GridView);
+      await tester.drag(grid, const Offset(0, -600));
+      await tester.pumpAndSettle();
+      final original = tester
+          .state<ScrollableState>(
+            find.descendant(of: grid, matching: find.byType(Scrollable)).first,
+          )
+          .position
+          .pixels;
+      expect(original, greaterThan(0));
+      await tester.tap(find.byKey(const ValueKey('pack-category-flora')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('pack-category-fauna')));
+      await tester.pumpAndSettle();
+      final restored = tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: find.byType(GridView),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position
+          .pixels;
+      expect(restored, closeTo(original, 1));
+    });
+
+    testWidgets(
+      'all-Pack search is explicit and direction reverses results immediately',
+      (tester) async {
+        await _pumpPack(tester, [
+          _item('1', 'Mint Beetle', ItemCategory.fauna),
+          _item('2', 'Garden Mint', ItemCategory.flora),
+        ]);
+        await tester.enterText(find.byType(EditableText), 'Mint');
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('pack-item-2')), findsNothing);
+        await tester.tap(find.byKey(const Key('pack-search-scope')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('All Pack'));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('pack-item-2')), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('pack-sort-direction')),
+            matching: find.byIcon(Icons.arrow_drop_down),
+          ),
+          findsOneWidget,
+        );
+        final before = tester.getTopLeft(
+          find.byKey(const ValueKey('pack-item-2')),
+        );
+        await tester.tap(find.byKey(const Key('pack-sort-direction')));
+        await tester.pumpAndSettle();
+        final after = tester.getTopLeft(
+          find.byKey(const ValueKey('pack-item-2')),
+        );
+        expect(after.dx, greaterThan(before.dx));
+        await tester.tap(find.byKey(const ValueKey('pack-category-flora')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('pack-item-1')), findsNothing);
+        expect(find.byKey(const ValueKey('pack-item-2')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('category icons reveal labels only when Help is requested', (
+      tester,
+    ) async {
+      await _pumpPack(tester, []);
+      final flora = find.byKey(const ValueKey('pack-category-flora'));
+      expect(
+        find.descendant(of: flora, matching: find.text('Flora')),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const Key('pack-category-help')));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: flora, matching: find.text('Flora')),
+        findsOneWidget,
+      );
+      await tester.tap(flora);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: flora, matching: find.text('Flora')),
+        findsNothing,
+      );
+    });
+
     testWidgets('compact bar shows filtered count, not total item count', (
       tester,
     ) async {
@@ -67,7 +264,7 @@ void main() {
         '1',
       );
 
-      await tester.tap(find.text('Flora'));
+      await tester.tap(find.byKey(const ValueKey('pack-category-flora')));
       await tester.pumpAndSettle();
 
       expect(
@@ -146,7 +343,7 @@ void main() {
       await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
 
-      expect(find.text('SORT'), findsOneWidget);
+      expect(find.text('SORT'), findsNothing);
       expect(find.text('TYPE'), findsOneWidget);
       expect(find.text('HABITAT'), findsOneWidget);
       expect(find.text('REGION'), findsOneWidget);
@@ -157,10 +354,12 @@ void main() {
 
       await _pumpPack(tester, items);
 
-      await tester.tap(find.text('Mineral'));
+      await tester.tap(find.byKey(const ValueKey('pack-category-mineral')));
       await tester.pumpAndSettle();
 
-      expect(find.text('SORT'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('compact-bar')));
+      await tester.pumpAndSettle();
+      expect(find.text('SORT'), findsNothing);
       expect(find.text('TYPE'), findsNothing);
       expect(find.text('HABITAT'), findsNothing);
       expect(find.text('REGION'), findsNothing);
@@ -209,13 +408,13 @@ void main() {
 
       expect(find.text('Recent'), findsAtLeast(1));
 
-      await tester.tap(find.byKey(const Key('compact-bar')));
+      await tester.tap(find.byKey(const Key('pack-sort')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Rarity'));
+      await tester.tap(find.text('Conservation'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Rarity'), findsAtLeast(1));
+      expect(find.text('Conservation'), findsAtLeast(1));
     });
 
     testWidgets('switching sort to Name works', (tester) async {
@@ -226,13 +425,13 @@ void main() {
 
       await _pumpPack(tester, items);
 
-      await tester.tap(find.byKey(const Key('compact-bar')));
+      await tester.tap(find.byKey(const Key('pack-sort')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('A→Z'));
+      await tester.tap(find.text('Name'));
       await tester.pumpAndSettle();
 
-      expect(find.text('A→Z'), findsAtLeast(1));
+      expect(find.text('Name'), findsAtLeast(1));
     });
 
     testWidgets('error state retries the failed fetch', (tester) async {
@@ -272,34 +471,37 @@ void main() {
 
       await _pumpPack(tester, items);
 
-      await tester.tap(find.text('Flora'));
+      await tester.tap(find.byKey(const ValueKey('pack-category-flora')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
 
-      expect(find.text('SORT'), findsOneWidget);
+      expect(find.text('SORT'), findsNothing);
       expect(find.text('TYPE'), findsNothing);
       expect(find.text('HABITAT'), findsOneWidget);
       expect(find.text('REGION'), findsOneWidget);
     });
 
-    testWidgets('conservation toggles appear in panel for all categories', (
-      tester,
-    ) async {
-      final items = [
-        _item('1', 'Diamond', ItemCategory.mineral, rarity: 'leastConcern'),
-      ];
+    testWidgets(
+      'conservation toggles appear in the biological category filter sheet',
+      (tester) async {
+        final items = [
+          _item('1', 'Oak', ItemCategory.flora, rarity: 'leastConcern'),
+        ];
 
-      await _pumpPack(tester, items);
-      await tester.tap(find.text('Mineral'));
-      await tester.pumpAndSettle();
+        await _pumpPack(tester, items);
+        await tester.tap(find.byKey(const ValueKey('pack-category-flora')));
+        await tester.pumpAndSettle();
 
-      expect(find.text('CONSERVATION'), findsOneWidget);
-      expect(find.text('CR'), findsOneWidget);
-      expect(find.text('EN'), findsOneWidget);
-      expect(find.text('VU'), findsOneWidget);
-    });
+        await tester.tap(find.byKey(const Key('compact-bar')));
+        await tester.pumpAndSettle();
+        expect(find.text('CONSERVATION'), findsOneWidget);
+        expect(find.text('CR'), findsOneWidget);
+        expect(find.text('EN'), findsOneWidget);
+        expect(find.text('VU'), findsOneWidget);
+      },
+    );
 
     testWidgets('search bar filters by name', (tester) async {
       final items = [
@@ -314,7 +516,7 @@ void main() {
         '3',
       );
 
-      await tester.enterText(find.byType(TextField), 'Fox');
+      await tester.enterText(find.byType(EditableText), 'Fox');
       await tester.pumpAndSettle();
 
       expect(
@@ -340,7 +542,7 @@ void main() {
 
       await _pumpPack(tester, items);
 
-      await tester.enterText(find.byType(TextField), 'Amberwing');
+      await tester.enterText(find.byType(EditableText), 'Amberwing');
       await tester.pumpAndSettle();
 
       expect(
@@ -384,7 +586,7 @@ void main() {
                   newestPosition.dx < olderPosition.dx,
           isTrue,
         );
-        expect(find.bySemanticsLabel('Unexamined fauna Item'), findsOneWidget);
+        expect(find.bySemanticsLabel('Unknown fauna Item'), findsOneWidget);
         expect(find.text('Amberwing Warbler'), findsNothing);
         expect(find.text('Setophaga aestiva'), findsNothing);
 
@@ -421,9 +623,11 @@ void main() {
 
       await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'Fox');
+      await tester.tap(find.byKey(const Key('close-filters')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Red Fox'));
+      await tester.enterText(find.byType(EditableText), 'Fox');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('pack-item-1')));
       await tester.pumpAndSettle();
 
       expect(notifier.examineCalls, 0);
@@ -445,7 +649,7 @@ void main() {
 
       final container = await _pumpPack(tester, items);
 
-      await tester.tap(find.text('Red Fox'));
+      await tester.tap(find.byKey(const ValueKey('pack-item-1')));
       await tester.pumpAndSettle();
 
       expect(find.text('Vulpes vulpes'), findsOneWidget);
@@ -492,16 +696,18 @@ void main() {
         '2',
       );
     });
-    testWidgets('uses 3 columns below 600px', (tester) async {
-      await _expectGrid(tester, width: 599, columns: 3, ratio: 0.78);
+    testWidgets('uses five columns below 600px', (tester) async {
+      await _expectGrid(tester, width: 599, columns: 5, ratio: 0.78);
     });
 
-    testWidgets('uses 4 columns from 600px through 899px', (tester) async {
-      await _expectGrid(tester, width: 600, columns: 4, ratio: 0.82);
+    testWidgets('uses five columns at 600px', (tester) async {
+      await _expectGrid(tester, width: 600, columns: 5, ratio: 0.78);
     });
 
-    testWidgets('uses 6 columns from 900px', (tester) async {
-      await _expectGrid(tester, width: 900, columns: 6, ratio: 0.85);
+    testWidgets('uses eight comfortably sized columns at 900px', (
+      tester,
+    ) async {
+      await _expectGrid(tester, width: 900, columns: 8, ratio: 0.78);
     });
 
     testWidgets('distinguishes a category with no discoveries', (tester) async {
@@ -521,7 +727,13 @@ void main() {
         find.byKey(const ValueKey('pack-media-fallback-1')),
         findsOneWidget,
       );
-      expect(find.byIcon(Icons.pets_outlined), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('pack-media-fallback-1')),
+          matching: find.byIcon(Icons.pets_outlined),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows a distinct loading state', (tester) async {
@@ -570,7 +782,7 @@ void main() {
 
       await tester.tap(surface);
       await tester.pump();
-      expect(find.text('Examining'), findsOneWidget);
+      expect(find.byKey(const Key('pack-examining-icon')), findsOneWidget);
       expect(find.byKey(const Key('pack-examining-icon')), findsOneWidget);
       await tester.tap(surface);
       await tester.pump();
@@ -778,7 +990,7 @@ Future<void> _expectGrid(
   await _pumpPack(tester, [
     _item('1', 'Red Fox', ItemCategory.fauna),
   ], size: Size(width, 900));
-  final grid = tester.widget<GridView>(find.byKey(const Key('pack-grid')));
+  final grid = tester.widget<GridView>(find.byType(GridView));
   final delegate =
       grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
   expect(delegate.crossAxisCount, columns);
@@ -967,4 +1179,22 @@ class _ErrorItemsNotifier extends ItemsNotifier {
   Future<void> fetchItems() async {
     fetchCalls++;
   }
+}
+
+class _RefreshItemsNotifier extends _MockItemsNotifier {
+  _RefreshItemsNotifier(super.items);
+  @override
+  ObservabilityService get obs => ref.read(appObservabilityProvider);
+  int retryCalls = -1; // Initial fixture fetch is separate from explicit retry.
+  @override
+  Future<void> fetchItems() async {
+    retryCalls++;
+  }
+
+  void refreshing() =>
+      transition(state.copyWith(isLoading: true), 'test.refresh');
+  void fail() => transition(
+    state.copyWith(isLoading: false, error: 'offline'),
+    'test.failed',
+  );
 }

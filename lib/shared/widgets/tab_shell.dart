@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/shared/presentation/interface_help_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
@@ -63,10 +64,14 @@ class _AppBottomNav extends StatelessWidget {
   const _AppBottomNav({
     required this.selectedIndex,
     required this.onDestinationSelected,
+    required this.showLabels,
+    required this.onHelp,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final bool showLabels;
+  final VoidCallback onHelp;
 
   @override
   Widget build(BuildContext context) {
@@ -88,9 +93,21 @@ class _AppBottomNav extends StatelessWidget {
                   child: _AppNavItem(
                     item: _bottomNavItems[index],
                     selected: index == selectedIndex,
+                    showLabel: showLabels,
                     onTap: () => onDestinationSelected(index),
                   ),
                 ),
+              SizedBox(
+                width: 60,
+                child: AppNavButton(
+                  label: 'Help',
+                  buttonKey: const Key('tab-shell-nav-help'),
+                  icon: const Icon(Icons.help_outline),
+                  selected: showLabels,
+                  // eac-clickable-owner-logs: interfaceHelpProvider records help state transitions.
+                  onPressed: onHelp,
+                ),
+              ),
             ],
           ),
         ),
@@ -104,66 +121,35 @@ class _AppNavItem extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.onTap,
+    required this.showLabel,
   });
-
   final _BottomNavDestination item;
   final bool selected;
+  final bool showLabel;
   final VoidCallback onTap;
-
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final label = item.label.toLowerCase();
-
     return ProductActionSurface(
       actionId: item.actionId,
-      child: MergeSemantics(
-        child: Semantics(
-          key: Key('tab-shell-nav-item-$label'),
-          button: true,
-          selected: selected,
-          label: item.label,
-          onTap: onTap,
-          child: ExcludeSemantics(
-            child: Padding(
-              padding: const EdgeInsets.all(2),
-              child: ShadButton.ghost(
-                key: Key('tab-shell-nav-button-$label'),
-                height: _bottomNavHeight - 4,
-                expands: true,
-                padding: EdgeInsets.zero,
-                backgroundColor: selected
-                    ? colors.secondaryContainer
-                    : Colors.transparent,
-                hoverBackgroundColor: colors.surfaceContainerHighest,
-                foregroundColor: selected
-                    ? colors.onSecondaryContainer
-                    : colors.onSurface,
-                onPressed: onTap,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (selected)
-                      Icon(
-                        Icons.check,
-                        key: Key('tab-shell-nav-selected-$label'),
-                        size: 16,
-                      ),
-                    if (selected) const SizedBox(width: 6),
-                    Text(
-                      item.label,
-                      key: Key('tab-shell-nav-label-$label'),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      child: Semantics(
+        key: Key('tab-shell-nav-item-$label'),
+        label: item.label,
+        button: true,
+        selected: selected,
+        onTap: onTap,
+        child: ExcludeSemantics(
+          child: AppNavButton(
+            label: item.label,
+            icon: Icon(
+              label == 'map' ? Icons.map_outlined : Icons.backpack_outlined,
             ),
+            selected: selected,
+            showLabel: showLabel,
+            onPressed: onTap,
+            buttonKey: Key('tab-shell-nav-button-$label'),
+            labelKey: Key('tab-shell-nav-label-$label'),
+            selectionKey: Key('tab-shell-nav-selected-$label'),
           ),
         ),
       ),
@@ -252,6 +238,7 @@ class _TabShellState extends ConsumerState<TabShell>
   }
 
   void _onPlayerTabSelected(int index, {String surface = 'bottom_navigation'}) {
+    ref.read(interfaceHelpProvider.notifier).dismiss();
     if (index == _currentIndex) return;
     final action = _playerActionIdForTab(index);
     if (action == null) return;
@@ -499,6 +486,8 @@ class _TabShellState extends ConsumerState<TabShell>
             _AppBottomNav(
               selectedIndex: _currentIndex,
               onDestinationSelected: _onPlayerTabSelected,
+              showLabels: ref.watch(interfaceHelpProvider),
+              onHelp: ref.read(interfaceHelpProvider.notifier).toggle,
             ),
             if (debugMode)
               Positioned(
