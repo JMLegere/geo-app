@@ -94,10 +94,10 @@ void main() {
           .hasAction(SemanticsAction.tap),
       isFalse,
     );
-    expect(find.text('Loading'), findsOneWidget);
+    expect(find.text('Submit'), findsOneWidget);
     expect(find.bySemanticsLabel('Submit loading'), findsOneWidget);
     expect(find.bySemanticsLabel('Loading'), findsNothing);
-    await tester.tap(find.text('Loading'), warnIfMissed: false);
+    await tester.tap(find.text('Submit'), warnIfMissed: false);
     expect(taps, 0);
   });
 

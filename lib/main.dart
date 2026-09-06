@@ -11,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/app/readiness/app_readiness_gate.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/app/sync/application/identification_sync_provider.dart';
 import 'package:earth_nova/app/sync/application/identification_sync_service.dart';
@@ -121,8 +122,10 @@ void main() async {
     eventName: 'app.cold_start',
     span: startupSpan,
     data: {
-      'version':
-          const String.fromEnvironment('APP_VERSION', defaultValue: 'dev'),
+      'version': const String.fromEnvironment(
+        'APP_VERSION',
+        defaultValue: 'dev',
+      ),
       'platform': 'web',
     },
   );
@@ -163,11 +166,11 @@ void main() async {
 
   final IdentificationRepository? identificationRepository =
       supabaseClient != null
-          ? SupabaseIdentificationRepository(
-              client: supabaseClient,
-              logEvent: obs.log,
-            )
-          : null;
+      ? SupabaseIdentificationRepository(
+          client: supabaseClient,
+          logEvent: obs.log,
+        )
+      : null;
   final random = Random();
   const deploymentEnvironment = String.fromEnvironment(
     'DEPLOYMENT_ENVIRONMENT',
@@ -189,10 +192,7 @@ void main() async {
       : const _EmptyLivingWorldRepository();
 
   final HomeRepository homeRepository = supabaseClient != null
-      ? SupabaseHomeRepository.fromSupabase(
-          supabaseClient,
-          logEvent: obs.log,
-        )
+      ? SupabaseHomeRepository.fromSupabase(supabaseClient, logEvent: obs.log)
       : const _PreviewHomeRepository();
 
   final CellRepository cellRepository = supabaseClient != null
@@ -217,8 +217,11 @@ void main() async {
       : MockHierarchyRepository();
 
   FlutterError.onError = (details) {
-    obs.logError(details.exception, details.stack ?? StackTrace.current,
-        event: 'app.crash.flutter');
+    obs.logError(
+      details.exception,
+      details.stack ?? StackTrace.current,
+      event: 'app.crash.flutter',
+    );
   };
 
   runZonedGuarded(
@@ -228,8 +231,9 @@ void main() async {
           authRepositoryProvider.overrideWithValue(authRepository),
           itemRepositoryProvider.overrideWithValue(itemRepository),
           packRepositoryProvider.overrideWithValue(packRepository),
-          identificationRepositoryProvider
-              .overrideWithValue(identificationRepository),
+          identificationRepositoryProvider.overrideWithValue(
+            identificationRepository,
+          ),
           identificationSyncServiceProvider.overrideWith((ref) {
             final repository = identificationRepository;
             if (repository == null ||
@@ -251,23 +255,23 @@ void main() async {
                 ref
                     .read(itemsProvider.notifier)
                     .registerOwnedDiscovery(result.committedItem);
-                await ref
-                    .read(appReadinessProvider.notifier)
-                    .persistCurrent();
+                await ref.read(appReadinessProvider.notifier).persistCurrent();
               },
             );
             ref.onDispose(service.dispose);
             return service;
           }),
           itemIndexRepositoryProvider.overrideWithValue(itemIndexRepository),
-          livingWorldRepositoryProvider
-              .overrideWithValue(livingWorldRepository),
+          livingWorldRepositoryProvider.overrideWithValue(
+            livingWorldRepository,
+          ),
           livingWorldObservabilityProvider.overrideWithValue(obs),
           homeRepositoryProvider.overrideWithValue(homeRepository),
           homeObservabilityProvider.overrideWithValue(obs),
           cellRepositoryProvider.overrideWithValue(cellRepository),
-          cellKnowledgeRepositoryProvider
-              .overrideWithValue(cellKnowledgeRepository),
+          cellKnowledgeRepositoryProvider.overrideWithValue(
+            cellKnowledgeRepository,
+          ),
           locationRepositoryProvider.overrideWithValue(locationRepository),
           nullableSupabaseClientProvider.overrideWithValue(supabaseClient),
           observabilityProvider.overrideWithValue(obs),
@@ -286,8 +290,9 @@ void main() async {
           mapLevelObservabilityProvider.overrideWithValue(obs),
           hierarchyObservabilityProvider.overrideWithValue(obs),
           hierarchyRepositoryProvider.overrideWithValue(hierarchyRepository),
-          navigationScreenTransitionLoggerProvider
-              .overrideWithValue(navigationLogger),
+          navigationScreenTransitionLoggerProvider.overrideWithValue(
+            navigationLogger,
+          ),
           debugModeObservabilityProvider.overrideWithValue(obs),
           sharedPreferencesProvider.overrideWithValue(prefs),
         ],
@@ -317,10 +322,7 @@ final class _PreviewHomeRepository implements HomeRepository {
   const _PreviewHomeRepository();
 
   @override
-  Future<Home> readHome(
-    String playerId, {
-    required String traceId,
-  }) async {
+  Future<Home> readHome(String playerId, {required String traceId}) async {
     assert(traceId.isNotEmpty);
     return Home(
       id: 'preview-home',
@@ -337,8 +339,7 @@ final class _EmptyCellKnowledgeRepository implements CellKnowledgeRepository {
   Future<Map<String, CellKnowledgeProjection>> fetchForCells(
     Iterable<String> cellIds, {
     String? traceId,
-  }) async =>
-      const {};
+  }) async => const {};
 }
 
 final class _EmptyLivingWorldRepository implements LivingWorldRepository {
@@ -415,7 +416,8 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
       nextState: state.name,
     );
 
-    final isBackgrounded = state == AppLifecycleState.paused ||
+    final isBackgrounded =
+        state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached ||
         state == AppLifecycleState.hidden;
     if (isBackgrounded) {
@@ -488,10 +490,7 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
     _authHomeTracker.onScreenVisible(screenName);
 
     return ShadApp.custom(
-      theme: ShadThemeData(
-        brightness: Brightness.dark,
-        colorScheme: const ShadZincColorScheme.dark(),
-      ),
+      theme: AppDesignTheme.dark(),
       themeMode: ThemeMode.dark,
       appBuilder: (context) => MaterialApp(
         title: 'EarthNova',
@@ -522,10 +521,8 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
         home: authState.when(
           loading: () => const LoadingScreen(),
           unauthenticated: () => const LoginScreen(),
-          authenticated: (user) => AppReadinessGate(
-            key: ValueKey(user.id),
-            userId: user.id,
-          ),
+          authenticated: (user) =>
+              AppReadinessGate(key: ValueKey(user.id), userId: user.id),
           error: (_) => const LoginScreen(),
         ),
       ),

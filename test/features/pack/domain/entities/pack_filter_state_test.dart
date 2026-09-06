@@ -8,6 +8,31 @@ import 'package:earth_nova/features/pack/domain/entities/pack_filter_state.dart'
 
 void main() {
   group('PackFilterState', () {
+    test('hidden metadata never affects Unknown filter membership', () {
+      final first = _fauna(
+        taxonomicClass: 'AVES',
+        rarity: 'EN',
+        habitats: ['Forest'],
+      );
+      final second = _fauna(
+        taxonomicClass: 'MAMMALIA',
+        rarity: 'LC',
+        habitats: ['Desert'],
+      );
+      final unknowns = [first, second].map(
+        (item) => item.copyWith(
+          identificationState: ItemIdentificationState.unidentified,
+          examinationState: ItemExaminationState.unexamined,
+        ),
+      );
+      final filters = const PackFilterState().toggleType(TaxonomicGroup.birds);
+      expect(unknowns.map(filters.matches).toSet().length, 1);
+      expect(
+        unknowns.map(const PackFilterState().matches),
+        everyElement(isTrue),
+      );
+    });
+
     test('empty state has no active filters', () {
       const state = PackFilterState();
       expect(state.hasActiveFilters, isFalse);
@@ -72,22 +97,17 @@ void main() {
     });
 
     test('type filter matches correct group', () {
-      final filters =
-          const PackFilterState().toggleType(TaxonomicGroup.mammals);
+      final filters = const PackFilterState().toggleType(
+        TaxonomicGroup.mammals,
+      );
       expect(filters.matches(_fauna(taxonomicClass: 'MAMMALIA')), isTrue);
       expect(filters.matches(_fauna(taxonomicClass: 'AVES')), isFalse);
     });
 
     test('habitat filter matches items with matching habitat', () {
       final filters = const PackFilterState().toggleHabitat(Habitat.forest);
-      expect(
-        filters.matches(_fauna(habitats: ['Forest', 'Mountain'])),
-        isTrue,
-      );
-      expect(
-        filters.matches(_fauna(habitats: ['Desert'])),
-        isFalse,
-      );
+      expect(filters.matches(_fauna(habitats: ['Forest', 'Mountain'])), isTrue);
+      expect(filters.matches(_fauna(habitats: ['Desert'])), isFalse);
     });
 
     test('habitat filter passes items with no habitats', () {
@@ -97,14 +117,8 @@ void main() {
 
     test('region filter matches items with matching continent', () {
       final filters = const PackFilterState().toggleRegion(GameRegion.africa);
-      expect(
-        filters.matches(_fauna(continents: ['Africa', 'Asia'])),
-        isTrue,
-      );
-      expect(
-        filters.matches(_fauna(continents: ['Europe'])),
-        isFalse,
-      );
+      expect(filters.matches(_fauna(continents: ['Africa', 'Asia'])), isTrue);
+      expect(filters.matches(_fauna(continents: ['Europe'])), isFalse);
     });
 
     test('region filter passes items with no continents', () {
@@ -113,21 +127,24 @@ void main() {
     });
 
     test('rarity filter matches items with matching rarity', () {
-      final filters =
-          const PackFilterState().toggleRarity(IucnStatus.endangered);
+      final filters = const PackFilterState().toggleRarity(
+        IucnStatus.endangered,
+      );
       expect(filters.matches(_fauna(rarity: 'EN')), isTrue);
       expect(filters.matches(_fauna(rarity: 'LC')), isFalse);
     });
 
     test('rarity filter rejects items with null rarity', () {
-      final filters =
-          const PackFilterState().toggleRarity(IucnStatus.endangered);
+      final filters = const PackFilterState().toggleRarity(
+        IucnStatus.endangered,
+      );
       expect(filters.matches(_fauna(rarity: null)), isFalse);
     });
 
     test('type filter passes non-fauna items (null taxonomicClass)', () {
-      final filters =
-          const PackFilterState().toggleType(TaxonomicGroup.mammals);
+      final filters = const PackFilterState().toggleType(
+        TaxonomicGroup.mammals,
+      );
       final mineral = Item(
         id: 'test',
         definitionId: 'def',
@@ -145,26 +162,21 @@ void main() {
       filters = filters.toggleHabitat(Habitat.forest);
       // Mammal in forest → pass
       expect(
-        filters.matches(_fauna(
-          taxonomicClass: 'MAMMALIA',
-          habitats: ['Forest'],
-        )),
+        filters.matches(
+          _fauna(taxonomicClass: 'MAMMALIA', habitats: ['Forest']),
+        ),
         isTrue,
       );
       // Mammal in desert → fail habitat
       expect(
-        filters.matches(_fauna(
-          taxonomicClass: 'MAMMALIA',
-          habitats: ['Desert'],
-        )),
+        filters.matches(
+          _fauna(taxonomicClass: 'MAMMALIA', habitats: ['Desert']),
+        ),
         isFalse,
       );
       // Bird in forest → fail type
       expect(
-        filters.matches(_fauna(
-          taxonomicClass: 'AVES',
-          habitats: ['Forest'],
-        )),
+        filters.matches(_fauna(taxonomicClass: 'AVES', habitats: ['Forest'])),
         isFalse,
       );
     });
@@ -189,16 +201,15 @@ Item _fauna({
   String? rarity,
   List<String> habitats = const [],
   List<String> continents = const [],
-}) =>
-    Item(
-      id: 'test',
-      definitionId: 'def',
-      displayName: 'Test Animal',
-      category: ItemCategory.fauna,
-      rarity: rarity,
-      acquiredAt: DateTime(2026),
-      status: ItemStatus.active,
-      taxonomicClass: taxonomicClass,
-      habitats: habitats,
-      continents: continents,
-    );
+}) => Item(
+  id: 'test',
+  definitionId: 'def',
+  displayName: 'Test Animal',
+  category: ItemCategory.fauna,
+  rarity: rarity,
+  acquiredAt: DateTime(2026),
+  status: ItemStatus.active,
+  taxonomicClass: taxonomicClass,
+  habitats: habitats,
+  continents: continents,
+);

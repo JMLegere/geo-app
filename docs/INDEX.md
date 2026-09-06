@@ -70,6 +70,8 @@ Every Markdown file in the repository must match exactly one row below. A docume
 | `.claude/agent_notes/**/*.md`, `.opencode/plans/**/*.md` | `HISTORICAL-EVIDENCE` | Legacy agent notes and plans |
 | `ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md` | `GENERATED/VENDOR` | Flutter platform asset guidance |
 
+| `docs/specifications/ui596/**/*.md` | `CURRENT-SCOPED` | Issue 596 acceptance specification and execution evidence; PRD remains in GitHub issue 596 |
+
 ## Non-Markdown Evidence
 
 - `docs/c4/*.mmd` — generated current C4 System Context, Container, Component, Dynamic, and Deployment views.

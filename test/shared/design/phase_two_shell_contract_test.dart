@@ -20,7 +20,7 @@ void main() {
       'ShadProgress',
     ],
     'lib/shared/widgets/tab_shell.dart': [
-      'ShadButton.ghost',
+      'AppNavButton',
       'Semantics(',
       'IndexedStack',
     ],
@@ -79,7 +79,13 @@ void main() {
         ).hasMatch(shell),
         isTrue,
       );
-      expect(shell, contains('ShadButton.ghost'));
+      expect(shell, contains('AppNavButton'));
+      expect(
+        File(
+          'lib/shared/design/primitives/app_nav_button.dart',
+        ).readAsStringSync(),
+        contains('ShadButton.ghost'),
+      );
       expect(shell, contains('selected: selected'));
       expect(
         RegExp(

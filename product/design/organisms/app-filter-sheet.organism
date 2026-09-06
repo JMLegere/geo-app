@@ -1,0 +1,9 @@
+Organism: AppFilterSheet
+Status: canonical
+Role: region
+Interaction policy: delegates-to-children
+Exports: lib/shared/design/patterns/app_filter_sheet.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Shared immediate accessible retrieval control.

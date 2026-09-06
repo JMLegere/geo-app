@@ -7,7 +7,21 @@ export 'registry.dart';
 export 'surface_inventory.dart';
 
 const publicDesignComponentNames = <String>{
+  'AppSearchField',
+  'AppIconButton',
+  'AppChoiceMenu',
+  'AppFilterSheet',
+  'AppToggleChip',
+  'AppItemCard',
+  'AppCollectionGrid',
   'AppBadge',
+  'AppNavButton',
+  'AppRibbon',
+
+  'AppText',
+  'AppProgress',
+  'AppActionRow',
+
   'AppButton',
   'AppCard',
   'AppEmptyState',

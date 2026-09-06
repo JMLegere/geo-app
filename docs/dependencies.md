@@ -65,3 +65,7 @@ Ask these questions first:
 4. **Does it add native code or FFI?** Flag it — affects CI and web builds.
 5. **What does it cost in bundle size?** Run `flutter build web` before and after. Web bundle must stay < 5MB gzipped.
 6. **Write the ADR.** Any new package goes in the Key Decisions section of `AGENTS.md` with a one-line rationale.
+
+## Issue 596 design foundation
+
+Keep `shadcn_ui` pinned at 0.56.2 as the default, with a single typed Dart override behind the public design barrel. The current PRD authorizes EarthNova materials and supersedes the earlier neutral-only policy for this work. No runtime dependency or token compiler is added. Nunito is bundled from Google Fonts under its SIL Open Font License (`assets/fonts/OFL.txt`); no runtime font download is required.

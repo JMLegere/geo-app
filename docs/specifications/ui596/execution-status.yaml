@@ -1,0 +1,47 @@
+# Execution status is evidence, not authorization or acceptance by itself.
+issue: https://github.com/JMLegere/geo-app/issues/596
+source_commit: f96a841b4eba5468ee9c0958b36c52d67c60b3b7
+branch: implementation/596-design-system
+overall: implementing
+recovery:
+  reason: Previous local implementation and patch are absent from this workspace.
+  source_tree_verified: 12ecddcb01920c23c0c3b41b142a026fc78ad90b
+  previous_test_results_reusable: false
+slices:
+  S01: implemented_unverified
+  S02: implementing
+  S03: implementing
+  S04: representative_review_pending
+  S05: implementing
+  S06: pending
+  S07: pending
+  S08: pending
+  S09: pending
+evidence:
+  specification_validator_tests: 14
+  target_scenarios_parsed: 59
+  decisions_traced: 150
+  target_acceptance_executed: false
+  flutter_regression:
+    passed: 1645
+    existing_skips: 136
+    failures: 0
+    filtered_coverage_hit: 7926
+    filtered_coverage_total: 8320
+    filtered_coverage_percent: 95.26442307692308
+  iphone_acceptance: pending
+  presentation_debt_occurrences: 93
+  decision_audit:
+    partial: 34
+    unassessed: 116
+    verified: 0
+  render_fixtures:
+    - pack-320-1x.png
+    - pack-390-1x.png
+    - pack-390-2x.png
+    - pack-900-1x.png
+review_gate:
+  authority: PRD-596-D003
+  required: Jeremy approval of representative artwork before routine asset production
+  artifact: docs/specifications/ui596/review/art-direction-candidate.png
+  status: pending

@@ -70,7 +70,7 @@ Set<String> _exportedTaxonomyWidgetNames() {
 
       final source = entity.readAsStringSync();
       final matches = RegExp(
-        r'class\s+([A-Z][A-Za-z0-9]*)\s+extends\s+(?:StatelessWidget|StatefulWidget)',
+        r'class\s+([A-Z][A-Za-z0-9]*)(?:<[^>]+>)?\s+extends\s+(?:StatelessWidget|StatefulWidget)',
       ).allMatches(source);
       names.addAll(matches.map((match) => match.group(1)!));
     }
@@ -83,7 +83,7 @@ Set<String> _exportedTaxonomyWidgetNames() {
     reason: '${loadingDots.path} must exist.',
   );
   final matches = RegExp(
-    r'class\s+([A-Z][A-Za-z0-9]*)\s+extends\s+(?:StatelessWidget|StatefulWidget)',
+    r'class\s+([A-Z][A-Za-z0-9]*)(?:<[^>]+>)?\s+extends\s+(?:StatelessWidget|StatefulWidget)',
   ).allMatches(loadingDots.readAsStringSync());
   names.addAll(matches.map((match) => match.group(1)!));
 

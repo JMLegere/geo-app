@@ -1,0 +1,53 @@
+# Issue 596 execution report — foundation and Pack checkpoint
+
+**Role: CURRENT-SCOPED.** The authoritative PRD remains [issue #596](https://github.com/JMLegere/geo-app/issues/596). This is a tested implementation checkpoint, not completion of the whole PRD or final visual acceptance.
+
+- **Delivery**
+  - Work is on [draft PR #598](https://github.com/JMLegere/geo-app/pull/598), branch `implementation/596-design-system`.
+  - Foundation commit `367b60cd3618eb4b8abddf5e8cc2d478be4a4360` passed hosted CI run 1228. The new Pack checkpoint must pass its own hosted CI.
+  - No merge or production deployment has occurred.
+- **Shared foundation retained**
+  - A single typed Dart authority adapts the pinned `shadcn_ui: 0.56.2` defaults into semantic palette, typography, geometry, materials and motion.
+  - Root theme override, bundled licensed Nunito, tactile/cancellable buttons, unavailable explanations, busy states, costs/rewards, progress, text, stat bars, ribbon and action-group recipes remain shared.
+  - Map/Pack navigation uses shared icon controls and contextual Help.
+- **New implementation**
+  - Shared `AppItemCard` and `AppCollectionGrid` now render actual Pack Items in five columns on phones, adding columns at wider widths and height for larger system text.
+  - Grid Item names are hidden visually but remain accessible and searchable; selecting an Item opens that exact Item. Existing Examination and Identification ownership is preserved.
+  - Unknown is a single marker. Unknown cards suppress properties and retain a knowledge-safe missing-art fallback. This is not yet the required actual black silhouette delivery.
+  - Conservation status is no longer a collectible-rarity card badge or a sort labelled Rarity. Biological filters explicitly call it Conservation. No new rarity tier or gameplay property was invented.
+  - Shared `AppSearchField`, `AppChoiceMenu`, `AppIconButton`, `AppToggleChip` and `AppFilterSheet` implement immediate search, explicit current-category/all-Pack scope, anchored sorting, separate direction control, live filters, a filter-count badge and reset.
+  - Category icons reuse `AppNavButton`; Help temporarily reveals labels and selection dismisses them. Larger labels and filter chips grow vertically without shrinking their text.
+  - Query, filters, sort direction/order and scroll position survive category round trips. All-Pack results have a separate scroll position. No-match results offer a clear-search-and-filters route.
+  - Refresh and refresh failure retain already loaded Items; initial loading/error remain separate. A failed refresh offers retry without removing usable content.
+  - The grid has a visible scrollbar and permits reaching the last Item. Reordering uses stable Item widget identities.
+  - Filter membership for Unknown Items is independent of hidden intrinsic metadata. Ordinary view controls do not perform gameplay mutations.
+- **Contracts and evidence**
+  - All 111 Q, 27 A and 12 D records now have execution owners and slice assignments, with explicit consumer/evidence fields.
+  - The current evidence audit marks 34 records partial and 116 unassessed. None is falsely declared fully verified. Unassessed does not mean no related code exists; it means the complete per-decision acceptance audit remains open.
+  - Five new execution-matrix tests reject missing ownership, invalid/dead evidence paths, unsupported completion and treating an unapproved render as verified acceptance.
+  - New components are exported through the public barrel, registered, and paired with native EAC contracts. The registry test now recognizes generic widget declarations.
+  - YAML CI invokes the specification and design-boundary checks. Exact legacy presentation debt fell from 100 to **93 occurrences** without widening exemptions.
+  - Observability documentation now reflects the actual filter-sheet interaction.
+- **Fresh validation of this checkpoint**
+  - Flutter 3.41.3 / Dart 3.11.1 full regression: **1,645 passed, 136 existing skips, zero failures**.
+  - CI-filtered coverage: **7,926 / 8,320 = 95.264%**, above the required 95% threshold.
+  - Analysis has no errors/warnings and one pre-existing informational lint. EAC reports no diagnostics.
+  - Fourteen specification/execution-validator tests and six design-boundary tests pass. The existing Cucumber suite passes 24 scenarios and 148 steps.
+  - Red tests reproduced printed grid names, lost category query/scroll context, refresh hiding usable Items, hidden-metadata filter differences, absent scope/direction controls, missing scrollbar, and large-text control overflow before implementation/fixes.
+  - Four actual-screen render fixtures pass at 320px, 390px, 390px with doubled text, and 900px. These are Flutter test viewports, not real-iPhone performance measurements.
+  - The target specification still contains 59 parsed scenarios; parsing and manifest checks are not execution of the target Cucumber UI steps.
+- **Review artifacts**
+  - [Phone Pack](review/pack-390-1x.png), [larger text](review/pack-390-2x.png), [small viewport](review/pack-320-1x.png), [wide viewport](review/pack-900-1x.png).
+  - `tool/render_ui596_pack_test.dart` renders the real Pack screen with isolated fixtures and no backend access. Fallback glyphs in these fixtures are not final Item artwork.
+  - [Representative art-direction candidate](review/art-direction-candidate.png) is an original generated review board, not approved production assets or individual transparent sprites. The Orb is a visual study, not a new gameplay mechanic.
+  - PRD D003 requires Jeremy to approve representative art before routine production artwork. Scientific review, 12px/16px trials, production variants and safe silhouettes remain open.
+- **Remaining work**
+  - **S01 / S09:** complete per-decision consumer/evidence auditing and actual acceptance. A path-valid manifest does not prove visual quality or behavior by itself.
+  - **S02:** finish material/typography calibration, information/legend controls and remaining shared component states.
+  - **S03:** integrate the title ribbon and applicable existing counters/progression throughout the actual shell; validate shared safe-area behavior and real-device response.
+  - **S04:** approve representative art; create/test production assets, manifests, bounded loaders and knowledge-safe black silhouettes. Complete the typed Item presentation adapter and schema-grounded category-property mapping. The current card only projects an already-available identified Fauna class; other applicable mappings are not claimed complete.
+  - **S05:** finish visual calibration, retrieval composition, counter/header integration and remaining acceptance measurements. Browsing logic and shared controls are substantially implemented.
+  - **S06:** migrate actual inspection to the repeated card/header, scoped full-name fitting, property/effect panels, symbol glossary, and fixed reachable Close/actions.
+  - **S07:** integrate authoritative outcome highlights, the small first-Discovery badge, suitable staggered idle art and outcome-only sound with replay/idempotency safeguards.
+  - **S08:** migrate every remaining current player surface and retire the 93 ordinary presentation-debt occurrences; retain only justified renderer/infrastructure exceptions.
+  - **Delivery:** complete art and iPhone review, required tests and hosted CI, then merge and verify exact-SHA automatic deployment. Do not close issue #596 yet.
