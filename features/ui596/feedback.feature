@@ -1,4 +1,4 @@
-@issue596 @target_specification
+@issue596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Responsive action feedback and gameplay outcomes
   Target acceptance specification from issue 596.
   Step definitions are not implemented by this specification-only change.
@@ -74,4 +74,3 @@ Feature: Responsive action feedback and gameplay outcomes
     And the Player should choose when to open it
     And no automatic screen opening or attention-stealing notice should interrupt the current task
     And this presentation should not redefine Encounter expiry, persistence, or resolution rules
-

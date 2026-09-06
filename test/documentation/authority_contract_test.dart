@@ -23,7 +23,8 @@ void main() {
       expect(
         unclassified,
         isEmpty,
-        reason: 'Every Markdown file must be covered by docs/INDEX.md. '
+        reason:
+            'Every Markdown file must be covered by docs/INDEX.md. '
             'Unclassified:\n${unclassified.join('\n')}',
       );
       expect(markdownPaths, isNotEmpty);
@@ -44,7 +45,8 @@ void main() {
       expect(
         violations,
         isEmpty,
-        reason: 'Historical documents must carry exactly one visible '
+        reason:
+            'Historical documents must carry exactly one visible '
             'HISTORICAL-EVIDENCE notice:\n${violations.join('\n')}',
       );
     });
@@ -133,6 +135,9 @@ _DocumentRole? _roleFor(String path) {
     return _DocumentRole.canonical;
   }
   if (routers.contains(path)) return _DocumentRole.router;
+  if (path.startsWith('docs/specifications/ui596/')) {
+    return _DocumentRole.currentScoped;
+  }
   if (currentScoped.contains(path)) return _DocumentRole.currentScoped;
   if (path == 'ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md') {
     return _DocumentRole.generatedVendor;

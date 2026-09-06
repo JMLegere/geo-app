@@ -1,6 +1,6 @@
 # Frontend, Usability, and Design System Structure
 
-EarthNova uses the same enforcement shape as the `main-website` repo, adapted for Flutter.
+Issue #596 extends the existing Shad foundation with one typed Dart semantic theme and shared material/interaction recipes. Shadcn remains the default; EarthNova overrides live inside this library.
 
 ## Canonical flow
 
@@ -38,7 +38,7 @@ shared layout vocabulary. `DesignLibraryExample` is experimental and
 catalog-only. `ProductActionSurface` remains a separate nonvisual
 product-action API/evidence boundary at
 `lib/shared/product/product_action_surface.dart`; it is not part of the visual
-design vocabulary or public design barrel. There are no `AppTheme`, `Earth*`,
+design vocabulary or public design barrel. AppDesignTheme resolves the approved overrides; AppText, AppProgress and AppActionRow extend the canonical vocabulary. There are no `AppTheme`, `Earth*`,
 legacy-token, or design-export aliases.
 
 ## Usability rules

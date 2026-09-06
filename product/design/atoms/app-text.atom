@@ -1,0 +1,9 @@
+Atom: AppText
+Status: canonical
+Role: group
+Interaction policy: display
+Exports: lib/shared/design/primitives/app_text.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Semantic rounded typography with scoped single-line Item names.

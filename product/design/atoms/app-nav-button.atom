@@ -1,0 +1,9 @@
+Atom: AppNavButton
+Status: canonical
+Role: group
+Interaction policy: action-required
+Exports: lib/shared/design/primitives/app_nav_button.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Accessible icon navigation with shared selection and optional Help labels.

@@ -1,4 +1,4 @@
-@issue596 @target_specification
+@issue596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Recognizable art accessible interaction and calibration
   Target acceptance specification from issue 596.
   Step definitions are not implemented by this specification-only change.
@@ -63,4 +63,3 @@ Feature: Recognizable art accessible interaction and calibration
     And long names, multiple categories, mixed knowledge states, crowded badges, and unavailable actions should be included
     And no numeric value should be reported as an approved measurement before the review supplies evidence
     And the specification should not mandate a font family, animation library, or asset-production pipeline before solution-direction decisions
-

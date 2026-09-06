@@ -8,6 +8,13 @@ export 'surface_inventory.dart';
 
 const publicDesignComponentNames = <String>{
   'AppBadge',
+  'AppNavButton',
+  'AppRibbon',
+
+  'AppText',
+  'AppProgress',
+  'AppActionRow',
+
   'AppButton',
   'AppCard',
   'AppEmptyState',

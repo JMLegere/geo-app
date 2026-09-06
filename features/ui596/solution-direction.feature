@@ -1,4 +1,4 @@
-@ui596 @target_specification
+@ui596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Approved solution direction
 
   @UI596-054 @D001 @D003
@@ -39,4 +39,3 @@ Feature: Approved solution direction
     When a screen uses a shared control
     Then approved EarthNova recipes derive from the common foundation
     And unspecified control behavior inherits Shad defaults
-

@@ -1,4 +1,4 @@
-@issue596 @target_specification
+@issue596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Presentation preserves EarthNova domain boundaries
   Target acceptance specification from issue 596.
   Step definitions are not implemented by this specification-only change.
@@ -44,4 +44,3 @@ Feature: Presentation preserves EarthNova domain boundaries
     And semantic variants should supply palette and state styling
     And matching native design contracts, registry entries, and surface evidence should remain aligned
     And these integrity records should not be treated as proof that visual or behavioral acceptance tests have passed
-

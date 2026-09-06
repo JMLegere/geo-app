@@ -1,4 +1,4 @@
-@issue596 @target_specification
+@issue596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Reference-derived EarthNova presentation
   Target acceptance specification from issue 596.
   Step definitions are not implemented by this specification-only change.
@@ -165,4 +165,3 @@ Feature: Reference-derived EarthNova presentation
     And the cost resource icon should follow the amount
     And two actions should have equal-width side-by-side buttons with a quieter secondary fill
     And a known reward should appear directly beneath its associated button
-

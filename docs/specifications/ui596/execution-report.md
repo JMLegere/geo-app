@@ -1,0 +1,41 @@
+# Issue 596 execution report — foundation checkpoint
+
+**Role: CURRENT-SCOPED.** The authoritative PRD remains [issue #596](https://github.com/JMLegere/geo-app/issues/596). This report does not close the PRD or certify final visual acceptance.
+
+- **Outcome**
+  - Recovered and verified the exact source baseline after the prior local implementation and patch were absent on resume.
+  - Created [draft PR #598](https://github.com/JMLegere/geo-app/pull/598) on `implementation/596-design-system`; GitHub publication now succeeds following the user's continuation.
+  - Reconstructed the foundation and parts of shared controls/navigation. No production deployment or merge has occurred.
+- **Implemented**
+  - One typed Dart token authority resolves semantic palette, typography, geometry, materials, responsive density and motion into the pinned `shadcn_ui: 0.56.2` defaults.
+  - Root `ShadApp` now uses the shared override. Bundled Nunito has its SIL Open Font License; no runtime font download is required.
+  - `AppButton` supports immediate press depth, cancellation, quick return, inline unavailable explanations, stable busy dimensions, and per-action costs/rewards without creating new gameplay mechanics.
+  - `AppCard` supports semantic raised/inset/light/card surfaces. Shared `AppText`, `AppProgress`, `AppRibbon`, `AppNavButton`, `AppActionRow`, and inspection `AppStatGrid` are registered and have native contracts.
+  - Actual Map/Pack navigation uses icons with accessible labels. Help reveals destination names until explicit dismissal or selection, including selecting the already-current destination. Existing action/keyboard/navigation evidence remains intact.
+  - All 111 Q, 27 A and 12 D records trace to 59 target scenarios. A proposed YAML CI job enforces specification and presentation boundaries.
+  - Boundary checks reject new raw presentation values outside the library and count only exact pre-existing exceptions. **100 existing occurrences remain to migrate.**
+- **Fresh validation**
+  - Flutter 3.41.3 / Dart 3.11.1; full regression with bounded concurrency: **1,629 passed, 136 existing skips, zero failures**.
+  - CI-filtered coverage: **7,736 / 8,131 = 95.142%**.
+  - Analysis: no errors or warnings; the existing `no_adjacent_strings_in_list` information lint remains in the database migration test.
+  - EAC 1.4.2: no diagnostics.
+  - Specification validator: 9 tests pass; 59 scenarios parse and all 150 decisions trace.
+  - Design-boundary validator: 6 tests pass; exact-debt check passes.
+  - Existing executable Cucumber suite: 24 scenarios and 148 steps pass. Target Gherkin parsing is not reported as executed product acceptance.
+  - Red/green tests cover foundation contrast/default inheritance/density/reduced motion, unavailable and busy actions, immediate press/cancellation, complete Item names, overlapping stat icons, equal-width actions, Help persistence, and navigation glyph size.
+  - Real rendering exposed a partial-progress track that looked full; a failing pixel test reproduced it and now verifies the dark unfilled track.
+  - Legacy source tests were updated to assert shared adapters rather than obsolete inline Shad instantiation or fixed-height source strings; behavioral tests remain.
+- **Review**
+  - Run `flutter run -t tool/ui596_workbench.dart` for an isolated workbench using actual production controls without authentication/backend calls.
+  - `review/foundation.png` is an exported Flutter review artifact, not an approved golden or actual-iPhone evidence.
+  - An original art-direction candidate board was generated for representative review. It is not production-approved or installed as a game asset. Small-icon trials, scientific/creative review and production asset work remain.
+- **Remaining PRD slices**
+  - S01: foundation implemented locally; hosted CI and final visual/device acceptance remain.
+  - S02: finish material calibration, information/legend controls and remaining component states.
+  - S03: complete actual counter/progression integration and shared category Help behavior without fabricated balances or universal levels.
+  - S04: representative-art approval, size trials, asset manifest, safe silhouette delivery and shared Item presentation.
+  - S05: actual five-column Pack cards, search/sort/live-filter patterns, per-category context and recovery.
+  - S06: real inspection header/card, effects/legend, fixed Close/footer and interruptible overlay integration.
+  - S07: authoritative Identification property feedback, first-Discovery badge, restrained idle motion and outcome-only sound.
+  - S08: complete every applicable current screen and retire ordinary presentation debt.
+  - S09: real evidence for every applicable decision, iPhone acceptance, review, green CI, merge and exact-SHA delivery.

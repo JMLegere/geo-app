@@ -8,10 +8,10 @@ recovery:
   source_tree_verified: 12ecddcb01920c23c0c3b41b142a026fc78ad90b
   previous_test_results_reusable: false
 slices:
-  S01: implementing
-  S02: pending
-  S03: pending
-  S04: pending
+  S01: implemented_unverified
+  S02: implementing
+  S03: implementing
+  S04: representative_review_pending
   S05: pending
   S06: pending
   S07: pending
@@ -22,5 +22,11 @@ evidence:
   target_scenarios_parsed: 59
   decisions_traced: 150
   target_acceptance_executed: false
-  flutter_regression: pending
+  flutter_regression:
+    passed: 1629
+    existing_skips: 136
+    failures: 0
+    filtered_coverage_hit: 7736
+    filtered_coverage_total: 8131
+    filtered_coverage_percent: 95.14204894846883
   iphone_acceptance: pending

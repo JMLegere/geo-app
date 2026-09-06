@@ -70,6 +70,13 @@ void main() {
         publicDesignComponentNames,
         unorderedEquals(const {
           'AppBadge',
+          'AppNavButton',
+          'AppRibbon',
+
+          'AppText',
+          'AppProgress',
+          'AppActionRow',
+
           'AppButton',
           'AppCard',
           'AppEmptyState',

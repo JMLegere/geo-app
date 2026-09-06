@@ -1,4 +1,4 @@
-@issue596 @target_specification
+@issue596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Immediate context-preserving Pack browsing
   Target acceptance specification from issue 596.
   Step definitions are not implemented by this specification-only change.
@@ -89,4 +89,3 @@ Feature: Immediate context-preserving Pack browsing
     When the Player opens Pack, scrolls past its card, searches, filters, sorts, or opens Help
     Then that Base Item should remain Unknown to that Player
     And no examination, Identification, Discovery, or property-roll mutation should occur
-

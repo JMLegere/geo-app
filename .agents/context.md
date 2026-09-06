@@ -1051,3 +1051,14 @@
 - The amendment remains limited to delivery. It adds no command kind, gameplay, schema, dependency, secret, provider, target, or destructive production change.
 - PR #594 begins with a test-only commit. CI run 1218 recorded the expected red baseline: Analyze and EAC passed; 1,610 tests passed and the sole failure proved `deploy-prod.yml` lacked the required `workflow_run` trigger.
 - The implementation adds a guarded `workflow_run` path for successful push-triggered `main` CI, deploys that run's exact `head_sha`, preserves Supabase-before-Railway ordering and non-cancelling concurrency, and retains manual exact-SHA recovery. ADR 0011, the runbook, PRD, decision/question registries, workflow contract tests, and generated delivery diagram are aligned.
+
+
+## 2026-09-06 — Issue 596 recovery and shared foundation
+
+The resumed workspace did not contain the previous local implementation or patch. Recovered all 1,099 main source blobs and verified the complete tree against `12ecddcb01920c23c0c3b41b142a026fc78ad90b`. Explicit continuation after the publishing request allowed creation of branch `implementation/596-design-system` and draft PR #598.
+
+Reconstructed the Shad-default typed Dart foundation, root override, bundled Nunito, tactile/unavailable/busy actions, shared text/progress/ribbon/navigation/action-row controls, inspection stat variant, and actual Map/Pack Help navigation. Preserved the 150-decision target specification and added YAML CI enforcement.
+
+Fresh full regression: 1,629 passed, 136 existing skips, zero failures; filtered coverage 7,736/8,131 (95.142%). EAC no diagnostics; 9 specification and 6 boundary tests pass; existing Cucumber 24 scenarios/148 steps pass. Rendered review caught and fixed a falsely full partial-progress track. Native component contracts and registry remain aligned. 100 exact pre-existing presentation-debt occurrences remain.
+
+This is a foundation checkpoint, not completion of issue 596. Actual Pack cards/browsing, safe silhouette delivery, inspection integration, feedback, whole-app migration, art approval, and iPhone acceptance remain. See docs/specifications/ui596/execution-status.yaml and execution-report.md.

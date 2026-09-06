@@ -5,33 +5,34 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('interactive control contracts', () {
     test(
-        'every raw clickable declares product action or explicit non-product reason',
-        () {
-      final offenders = <String>[];
+      'every raw clickable declares product action or explicit non-product reason',
+      () {
+        final offenders = <String>[];
 
-      for (final file in _dartFilesUnder('lib')) {
-        if (_isWithin(file, 'lib/shared/design')) continue;
-        if (file.path == 'lib/shared/product/product_action_surface.dart') {
-          continue;
+        for (final file in _dartFilesUnder('lib')) {
+          if (_isWithin(file, 'lib/shared/design')) continue;
+          if (file.path == 'lib/shared/product/product_action_surface.dart') {
+            continue;
+          }
+
+          final source = file.readAsStringSync();
+          for (final control in _rawInteractiveControls(source, file.path)) {
+            if (_hasActionEvidence(source, control)) continue;
+            offenders.add(
+              '${control.path}:${control.line} ${control.widget} needs ProductActionSurface(actionId: ...), ObservableInteraction with playerActionId/telemetryOnlyReason, or an eac-clickable-ignore/eac-clickable-owner-logs reason.',
+            );
+          }
         }
 
-        final source = file.readAsStringSync();
-        for (final control in _rawInteractiveControls(source, file.path)) {
-          if (_hasActionEvidence(source, control)) continue;
-          offenders.add(
-            '${control.path}:${control.line} ${control.widget} needs ProductActionSurface(actionId: ...), ObservableInteraction with playerActionId/telemetryOnlyReason, or an eac-clickable-ignore/eac-clickable-owner-logs reason.',
-          );
-        }
-      }
-
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'Raw interactive controls must be visible to the EAC/native design contract path. '
-            'Use product action evidence for gameplay actions and explicit non-product reasons for local UI/debug/account chrome.',
-      );
-    });
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'Raw interactive controls must be visible to the EAC/native design contract path. '
+              'Use product action evidence for gameplay actions and explicit non-product reasons for local UI/debug/account chrome.',
+        );
+      },
+    );
   });
 }
 

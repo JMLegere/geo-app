@@ -1,4 +1,4 @@
-@issue596 @target_specification
+@issue596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Unknown means uninspected Base Item knowledge
   Target acceptance specification from issue 596.
   Step definitions are not implemented by this specification-only change.

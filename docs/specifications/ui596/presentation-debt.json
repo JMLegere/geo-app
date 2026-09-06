@@ -1,0 +1,702 @@
+[
+  {
+    "path": "lib/app/readiness/app_readiness_gate.dart",
+    "source": "_detailTimer = Timer(const Duration(milliseconds: 250), () {",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/app/readiness/app_readiness_gate.dart",
+    "source": "padding: const EdgeInsets.symmetric(vertical: 4),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/app/readiness/app_readiness_gate.dart",
+    "source": "padding: const EdgeInsets.all(16),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/auth/presentation/screens/login_screen.dart",
+    "source": "padding: const EdgeInsets.all(24),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/auth/presentation/screens/login_screen.dart",
+    "source": "child: ShadInput(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/encounters/presentation/widgets/pending_encounter_layer.dart",
+    "source": "minimum: const EdgeInsets.all(Spacing.lg),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/home/presentation/screens/home_screen.dart",
+    "source": "padding: const EdgeInsets.fromLTRB(24, 32, 24, 48),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/identification/presentation/screens/identification_service_screen.dart",
+    "source": "padding: const EdgeInsets.all(24),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/living_world/presentation/screens/town_screen.dart",
+    "source": "padding: const EdgeInsets.fromLTRB(24, 32, 24, 48),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/living_world/presentation/screens/town_screen.dart",
+    "source": "padding: const EdgeInsets.symmetric(vertical: 8),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/living_world/presentation/screens/venue_detail_screen.dart",
+    "source": "padding: const EdgeInsets.fromLTRB(24, 8, 24, 48),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/living_world/presentation/screens/venue_detail_screen.dart",
+    "source": "padding: const EdgeInsets.symmetric(vertical: 8),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/living_world/presentation/widgets/venue_marker.dart",
+    "source": "padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/cell_overlay_painter.dart",
+    "source": "style: TextStyle(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "return const Color(0x001B1B1B);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "return const Color(0x701B1B1B);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "return const Color(0x381B1B1B);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "return const Color(0xFF1B1B1B);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "static const Color categoryCueColor = Color(0xFFE8E8E8);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "static const Color categoryCueUnderlayColor = Color(0xFF1B1B1B);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "static const Color categoryCueOutlineColor = Color(0xFFE8E8E8);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "return const Color(0xE6E8E8E8);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "return const Color(0xB85C5C5C);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/fog_renderer.dart",
+    "source": "return const Color(0x005C5C5C);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/painters/player_marker.dart",
+    "source": "static const _animDuration = Duration(milliseconds: 600);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/providers/camera_follow_provider.dart",
+    "source": "static const _tickInterval = Duration(milliseconds: 16);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/providers/player_marker_provider.dart",
+    "source": "static const _tickInterval = Duration(milliseconds: 16);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/city_screen.dart",
+    "source": "padding: const EdgeInsets.only(bottom: 14),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/country_screen.dart",
+    "source": "padding: const EdgeInsets.only(bottom: 14),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/district_screen.dart",
+    "source": "padding: const EdgeInsets.only(bottom: 14),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "padding: const EdgeInsets.only(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "padding: EdgeInsets.only(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "backgroundColor: Colors.transparent,",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "child: ShadCard(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "padding: const EdgeInsets.symmetric(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "padding: const EdgeInsets.all(Spacing.xxs),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "padding: const EdgeInsets.all(Spacing.xxl),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "padding: const EdgeInsets.all(Spacing.xxl),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/map_screen.dart",
+    "source": "padding: const EdgeInsets.all(Spacing.xxl),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/province_screen.dart",
+    "source": "padding: const EdgeInsets.only(bottom: 14),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/screens/world_screen.dart",
+    "source": "padding: const EdgeInsets.only(bottom: 14),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/cell_detail_sheet.dart",
+    "source": "padding: const EdgeInsets.all(Spacing.lg),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/cell_detail_sheet.dart",
+    "source": "padding: EdgeInsets.symmetric(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/cell_detail_sheet.dart",
+    "source": "padding: const EdgeInsets.symmetric(vertical: Spacing.sm),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "fill: Color(0xFF181818),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "stroke: Color(0xFF383838),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "fill: isVisited ? const Color(0xFF606060) : const Color(0xFF282828),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "? const Color(0xFFF2F2F2)",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "? const Color(0xFFB0B0B0)",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": ": const Color(0xFF606060),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "color: Color(0xFF0A0A0A),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "padding: EdgeInsets.all(24),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 13),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/district_footprint_map.dart",
+    "source": "color: const Color(0xFF0A0A0A),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "if (cellsVisited == 0) return const Color(0xFF181818);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "if (cellsVisited <= 5) return const Color(0xFF282828);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "if (cellsVisited <= 15) return const Color(0xFF383838);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "if (cellsVisited <= 30) return const Color(0xFF484848);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "if (cellsVisited <= 50) return const Color(0xFF606060);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "if (progressPercent < 70) return const Color(0xFF6E6E6E);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "if (progressPercent < 85) return const Color(0xFFAFAFAF);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "return const Color(0xFFD9D9D9);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "color: const Color(0xFF0A0A0A),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 13),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "padding: const EdgeInsets.all(8),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "? const Color(0xFF181818)",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": ": const Color(0xFFF2F2F2);",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "style: TextStyle(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "color: const Color(0xFFF2F2F2),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_exploration_map.dart",
+    "source": "border: Border.all(color: const Color(0xFF606060), width: 2.5),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/hierarchy_header.dart",
+    "source": "padding: const EdgeInsets.symmetric(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/map_status_bar.dart",
+    "source": "padding: EdgeInsets.only(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/map_status_bar.dart",
+    "source": "child: ShadCard(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/map_status_bar.dart",
+    "source": "padding: const EdgeInsets.all(Spacing.sm),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/pinch_hint.dart",
+    "source": "padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/pinch_hint.dart",
+    "source": "padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/map/presentation/widgets/shimmer_cells.dart",
+    "source": "duration: const Duration(milliseconds: 1500),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "duration: const Duration(milliseconds: 200),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "duration: const Duration(milliseconds: 180),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "duration: const Duration(milliseconds: 180),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "padding: const EdgeInsets.only(bottom: 12),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "padding: const EdgeInsets.all(12),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "padding: const EdgeInsets.all(24),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/screens/pack_screen.dart",
+    "source": "padding: const EdgeInsets.all(24),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/pack/presentation/widgets/species_card.dart",
+    "source": "padding: const EdgeInsets.all(24),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/profile/presentation/screens/settings_screen.dart",
+    "source": "padding: const EdgeInsets.all(16),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/profile/presentation/screens/settings_screen.dart",
+    "source": "padding: const EdgeInsets.symmetric(vertical: 8),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/profile/presentation/screens/settings_screen.dart",
+    "source": "padding: const EdgeInsets.symmetric(vertical: 8),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/features/profile/presentation/screens/settings_screen.dart",
+    "source": "builder: (context) => ShadDialog.alert(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/shared/debug/debug_gesture_overlay.dart",
+    "source": "color: Colors.transparent,",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/shared/debug/debug_gesture_overlay.dart",
+    "source": "padding: const EdgeInsets.symmetric(vertical: 6),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/shared/debug/debug_gesture_overlay.dart",
+    "source": "style: TextStyle(",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/shared/debug/debug_gesture_overlay.dart",
+    "source": "color: Colors.transparent,",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/shared/observability/widgets/error_boundary_retry.dart",
+    "source": "padding: const EdgeInsets.all(Spacing.xxl),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/shared/widgets/stub_screen.dart",
+    "source": "padding: const EdgeInsets.all(Spacing.xxl),",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  },
+  {
+    "path": "lib/shared/widgets/tab_shell.dart",
+    "source": "padding: EdgeInsets.zero,",
+    "owner": "issue-596",
+    "slice": "S08",
+    "reason": "Pre-existing source baseline f96a841; migrate to shared system before final acceptance."
+  }
+]

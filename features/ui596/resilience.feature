@@ -1,4 +1,4 @@
-@issue596 @target_specification
+@issue596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Useful Pack state during loading and failure
   Target acceptance specification from issue 596.
   Step definitions are not implemented by this specification-only change.
@@ -52,4 +52,3 @@ Feature: Useful Pack state during loading and failure
     And a pressed-state acknowledgement alone should not count as a meaningful result
     And server-confirmed mutation completion should be measured separately
     And no measurement result should be claimed before the protocol is run
-

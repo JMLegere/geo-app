@@ -1,4 +1,4 @@
-@issue596 @target_specification
+@issue596 @target_specification @capability.exploration-discovery-lifecycle
 Feature: Item inspection and contextual help
   Target acceptance specification from issue 596.
   Step definitions are not implemented by this specification-only change.
@@ -72,4 +72,3 @@ Feature: Item inspection and contextual help
     Then its exact balance and applicable existing actions should be shown in context
     And no undefined acquisition or purchase shortcut should be added
     And returning should preserve the Pack's current category, query, filters, sort order, and scroll position
-
