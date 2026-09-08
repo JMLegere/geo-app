@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/app/sync/application/identification_sync_provider.dart';
+import 'package:earth_nova/app/save/application/checkpoint_sync_provider.dart';
+import 'package:earth_nova/app/save/domain/checkpoint_gateway.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
@@ -11,7 +13,15 @@ import 'package:earth_nova/features/map/presentation/providers/map_provider.dart
 import 'package:earth_nova/features/map/presentation/providers/map_readiness_provider.dart';
 import 'client_working_set.dart';
 
-enum AppReadinessPhase { hydrating, usable, syncing, degraded, failed }
+enum AppReadinessPhase {
+  hydrating,
+  usable,
+  syncing,
+  degraded,
+  conflict,
+  recovery,
+  failed,
+}
 
 class AppReadinessState {
   const AppReadinessState({
@@ -21,9 +31,9 @@ class AppReadinessState {
   });
 
   const AppReadinessState.initial()
-      : phase = AppReadinessPhase.hydrating,
-        completedCheckpoints = const {},
-        errorMessage = null;
+    : phase = AppReadinessPhase.hydrating,
+      completedCheckpoints = const {},
+      errorMessage = null;
 
   static const requiredCheckpoints = <String>{
     'working_set',
@@ -41,26 +51,28 @@ class AppReadinessState {
   bool get permitsInput =>
       phase == AppReadinessPhase.usable ||
       phase == AppReadinessPhase.syncing ||
-      phase == AppReadinessPhase.degraded;
+      phase == AppReadinessPhase.degraded ||
+      phase == AppReadinessPhase.conflict ||
+      phase == AppReadinessPhase.recovery;
   bool get isDegraded => phase == AppReadinessPhase.degraded;
 
   AppReadinessState copyWith({
     AppReadinessPhase? phase,
     Set<String>? completedCheckpoints,
     String? errorMessage,
-  }) =>
-      AppReadinessState(
-        phase: phase ?? this.phase,
-        completedCheckpoints: Set<String>.unmodifiable(
-            completedCheckpoints ?? this.completedCheckpoints),
-        errorMessage: errorMessage,
-      );
+  }) => AppReadinessState(
+    phase: phase ?? this.phase,
+    completedCheckpoints: Set<String>.unmodifiable(
+      completedCheckpoints ?? this.completedCheckpoints,
+    ),
+    errorMessage: errorMessage,
+  );
 }
 
 final appReadinessProvider =
     NotifierProvider<AppReadinessNotifier, AppReadinessState>(
-  AppReadinessNotifier.new,
-);
+      AppReadinessNotifier.new,
+    );
 
 class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
   int _generation = 0;
@@ -135,6 +147,32 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
     return _commit(_generation, userId);
   }
 
+  Future<void> selectLocalSave() async {
+    final sync = ref.read(checkpointSyncCoordinatorProvider);
+    await sync?.selectLocalBranch();
+    transition(
+      state.copyWith(
+        phase: AppReadinessPhase.syncing,
+        errorMessage: 'Checking this device save before publishing.',
+      ),
+      'app.readiness.conflict_local_selected',
+    );
+    if (_userId case final userId?) unawaited(_synchronizeCheckpoint(userId));
+  }
+
+  Future<void> selectCloudSave() async {
+    final sync = ref.read(checkpointSyncCoordinatorProvider);
+    await sync?.selectCloudBranch();
+    transition(
+      state.copyWith(
+        phase: AppReadinessPhase.recovery,
+        errorMessage: 'Cloud progress restored. Checking shared updates.',
+      ),
+      'app.readiness.conflict_cloud_selected',
+    );
+    if (_userId case final userId?) unawaited(_synchronizeCheckpoint(userId));
+  }
+
   Future<void> _start(String userId) async {
     final generation = ++_generation;
     _userId = userId;
@@ -151,8 +189,13 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
             .read(clientWorkingSetStoreProvider)
             .load(environment: _environment, userId: userId);
       } catch (error, stack) {
-        ref.read(appObservabilityProvider).logError(error, stack,
-            event: 'app.readiness.snapshot_load_failed');
+        ref
+            .read(appObservabilityProvider)
+            .logError(
+              error,
+              stack,
+              event: 'app.readiness.snapshot_load_failed',
+            );
       }
     }
     if (!_isCurrent(generation)) return;
@@ -243,10 +286,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
       ref.read(mapProvider.notifier).hydrate(snapshot.map);
       ref.read(itemsProvider.notifier).hydrate(snapshot.items);
       transition(
-        state.copyWith(
-          phase: AppReadinessPhase.degraded,
-          errorMessage: error,
-        ),
+        state.copyWith(phase: AppReadinessPhase.degraded, errorMessage: error),
         'app.readiness.state_degraded',
       );
       _flow(
@@ -265,8 +305,10 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
       state.copyWith(phase: AppReadinessPhase.usable),
       'app.readiness.state_usable',
     );
-    _flow(TelemetryFlowPhase.completed,
-        eventName: 'app.readiness.refresh_completed');
+    _flow(
+      TelemetryFlowPhase.completed,
+      eventName: 'app.readiness.refresh_completed',
+    );
     unawaited(_recoverPendingIdentification(generation, snapshot.userId));
   }
 
@@ -288,11 +330,9 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
         },
       );
     } catch (error, stack) {
-      ref.read(appObservabilityProvider).logError(
-            error,
-            stack,
-            event: 'sync.recovery.failed',
-          );
+      ref
+          .read(appObservabilityProvider)
+          .logError(error, stack, event: 'sync.recovery.failed');
     }
   }
 
@@ -309,7 +349,9 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
     final items = ref.read(itemsProvider).items;
     if (map is! MapStateReady || !_isCurrent(generation)) return;
 
-    final saved = await ref.read(clientWorkingSetStoreProvider).save(
+    final saved = await ref
+        .read(clientWorkingSetStoreProvider)
+        .save(
           ClientWorkingSet(
             environment: _environment,
             userId: userId,
@@ -328,6 +370,40 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
           : 'app.readiness.snapshot_commit_skipped',
       dependency: 'working_set',
     );
+    if (saved) unawaited(_synchronizeCheckpoint(userId));
+  }
+
+  Future<void> _synchronizeCheckpoint(String userId) async {
+    final sync = ref.read(checkpointSyncCoordinatorProvider);
+    if (sync == null) return;
+    try {
+      await sync.restore(environment: _environment, playerId: userId);
+      await sync.reconcile();
+      final result = await sync.synchronize();
+      if (result is CheckpointConflict) {
+        transition(
+          state.copyWith(
+            phase: AppReadinessPhase.conflict,
+            errorMessage:
+                'This device and the cloud both have progress. Choose one complete save; the other is kept for recovery.',
+          ),
+          'app.readiness.state_conflict',
+        );
+      } else if (result is CheckpointRejected) {
+        transition(
+          state.copyWith(
+            phase: AppReadinessPhase.recovery,
+            errorMessage:
+                'Your progress is saved on this device, but it needs attention before publishing.',
+          ),
+          'app.readiness.state_recovery',
+        );
+      }
+    } catch (error, stack) {
+      ref
+          .read(appObservabilityProvider)
+          .logError(error, stack, event: 'checkpoint.background_sync_failed');
+    }
   }
 
   Future<bool> _waitForMapSurface(int generation) async {
@@ -355,10 +431,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
   void _fail(int generation, String message) {
     if (!_isCurrent(generation)) return;
     transition(
-      state.copyWith(
-        phase: AppReadinessPhase.failed,
-        errorMessage: message,
-      ),
+      state.copyWith(phase: AppReadinessPhase.failed, errorMessage: message),
       'app.readiness.state_failed',
     );
     _flow(
@@ -387,7 +460,9 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
     String? dependency,
     String? reason,
   }) {
-    ref.read(appObservabilityProvider).logFlowEvent(
+    ref
+        .read(appObservabilityProvider)
+        .logFlowEvent(
           'app.readiness',
           phase,
           'app',

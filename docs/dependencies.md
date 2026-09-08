@@ -12,7 +12,7 @@
 | `flutter_localizations` | SDK | Flutter SDK localization delegates. Provides explicit Material/Cupertino/Widgets delegates for the en-US locale contract. |
 | `shadcn_ui` | `0.56.2` | Neutral Shad root/components. Exact pin protects the approved API/visual baseline after the Phase 6 cutover; Phase 7 rendered acceptance and production deployment require separate authorization. |
 | `flutter_riverpod` | `^3.2.1` | State management. `Notifier` pattern — immutable state, reactive providers, testable without framework. No `StateNotifier`, no `ChangeNotifier`. |
-| `supabase_flutter` | `^2.12.0` | Backend client. Auth, database queries, realtime. Source of truth for all data. |
+| `supabase_flutter` | `^2.12.0` | Backend client. Auth, checkpoint validation, accepted published revisions, shared-world queries, storage and realtime. |
 | `crypto` | `^3.0.6` | SHA-256 for `_derivePassword` (phone → Supabase password) and phone hashing in observability. Critical — must match v2 exactly. |
 | `uuid` | `^4.5.3` | Session IDs in `ObservabilityService`. One UUID per app launch. |
 | `intl` | `^0.20.2` | Date formatting in `SpeciesCard` footer. |
@@ -51,6 +51,8 @@ These packages were in v1/v2 and are **not** in v3. Do not add them back without
 | `pedometer_2` | Step counting (native only, web stub). Removed in v2 simplification. Post-MVP feature. |
 | `web` | Dart JS interop package for web-specific code (OPFS database reset). Not needed in v3 — no SQLite, no OPFS. |
 | `shared_preferences` | ~~Key-value storage. Not needed — no local persistence in MVP.~~ **Re-added as `^2.3.5`** — persists the runtime debug toggle (`debug_mode_enabled`) so the setting survives app restarts. Supabase is not appropriate for a local-only developer flag. |
+| `sembast` / `sembast_web` | `^3.8.7` / `^2.4.4+1` | Codegen-free transactional whole-save storage: application-support database on native/desktop and IndexedDB in browsers. |
+| `path_provider` | `^2.1.6` | Resolves the platform application-support location for the native/desktop save database. |
 | `image` | Image processing dev dependency (icon generation). Not needed — icon is pre-generated. |
 
 ---

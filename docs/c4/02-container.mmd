@@ -4,7 +4,7 @@ flowchart TB
     player["<b>Player</b><br/>[Person]<br/>Explores, collects, and uses EarthNova"]
     web["<b>Static Web Host</b><br/>[Container: Railway + nginx]<br/>Serves the versioned Flutter SPA"]
     client["<b>Flutter Web Client</b><br/>[Container: Flutter + Riverpod + MapLibre]<br/>UI, readiness, canonical position, gameplay slices"]
-    working[("<b>Local State and Sync</b><br/>[Container: SharedPreferences]<br/>Bounded Client Working Set plus durable Identification recovery")]
+    working[("<b>Local State and Sync</b><br/>[Container: SharedPreferences]<br/>Bounded Player Save plus durable Identification recovery")]
     supabase["<b>Supabase Runtime</b><br/>[Container Group]<br/>Auth, PostgREST, Edge Functions, PostgreSQL/PostGIS, Storage"]
     maps["<b>Map providers</b><br/>[External Systems]<br/>Tiles and glyphs"]
     operations["<b>Operational providers</b><br/>[External Systems]<br/>Geography, enrichment, and health APIs"]

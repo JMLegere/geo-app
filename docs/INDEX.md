@@ -54,6 +54,7 @@ Every Markdown file in the repository must match exactly one row below. A docume
 | `.agents/discovery/2026-05-03-earthnova-map-domain-visual-requirements.md` | `CURRENT-SCOPED` | Approved map-domain and visual acceptance requirements |
 | `docs/dependencies.md` | `CURRENT-SCOPED` | Package policy and dependency rationale |
 | `docs/runbook.md` | `CURRENT-SCOPED` | Beta/production operations |
+| `docs/local-save-migration.md` | `CURRENT-SCOPED` | Whole-save migration matrix, contracts, rollout, rollback and verification evidence |
 | `docs/frontend-usability-design-system.md` | `CURRENT-SCOPED` | Frontend usability and design-system rules |
 | `docs/observability-interaction-coverage.md` | `CURRENT-SCOPED` | Interaction observability contract |
 | `docs/ios-safari-maplibre.md` | `CURRENT-SCOPED` | Scoped platform compatibility evidence |

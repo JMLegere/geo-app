@@ -2,7 +2,7 @@ name: earth_nova
 description: EarthNova — friendly, social geogame. Real world GPS + fog-of-war + 32,752 IUCN species.
 publish_to: 'none'
 
-version: 3.0.0+2
+version: 3.1.0+3
 
 environment:
   sdk: '>=3.11.0 <4.0.0'
@@ -18,7 +18,7 @@ dependencies:
   # State management
   flutter_riverpod: ^3.2.1
 
-  # Backend — source of truth, no local SQLite
+  # Backend — accepted checkpoints/shared world authority
   supabase_flutter: ^2.12.0
 
   # SHA-256 for _derivePassword + phone hashing in observability
@@ -44,6 +44,10 @@ dependencies:
 
   # Runtime debug toggle persistence — debug_mode_provider.dart
   shared_preferences: ^2.3.5
+  # Complete Player saves — transactional, codegen-free; IndexedDB on web
+  sembast: ^3.8.7
+  sembast_web: ^2.4.4+1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

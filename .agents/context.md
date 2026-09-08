@@ -1076,3 +1076,10 @@ Fresh full regression: 1,645 passed, 136 existing skips, zero failures; CI-filte
 - Applied the shared Item-name and field typography, the approved dimmed backdrop, and interruptible fade/scale entrance while preserving exact Item handoff, knowledge-safe unexamined disclosure, keyboard/backdrop/pull dismissal, and responsive layouts.
 - Reduced exact presentation debt from 93 to 92 and added a deterministic 390x844 Flutter review renderer. Generated PNG evidence is attached out of band rather than committed because binary patches are unsupported by some PR creation paths. S06 remains implementing; actual-iPhone acceptance has not occurred.
 - Routine production art remains gated by D003 approval. The category comparison mapping remains gated by absent all-category Property Value projection and a product choice among schema-grounded properties; no property or Orb behavior was invented.
+# 2026-09-07 — whole-save checkpoint migration
+
+- Added ADR 0012 and the exhaustive migration/rollout evidence contract.
+- Added schema-1 complete save envelopes, transactional primary/backup Sembast persistence, background checkpoint coordination, whole-branch conflict selection and idempotent shared-delivery reconciliation.
+- Added additive accepted revision/head and asynchronous-interaction database contracts with authenticated ownership, row-locked ancestry checks, duplicate checkpoint handling, hidden-information shape checks and progression validation.
+- Replaced the production Map/Pack SharedPreferences working-set store with the local save projection; the legacy Identification command store remains only for the documented compatibility drain.
+- Regenerated C4 with checkpoint, conflict, asynchronous interaction and recovery dynamics. No merge, migration or deployment was performed in this phase.

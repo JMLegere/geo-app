@@ -17,16 +17,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:earth_nova/app/save/data/sembast_local_save_store.dart';
+import 'package:sembast/sembast_memory.dart';
 
 void main() {
   group('AppReadinessNotifier', () {
     test(
       'hydrates immediately, refreshes in background, and purges on sign out',
       () async {
-        SharedPreferences.setMockInitialValues({});
         final store = _FakeWorkingSetStore(
-          await SharedPreferences.getInstance(),
+          _memoryStore(),
           snapshot: _snapshot(),
         );
         final refresh = Completer<bool>();
@@ -81,9 +81,8 @@ void main() {
     test(
       'keeps a valid snapshot usable when background Map refresh fails',
       () async {
-        SharedPreferences.setMockInitialValues({});
         final store = _FakeWorkingSetStore(
-          await SharedPreferences.getInstance(),
+          _memoryStore(),
           snapshot: _snapshot(),
         );
         final map = _FakeMapNotifier(refresh: Future.value(false));
@@ -106,9 +105,8 @@ void main() {
 
     test('skips persistence for legacy and unknown environments', () async {
       for (final environment in ['beta', 'production', 'unknown']) {
-        SharedPreferences.setMockInitialValues({});
         final store = _FakeWorkingSetStore(
-          await SharedPreferences.getInstance(),
+          _memoryStore(),
           snapshot: _snapshot(environment: environment),
         );
         final container = _container(
@@ -135,9 +133,8 @@ void main() {
 
     test('persists working sets only in local and prod environments', () async {
       for (final environment in ['local', 'prod']) {
-        SharedPreferences.setMockInitialValues({});
         final store = _FakeWorkingSetStore(
-          await SharedPreferences.getInstance(),
+          _memoryStore(),
           snapshot: _snapshot(environment: environment),
         );
         final container = _container(
@@ -162,11 +159,7 @@ void main() {
     });
 
     test('blocks sign out when the player snapshot cannot be purged', () async {
-      SharedPreferences.setMockInitialValues({});
-      final store = _FakeWorkingSetStore(
-        await SharedPreferences.getInstance(),
-        throwOnPurge: true,
-      );
+      final store = _FakeWorkingSetStore(_memoryStore(), throwOnPurge: true);
       final container = _container(
         store: store,
         map: _FakeMapNotifier(refresh: Future.value(false)),
@@ -185,8 +178,7 @@ void main() {
     });
 
     test('blocks cacheless entry when required data cannot load', () async {
-      SharedPreferences.setMockInitialValues({});
-      final store = _FakeWorkingSetStore(await SharedPreferences.getInstance());
+      final store = _FakeWorkingSetStore(_memoryStore());
       final container = _container(
         store: store,
         map: _FakeMapNotifier(
@@ -210,8 +202,7 @@ void main() {
     testWidgets('starts the real notifier after the first widget build', (
       tester,
     ) async {
-      SharedPreferences.setMockInitialValues({});
-      final store = _FakeWorkingSetStore(await SharedPreferences.getInstance());
+      final store = _FakeWorkingSetStore(_memoryStore());
 
       await tester.pumpWidget(
         ProviderScope(
@@ -408,6 +399,51 @@ void main() {
         isFalse,
       );
     });
+
+    testWidgets(
+      'whole-save conflict keeps gameplay visible and offers branches',
+      (tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appReadinessProvider.overrideWith(
+                () => _StaticReadinessNotifier(
+                  const AppReadinessState(
+                    phase: AppReadinessPhase.conflict,
+                    completedCheckpoints: AppReadinessState.requiredCheckpoints,
+                    errorMessage:
+                        'This device and the cloud both have progress.',
+                  ),
+                ),
+              ),
+            ],
+            child: const ShadApp(
+              home: AppReadinessGate(
+                userId: 'user-1',
+                child: Text('Map mounted'),
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('Map mounted'), findsOneWidget);
+        expect(find.text('Choose your expedition'), findsOneWidget);
+        expect(find.text('Use this device'), findsOneWidget);
+        expect(find.text('Use cloud save'), findsOneWidget);
+        expect(
+          tester
+              .widget<AbsorbPointer>(
+                find.byKey(const Key('readiness-input-gate')),
+              )
+              .absorbing,
+          isFalse,
+        );
+        await expectLater(
+          find.byType(AppReadinessGate),
+          matchesGoldenFile('goldens/whole_save_conflict.png'),
+        );
+      },
+    );
   });
 }
 
@@ -576,3 +612,9 @@ class _StaticAuthNotifier extends AuthNotifier {
     events.add('sign_out');
   }
 }
+
+SembastLocalSaveStore _memoryStore() => SembastLocalSaveStore(
+  databaseFactoryMemory.openDatabase(
+    'readiness-${DateTime.now().microsecondsSinceEpoch}',
+  ),
+);

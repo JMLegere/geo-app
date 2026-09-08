@@ -1,7 +1,8 @@
-import 'dart:convert';
-
+import 'package:earth_nova/app/save/data/local_save_database.dart';
+import 'package:earth_nova/app/save/data/sembast_local_save_store.dart';
+import 'package:earth_nova/app/save/domain/local_save_store.dart';
+import 'package:earth_nova/app/save/domain/player_save.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
-import 'package:earth_nova/core/persistence/shared_preferences_provider.dart';
 import 'package:earth_nova/features/identification/data/dtos/item_dto.dart';
 import 'package:earth_nova/features/map/data/dtos/cell_dto.dart';
 import 'package:earth_nova/features/map/data/dtos/cell_knowledge_projection_dto.dart';
@@ -9,13 +10,13 @@ import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
-const _snapshotVersion = 1;
-const _maximumSnapshotBytes = 1000000;
-
+final localSaveStoreProvider = Provider<LocalSaveStore>(
+  (ref) => SembastLocalSaveStore(openLocalSaveDatabase()),
+);
 final clientWorkingSetStoreProvider = Provider<ClientWorkingSetStore>(
-  (ref) => ClientWorkingSetStore(ref.watch(sharedPreferencesProvider)),
+  (ref) => ClientWorkingSetStore(ref.watch(localSaveStoreProvider)),
 );
 
 class ClientWorkingSet {
@@ -35,33 +36,25 @@ class ClientWorkingSet {
 }
 
 class ClientWorkingSetStore {
-  ClientWorkingSetStore(this._preferences);
+  ClientWorkingSetStore(this._store);
 
-  final SharedPreferences _preferences;
+  final LocalSaveStore _store;
 
   Future<ClientWorkingSet?> load({
     required String environment,
     required String userId,
   }) async {
     if (environment.isEmpty || userId.isEmpty) return null;
-    final key = _key(environment, userId);
-    final raw = _preferences.getString(key);
-    if (raw == null) return null;
-
     try {
-      if (utf8.encode(raw).length > _maximumSnapshotBytes) {
-        throw const FormatException('Snapshot exceeds the size limit.');
-      }
-      final root = _map(jsonDecode(raw), 'snapshot');
-      if (root['version'] != _snapshotVersion ||
-          root['environment'] != environment ||
-          root['userId'] != userId) {
-        throw const FormatException(
-            'Snapshot owner or version does not match.');
-      }
+      final restored = await _store.restore(
+        environment: environment,
+        playerId: userId,
+      );
+      if (restored == null) return null;
+      final root = restored.save.payload;
       final capturedAt = _date(root['capturedAt'], 'capturedAt');
       final map = _decodeMap(_map(root['map'], 'map'));
-      final items = _list(root['items'], 'items')
+      final items = _list(root['pack'], 'pack')
           .map((item) => ItemDto.fromJson(_map(item, 'item')).toDomain())
           .toList(growable: false);
       return ClientWorkingSet(
@@ -72,7 +65,6 @@ class ClientWorkingSetStore {
         items: items,
       );
     } catch (_) {
-      await _preferences.remove(key);
       return null;
     }
   }
@@ -81,21 +73,46 @@ class ClientWorkingSetStore {
     if (workingSet.environment.isEmpty || workingSet.userId.isEmpty) {
       return false;
     }
-    final encoded = jsonEncode({
-      'version': _snapshotVersion,
-      'environment': workingSet.environment,
-      'userId': workingSet.userId,
+    final payload = <String, Object?>{
       'capturedAt': workingSet.capturedAt.toIso8601String(),
       'map': _encodeMap(workingSet.map),
-      'items': [
+      'pack': [
         for (final item in workingSet.items) ItemDto.fromDomain(item).toJson(),
       ],
-    });
-    if (utf8.encode(encoded).length > _maximumSnapshotBytes) return false;
-    return _preferences.setString(
-      _key(workingSet.environment, workingSet.userId),
-      encoded,
-    );
+      // Complete boundary sections are populated by their projections as the
+      // vertical slices evolve; empty means known-empty, never omitted.
+      'profile': <String, Object?>{},
+      'itemKnowledge': <Object?>[],
+      'disciplineProgress': <Object?>[],
+      'encounters': <Object?>[],
+      'home': <String, Object?>{},
+      'town': <String, Object?>{},
+    };
+    try {
+      final current = await _store.restore(
+        environment: workingSet.environment,
+        playerId: workingSet.userId,
+      );
+      await _store.replace(
+        PlayerSave(
+          checkpointId: const Uuid().v4(),
+          playerId: workingSet.userId,
+          environment: workingSet.environment,
+          ancestorRevision: current?.save.ancestorRevision,
+          rulesVersion: 'v3',
+          contentVersion: 'working-set-v1',
+          reconciliationCursor: current?.save.reconciliationCursor ?? 0,
+          createdAt: current?.save.createdAt ?? workingSet.capturedAt,
+          updatedAt: workingSet.capturedAt,
+          payload: payload,
+          appliedInteractionIds:
+              current?.save.appliedInteractionIds ?? const [],
+        ),
+      );
+      return true;
+    } on LocalSaveStorageException {
+      return false;
+    }
   }
 
   Future<void> purge({
@@ -103,42 +120,36 @@ class ClientWorkingSetStore {
     required String userId,
   }) async {
     if (environment.isEmpty || userId.isEmpty) return;
-    final suffix =
-        '.${Uri.encodeComponent(environment)}.${Uri.encodeComponent(userId)}';
-    final removed = await Future.wait(
-      _preferences
-          .getKeys()
-          .where((key) =>
-              key.startsWith('client_working_set.v') && key.endsWith(suffix))
-          .map(_preferences.remove),
-    );
-    if (removed.any((success) => !success)) {
-      throw StateError('Working set purge failed.');
-    }
+    await _store.purge(environment: environment, playerId: userId);
   }
-
-  String _key(String environment, String userId) =>
-      'client_working_set.v$_snapshotVersion.${Uri.encodeComponent(environment)}.${Uri.encodeComponent(userId)}';
 
   MapStateReady _decodeMap(Map<String, dynamic> json) {
     final cells = _list(json['cells'], 'map.cells')
-        .map((cell) =>
-            CellDto.fromJson(_validatedCell(_map(cell, 'cell'))).toDomain())
+        .map(
+          (cell) =>
+              CellDto.fromJson(_validatedCell(_map(cell, 'cell'))).toDomain(),
+        )
         .toList(growable: false);
-    final visitedCellIds =
-        _stringSet(json['visitedCellIds'], 'map.visitedCellIds');
+    final visitedCellIds = _stringSet(
+      json['visitedCellIds'],
+      'map.visitedCellIds',
+    );
     final locationJson = _map(json['location'], 'map.location');
     final location = LocationState(
       lat: _number(locationJson['lat'], 'map.location.lat'),
       lng: _number(locationJson['lng'], 'map.location.lng'),
       accuracy: _number(locationJson['accuracy'], 'map.location.accuracy'),
       timestamp: _date(locationJson['timestamp'], 'map.location.timestamp'),
-      isConfident:
-          _bool(locationJson['isConfident'], 'map.location.isConfident'),
+      isConfident: _bool(
+        locationJson['isConfident'],
+        'map.location.isConfident',
+      ),
     );
     final knowledge = <String, CellKnowledgeProjection>{};
-    for (final entry
-        in _map(json['knowledgeByCellId'], 'map.knowledgeByCellId').entries) {
+    for (final entry in _map(
+      json['knowledgeByCellId'],
+      'map.knowledgeByCellId',
+    ).entries) {
       if (entry.key.isEmpty) {
         throw const FormatException('Empty knowledge cell id.');
       }
@@ -148,8 +159,9 @@ class ClientWorkingSetStore {
           (value['category'] != null && value['category'] is! String)) {
         throw const FormatException('Invalid cell knowledge.');
       }
-      knowledge[entry.key] =
-          CellKnowledgeProjectionDto.fromJson(value).toDomain();
+      knowledge[entry.key] = CellKnowledgeProjectionDto.fromJson(
+        value,
+      ).toDomain();
     }
     return MapStateReady(
       cells: cells,
@@ -160,26 +172,24 @@ class ClientWorkingSetStore {
   }
 
   Map<String, dynamic> _encodeMap(MapStateReady map) => {
-        'cells': [
-          for (final cell in map.cells) CellDto.fromDomain(cell).toJson()
-        ],
-        'visitedCellIds': map.visitedCellIds.toList(growable: false),
-        'location': {
-          'lat': map.location.lat,
-          'lng': map.location.lng,
-          'accuracy': map.location.accuracy,
-          'timestamp': map.location.timestamp.toIso8601String(),
-          'isConfident': map.location.isConfident,
-        },
-        'knowledgeByCellId': {
-          for (final entry in map.knowledgeByCellId.entries)
-            entry.key: CellKnowledgeProjectionDto(
-              cellId: entry.value.cellId,
-              state: entry.value.state,
-              category: entry.value.category,
-            ).toJson(),
-        },
-      };
+    'cells': [for (final cell in map.cells) CellDto.fromDomain(cell).toJson()],
+    'visitedCellIds': map.visitedCellIds.toList(growable: false),
+    'location': {
+      'lat': map.location.lat,
+      'lng': map.location.lng,
+      'accuracy': map.location.accuracy,
+      'timestamp': map.location.timestamp.toIso8601String(),
+      'isConfident': map.location.isConfident,
+    },
+    'knowledgeByCellId': {
+      for (final entry in map.knowledgeByCellId.entries)
+        entry.key: CellKnowledgeProjectionDto(
+          cellId: entry.value.cellId,
+          state: entry.value.state,
+          category: entry.value.category,
+        ).toJson(),
+    },
+  };
 
   Map<String, dynamic> _validatedCell(Map<String, dynamic> cell) {
     const textKeys = [

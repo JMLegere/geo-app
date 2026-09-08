@@ -95,11 +95,19 @@ class _AppReadinessGateState extends ConsumerState<AppReadinessGate> {
             ),
           )
         else if (readiness.phase == AppReadinessPhase.syncing ||
-            readiness.phase == AppReadinessPhase.degraded)
+            readiness.phase == AppReadinessPhase.degraded ||
+            readiness.phase == AppReadinessPhase.conflict ||
+            readiness.phase == AppReadinessPhase.recovery)
           SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
-              child: _SyncStatus(degraded: readiness.isDegraded),
+              child: _SyncStatus(
+                readiness: readiness,
+                onUseDevice: () =>
+                    ref.read(appReadinessProvider.notifier).selectLocalSave(),
+                onUseCloud: () =>
+                    ref.read(appReadinessProvider.notifier).selectCloudSave(),
+              ),
             ),
           ),
       ],
@@ -236,21 +244,63 @@ class _Checkpoint extends StatelessWidget {
 }
 
 class _SyncStatus extends StatelessWidget {
-  const _SyncStatus({required this.degraded});
+  const _SyncStatus({
+    required this.readiness,
+    required this.onUseDevice,
+    required this.onUseCloud,
+  });
 
-  final bool degraded;
+  final AppReadinessState readiness;
+  final VoidCallback onUseDevice;
+  final VoidCallback onUseCloud;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.all(16),
-    child: AppNotice(
-      title: degraded
-          ? 'Using your latest saved expedition'
-          : 'Syncing expedition',
-      message: degraded
-          ? 'Your saved Map and Pack are available while we reconnect.'
-          : 'Your latest Map and Pack are updating in the background.',
-      tone: degraded ? AppNoticeTone.warning : AppNoticeTone.info,
+    child: AppCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppNotice(
+            title: switch (readiness.phase) {
+              AppReadinessPhase.conflict => 'Choose your expedition',
+              AppReadinessPhase.recovery => 'Progress needs attention',
+              AppReadinessPhase.degraded =>
+                'Using your latest saved expedition',
+              _ => 'Syncing expedition',
+            },
+            message:
+                readiness.errorMessage ??
+                (readiness.isDegraded
+                    ? 'Your saved expedition is available while we reconnect.'
+                    : 'Your latest expedition is updating in the background.'),
+            tone: readiness.phase == AppReadinessPhase.syncing
+                ? AppNoticeTone.info
+                : AppNoticeTone.warning,
+          ),
+          if (readiness.phase == AppReadinessPhase.conflict) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    label: 'Use this device',
+                    onPressed: onUseDevice,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: AppButton(
+                    label: 'Use cloud save',
+                    variant: AppButtonVariant.secondary,
+                    onPressed: onUseCloud,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
     ),
   );
 }
@@ -260,6 +310,8 @@ String _playerPhase(AppReadinessPhase phase) => switch (phase) {
   AppReadinessPhase.usable => 'Your expedition is ready.',
   AppReadinessPhase.syncing => 'Syncing your latest expedition.',
   AppReadinessPhase.degraded => 'Using your latest saved expedition.',
+  AppReadinessPhase.conflict => 'Choose which complete expedition to keep.',
+  AppReadinessPhase.recovery => 'Your saved expedition needs attention.',
   AppReadinessPhase.failed => 'Your expedition could not be prepared.',
 };
 
