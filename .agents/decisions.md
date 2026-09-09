@@ -2,6 +2,13 @@
 
 **Role: CURRENT-SCOPED decision registry.** Entries preserve the decision made on their date. A later explicit supersession, `CONTEXT.md`, or an accepted `docs/adr/` controls when old language or architecture conflicts with current authority.
 
+## 2026-09-07 — local saves and validated cloud checkpoints
+- ADR 0012 supersedes ADR 0008 and ADR 0010's Identification-only synchronization limit.
+- Gameplay reads and writes one atomic complete local Player Save; whole checkpoints, not queued field commands, are the cloud synchronization/conflict unit.
+- Supabase owns accepted revision order, validation, immutable published state, shared interactions and durable delivery receipts.
+- Sembast/IndexedDB replaces SharedPreferences for complete Player saves; SharedPreferences remains only for device debug settings during the compatibility drain.
+- Flutter, Railway and Supabase remain; six responsibility boundaries do not imply separate deployments.
+
 ## 2026-05-03 — beta-first trunk deployment
 - Keep `main` as the only long-lived branch.
 - Deploy `main` to Railway beta first.

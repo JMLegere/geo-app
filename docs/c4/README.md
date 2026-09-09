@@ -10,7 +10,7 @@ These files are generated, not inferred at runtime. The generator is the single 
 | File | C4 view | Scope |
 |---|---|---|
 | [`01-system-context.mmd`](01-system-context.mmd) | System Context | Four Player personas, Jeremy as Developer and Sole Director, full-product EarthNova scope, and external systems |
-| [`02-container.mmd`](02-container.mmd) | Current Container | Current Flutter/Railway/Supabase/SharedPreferences runtime and data boundaries |
+| [`02-container.mmd`](02-container.mmd) | Current Container | Current Flutter/Railway/Supabase/Sembast whole-save runtime and trust boundaries |
 | [`02a-container-supabase.mmd`](02a-container-supabase.mmd) | Container | Supabase Auth, PostgREST, Edge Functions, PostgreSQL/PostGIS, and operational providers |
 | [`02b-container-species-art.mmd`](02b-container-species-art.mmd) | Container | Generated-image provider, enrichment Edge Function, Supabase Storage, and public client delivery |
 | [`02c-container-target.mmd`](02c-container-target.mmd) | Target Container | Six approved software responsibility boundaries; no process or deployment split is implied |
@@ -22,11 +22,15 @@ These files are generated, not inferred at runtime. The generator is the single 
 | [`07a-dynamic-exploration-v3.mmd`](07a-dynamic-exploration-v3.mmd) | Dynamic | Gated v3-authoritative Visit persistence, client selection, pending/manual, and automatic Outcome commits |
 | [`08-dynamic-item-examination.mmd`](08-dynamic-item-examination.mmd) | Dynamic | Exact-version examination journal followed by separate prepared Identification and first durable Discovery |
 | [`09-dynamic-app-readiness.mmd`](09-dynamic-app-readiness.mmd) | Dynamic | Warm hydration/background refresh and cold required-fetch readiness paths |
+| [`13-dynamic-checkpoint-acceptance.mmd`](13-dynamic-checkpoint-acceptance.mmd) | Dynamic | Atomic duplicate-safe acceptance, stale-ancestor conflict, and confirmation race |
+| [`14-dynamic-whole-save-conflict.mmd`](14-dynamic-whole-save-conflict.mmd) | Dynamic | Explicit whole-save branch selection and displaced-branch preservation |
+| [`15-dynamic-asynchronous-interaction.mmd`](15-dynamic-asynchronous-interaction.mmd) | Dynamic | Exact published revisions, rules-version processing, and idempotent delivery |
+| [`16-dynamic-save-recovery.mmd`](16-dynamic-save-recovery.mmd) | Dynamic | Primary/backup validation, eviction bootstrap, and recovery states |
 | [`10-deployment-delivery.mmd`](10-deployment-delivery.mmd) | Deployment | Guarded successful-main-CI exact-SHA deployment plus manual recovery and Supabase-before-Railway order |
 | [`11-deployment-prod-runtime.mmd`](11-deployment-prod-runtime.mmd) | Deployment | `prod` browser, Railway, Supabase runtime/storage, automation, and providers |
 | [`12-deployment-local-runtime.mmd`](12-deployment-local-runtime.mmd) | Deployment | `local` Flutter Chrome using production data, browser storage, Supabase, and providers |
 
-This is the complete maintained set of **16 diagrams**: System Context, Current and Target Container, Component, Dynamic, and Deployment views. The table above is the review contact sheet and authoritative count. Structural and decision views use Mermaid flowcharts with explicit C4 stereotypes and scope labels; sequential Dynamic views use Mermaid sequence diagrams. This avoids the experimental Mermaid C4 renderer's fixed-layout collisions while preserving C4 semantics. Per-class code diagrams are intentionally omitted because the maintained architecture seams are repository interfaces and vertical slices, not individual classes.
+This is the complete maintained set of **20 diagrams**: System Context, Current and Target Container, Component, Dynamic, and Deployment views. The table above is the review contact sheet and authoritative count. Structural and decision views use Mermaid flowcharts with explicit C4 stereotypes and scope labels; sequential Dynamic views use Mermaid sequence diagrams. This avoids the experimental Mermaid C4 renderer's fixed-layout collisions while preserving C4 semantics. Per-class code diagrams are intentionally omitted because the maintained architecture seams are repository interfaces and vertical slices, not individual classes.
 
 ## Generate
 

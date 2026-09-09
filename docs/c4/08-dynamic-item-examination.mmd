@@ -26,7 +26,7 @@ sequenceDiagram
     Adapter-->>Pack: Prepared plan
     Explorer->>Pack: Hold to reveal
     Pack->>Sync: Commit prepared plan
-    Sync->>Sync: Persist exact validated command before dispatch
+    Sync->>Sync: Persist a complete local save before dispatch
     Sync->>Adapter: Dispatch same command identity and plan
     Adapter->>Commands: identify_v3_item with expected identities
     Commands->>DB: Commit first Identification Discovery and Property values
@@ -34,4 +34,4 @@ sequenceDiagram
     Commands-->>Adapter: Canonical committed aggregate or idempotent replay
     Adapter-->>Sync: Canonical result
     Sync->>Pack: Apply identified Item
-    Sync->>Sync: Persist confirmation, then remove command
+    Sync->>Sync: Persist receipt and include it in the next checkpoint

@@ -76,7 +76,7 @@ def outputs() -> dict[str, str]:
                 player["<b>Player</b><br/>[Person]<br/>Explores, collects, and uses EarthNova"]
                 web["<b>Static Web Host</b><br/>[Container: Railway + nginx]<br/>Serves the versioned Flutter SPA"]
                 client["<b>Flutter Web Client</b><br/>[Container: Flutter + Riverpod + MapLibre]<br/>UI, readiness, canonical position, gameplay slices"]
-                working[("<b>Local State and Sync</b><br/>[Container: SharedPreferences]<br/>Bounded Client Working Set plus durable Identification recovery")]
+                working[("<b>Local State and Sync</b><br/>[Container: SharedPreferences]<br/>Bounded Player Save plus durable Identification recovery")]
                 supabase["<b>Supabase Runtime</b><br/>[Container Group]<br/>Auth, PostgREST, Edge Functions, PostgreSQL/PostGIS, Storage"]
                 maps["<b>Map providers</b><br/>[External Systems]<br/>Tiles and glyphs"]
                 operations["<b>Operational providers</b><br/>[External Systems]<br/>Geography, enrichment, and health APIs"]
@@ -103,11 +103,11 @@ def outputs() -> dict[str, str]:
             '''
             flowchart TB
                 player["<b>Player</b><br/>[Person]<br/>Explores, collects, builds Home, visits Town, and joins social play"]
-                app["<b>Player App</b><br/>[Target responsibility]<br/>Responsive Flutter experience and application use cases"]
-                local[("<b>Local State and Sync</b><br/>[Target responsibility]<br/>Bounded working set, safe pending commands, recovery")]
-                api["<b>Identity and Game API</b><br/>[Target responsibility]<br/>Sessions, owner-bound reads, idempotent commands"]
-                world[("<b>Game World Store</b><br/>[Target responsibility]<br/>Authoritative versioned world and Player state")]
-                background["<b>Background World Services</b><br/>[Target responsibility]<br/>Telemetry, enrichment, processing, health, notifications"]
+                app["<b>Player App</b><br/>[Target responsibility · device trust boundary]<br/>Immediate local gameplay presentation"]
+                local[("<b>Local State and Sync</b><br/>[Target responsibility]<br/>Atomic complete saves, revision ancestry, checkpoints, conflicts, recovery")]
+                api["<b>Identity and Game API</b><br/>[Target responsibility · authenticated API trust boundary]<br/>Authentication, validation, revision acceptance, authorized projections"]
+                world[("<b>Game World Store</b><br/>[Target responsibility]<br/>Accepted saves, revision history, shared world, durable interactions")]
+                background["<b>Background World Services</b><br/>[Target responsibility]<br/>Asynchronous interactions, reconciliation, telemetry, enrichment, health"]
                 assets[("<b>Asset Delivery</b><br/>[Target responsibility]<br/>Static and generated art delivery")]
                 providers["<b>External providers</b><br/>[External systems]<br/>Maps, geography, language, image, and notification APIs"]
 
@@ -423,7 +423,7 @@ def outputs() -> dict[str, str]:
                 Adapter-->>Pack: Prepared plan
                 Explorer->>Pack: Hold to reveal
                 Pack->>Sync: Commit prepared plan
-                Sync->>Sync: Persist exact validated command before dispatch
+                Sync->>Sync: Persist a complete local save before dispatch
                 Sync->>Adapter: Dispatch same command identity and plan
                 Adapter->>Commands: identify_v3_item with expected identities
                 Commands->>DB: Commit first Identification Discovery and Property values
@@ -431,7 +431,7 @@ def outputs() -> dict[str, str]:
                 Commands-->>Adapter: Canonical committed aggregate or idempotent replay
                 Adapter-->>Sync: Canonical result
                 Sync->>Pack: Apply identified Item
-                Sync->>Sync: Persist confirmation, then remove command
+                Sync->>Sync: Persist receipt and include it in the next checkpoint
             '''
         ),
         '09-dynamic-app-readiness.mmd': mmd(
@@ -441,8 +441,8 @@ def outputs() -> dict[str, str]:
                 participant App as Application Lifecycle
                 participant Auth as Auth Notifier
                 participant Ready as App Readiness Gate
-                participant Cache as Client Working Set
-                participant Sync as Pending Command Queue
+                participant Cache as Player Save
+                participant Sync as Checkpoint Coordinator
                 participant API as Supabase API/RPC
                 participant Shell as Tab Shell
 
@@ -459,17 +459,105 @@ def outputs() -> dict[str, str]:
                     Ready->>API: Background refresh
                     API-->>Ready: Refresh result
                     Ready->>Cache: Commit successful refresh
-                    Ready->>Sync: Recover eligible Identification commits
+                    Ready->>Sync: Reconcile deliveries and upload a whole-save checkpoint
                 else cold start without valid snapshot
                     Ready->>API: Required cold-start fetch
                     API-->>Ready: Cold-start result
                     Ready->>Cache: Commit first valid snapshot
                     Ready->>Shell: Release cold-start session
-                    Ready->>Sync: Recover eligible Identification commits
+                    Ready->>Sync: Reconcile deliveries and upload a whole-save checkpoint
                 end
                 Shell-->>App: Usable session
                 App-->>Explorer: Render usable session
                 Note over Ready,Shell: Warm refresh failure keeps the snapshot, input and Pack examination remain available
+            '''
+        ),
+        '13-dynamic-checkpoint-acceptance.mmd': mmd(
+            '''
+            sequenceDiagram
+                actor Player
+                participant App as Player App
+                participant Save as Local State and Sync
+                participant API as Identity and Game API
+                participant Store as Game World Store
+                Player->>App: Complete gameplay action
+                App->>Save: Atomically persist complete local save
+                Save-->>Player: Saved on this device
+                Save->>API: Submit checkpoint + ancestor + evidence
+                API->>Store: Authenticate owner, lock head, validate state/progression
+                alt duplicate checkpoint
+                    Store-->>API: Existing accepted revision
+                else exact ancestor and valid
+                    Store->>Store: Atomically assign server revision and publish
+                    Store-->>API: Accepted revision
+                else stale ancestor
+                    Store-->>API: Whole-save conflict + cloud revision
+                else invalid evidence/state
+                    Store-->>API: Defined rejection
+                end
+                API-->>Save: Result
+                Note over Save: Confirmation never overwrites newer local work
+            '''
+        ),
+        '14-dynamic-whole-save-conflict.mmd': mmd(
+            '''
+            sequenceDiagram
+                actor Player
+                participant App as Player App
+                participant Save as Local State and Sync
+                participant API as Identity and Game API
+                App->>Save: Receive divergent accepted cloud save
+                Save-->>Player: Show local/cloud progress summaries and consequences
+                alt select local
+                    Save->>Save: Preserve cloud branch
+                    Save->>API: Reconcile receipts and validate local checkpoint against ancestry
+                else select cloud
+                    Save->>Save: Preserve local branch, atomically install cloud
+                    Save->>API: Fetch later shared deliveries
+                end
+                API-->>Save: Accepted, conflict, or reconciliation required
+                Save-->>Player: Saved / syncing / recovery state
+            '''
+        ),
+        '15-dynamic-asynchronous-interaction.mmd': mmd(
+            '''
+            sequenceDiagram
+                participant Service as Background World Services
+                participant Store as Game World Store
+                participant API as Identity and Game API
+                participant Save as Local State and Sync
+                Service->>Store: Claim pending interaction idempotently
+                Store->>Store: Load exact accepted participant revisions
+                Service->>Service: Process explicit rules version
+                Service->>Store: Atomically record outcome and unique deliveries
+                Save->>API: Fetch deliveries after server cursor
+                API->>Store: Authorized Player delivery projection
+                Store-->>Save: Ordered at-least-once deliveries
+                Save->>Save: Apply each interaction ID once and persist receipt
+                Note over Store,Save: Restoration cannot erase completed obligations or duplicate effects
+            '''
+        ),
+        '16-dynamic-save-recovery.mmd': mmd(
+            '''
+            sequenceDiagram
+                actor Player
+                participant App as Player App
+                participant Save as Local State and Sync
+                participant DB as IndexedDB / app-support database
+                participant API as Identity and Game API
+                App->>Save: Restore Player/environment partition
+                Save->>DB: Validate primary envelope and checksum
+                alt valid primary
+                    DB-->>Save: Primary
+                else corrupt primary
+                    Save->>DB: Validate transactional backup
+                    DB-->>Save: Backup + recovery state
+                else evicted or absent
+                    Save->>API: Authenticated bootstrap/latest accepted save
+                    API-->>Save: Complete safe projection or failure
+                end
+                Save->>DB: Atomic replacement
+                Save-->>Player: Usable, recovery, or retry/sign-out state
             '''
         ),
         '10-deployment-delivery.mmd': mmd(
@@ -505,7 +593,7 @@ def outputs() -> dict[str, str]:
             flowchart LR
                 explorer["<b>Explorer</b><br/>[Person]<br/>Opens the production URL"]
                 railway["<b>Railway prod</b><br/>[Deployment Node]<br/>nginx serves the production Flutter bundle"]
-                device["<b>Explorer device</b><br/>[Deployment Node]<br/>Browser runs Flutter and persists its bounded Working Set"]
+                device["<b>Explorer device</b><br/>[Deployment Node]<br/>Browser runs Flutter and persists its atomic whole save"]
                 supabase["<b>Supabase prod project</b><br/>[Deployment Node]<br/>Auth, API/RPC, Storage, Edge Functions, automation, PostgreSQL/PostGIS"]
                 providers["<b>External providers</b><br/>[External Systems]<br/>Maps, geography, LLM/images, ntfy"]
 
@@ -527,7 +615,7 @@ def outputs() -> dict[str, str]:
         '12-deployment-local-runtime.mmd': mmd(
             '''
             flowchart LR
-                local["<b>Local environment</b><br/>[Deployment Node]<br/>mise-managed Flutter Chrome client persists its bounded Working Set"]
+                local["<b>Local environment</b><br/>[Deployment Node]<br/>mise-managed Flutter Chrome client persists its atomic whole save"]
                 supabase["<b>Supabase prod project</b><br/>[Deployment Node]<br/>Local client uses production Auth, API/RPC, Storage, Edge Functions, PostgreSQL/PostGIS"]
                 providers["<b>External providers</b><br/>[External Systems]<br/>Local client uses production map/geography providers"]
 
@@ -555,7 +643,7 @@ def outputs() -> dict[str, str]:
             | File | C4 view | Scope |
             |---|---|---|
             | [`01-system-context.mmd`](01-system-context.mmd) | System Context | Four Player personas, Jeremy as Developer and Sole Director, full-product EarthNova scope, and external systems |
-            | [`02-container.mmd`](02-container.mmd) | Current Container | Current Flutter/Railway/Supabase/SharedPreferences runtime and data boundaries |
+            | [`02-container.mmd`](02-container.mmd) | Current Container | Current Flutter/Railway/Supabase/Sembast whole-save runtime and trust boundaries |
             | [`02a-container-supabase.mmd`](02a-container-supabase.mmd) | Container | Supabase Auth, PostgREST, Edge Functions, PostgreSQL/PostGIS, and operational providers |
             | [`02b-container-species-art.mmd`](02b-container-species-art.mmd) | Container | Generated-image provider, enrichment Edge Function, Supabase Storage, and public client delivery |
             | [`02c-container-target.mmd`](02c-container-target.mmd) | Target Container | Six approved software responsibility boundaries; no process or deployment split is implied |
@@ -567,11 +655,15 @@ def outputs() -> dict[str, str]:
             | [`07a-dynamic-exploration-v3.mmd`](07a-dynamic-exploration-v3.mmd) | Dynamic | Gated v3-authoritative Visit persistence, client selection, pending/manual, and automatic Outcome commits |
             | [`08-dynamic-item-examination.mmd`](08-dynamic-item-examination.mmd) | Dynamic | Exact-version examination journal followed by separate prepared Identification and first durable Discovery |
             | [`09-dynamic-app-readiness.mmd`](09-dynamic-app-readiness.mmd) | Dynamic | Warm hydration/background refresh and cold required-fetch readiness paths |
+            | [`13-dynamic-checkpoint-acceptance.mmd`](13-dynamic-checkpoint-acceptance.mmd) | Dynamic | Atomic duplicate-safe acceptance, stale-ancestor conflict, and confirmation race |
+            | [`14-dynamic-whole-save-conflict.mmd`](14-dynamic-whole-save-conflict.mmd) | Dynamic | Explicit whole-save branch selection and displaced-branch preservation |
+            | [`15-dynamic-asynchronous-interaction.mmd`](15-dynamic-asynchronous-interaction.mmd) | Dynamic | Exact published revisions, rules-version processing, and idempotent delivery |
+            | [`16-dynamic-save-recovery.mmd`](16-dynamic-save-recovery.mmd) | Dynamic | Primary/backup validation, eviction bootstrap, and recovery states |
             | [`10-deployment-delivery.mmd`](10-deployment-delivery.mmd) | Deployment | Guarded successful-main-CI exact-SHA deployment plus manual recovery and Supabase-before-Railway order |
             | [`11-deployment-prod-runtime.mmd`](11-deployment-prod-runtime.mmd) | Deployment | `prod` browser, Railway, Supabase runtime/storage, automation, and providers |
             | [`12-deployment-local-runtime.mmd`](12-deployment-local-runtime.mmd) | Deployment | `local` Flutter Chrome using production data, browser storage, Supabase, and providers |
 
-            This is the complete maintained set of **16 diagrams**: System Context, Current and Target Container, Component, Dynamic, and Deployment views. The table above is the review contact sheet and authoritative count. Structural and decision views use Mermaid flowcharts with explicit C4 stereotypes and scope labels; sequential Dynamic views use Mermaid sequence diagrams. This avoids the experimental Mermaid C4 renderer's fixed-layout collisions while preserving C4 semantics. Per-class code diagrams are intentionally omitted because the maintained architecture seams are repository interfaces and vertical slices, not individual classes.
+            This is the complete maintained set of **20 diagrams**: System Context, Current and Target Container, Component, Dynamic, and Deployment views. The table above is the review contact sheet and authoritative count. Structural and decision views use Mermaid flowcharts with explicit C4 stereotypes and scope labels; sequential Dynamic views use Mermaid sequence diagrams. This avoids the experimental Mermaid C4 renderer's fixed-layout collisions while preserving C4 semantics. Per-class code diagrams are intentionally omitted because the maintained architecture seams are repository interfaces and vertical slices, not individual classes.
 
             ## Generate
 

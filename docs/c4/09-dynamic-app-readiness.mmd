@@ -5,8 +5,8 @@ sequenceDiagram
     participant App as Application Lifecycle
     participant Auth as Auth Notifier
     participant Ready as App Readiness Gate
-    participant Cache as Client Working Set
-    participant Sync as Pending Command Queue
+    participant Cache as Player Save
+    participant Sync as Checkpoint Coordinator
     participant API as Supabase API/RPC
     participant Shell as Tab Shell
 
@@ -23,13 +23,13 @@ sequenceDiagram
         Ready->>API: Background refresh
         API-->>Ready: Refresh result
         Ready->>Cache: Commit successful refresh
-        Ready->>Sync: Recover eligible Identification commits
+        Ready->>Sync: Reconcile deliveries and upload a whole-save checkpoint
     else cold start without valid snapshot
         Ready->>API: Required cold-start fetch
         API-->>Ready: Cold-start result
         Ready->>Cache: Commit first valid snapshot
         Ready->>Shell: Release cold-start session
-        Ready->>Sync: Recover eligible Identification commits
+        Ready->>Sync: Reconcile deliveries and upload a whole-save checkpoint
     end
     Shell-->>App: Usable session
     App-->>Explorer: Render usable session

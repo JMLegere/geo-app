@@ -485,6 +485,35 @@ supabase functions logs process-enrichment-queue --project-ref bfaczcsrpfcbijoae
 
 ## Incident Response
 
+### Local save and checkpoint recovery
+
+1. Do not delete the local database or an accepted server revision. Capture the
+   Player/environment binding, checkpoint ID, ancestor revision and error code;
+   never capture save payloads containing undisclosed information.
+2. A corrupt primary automatically restores its transactional backup and shows
+   recovery state. Storage/quota failure leaves the previous primary intact.
+3. For `stale_ancestor`, let the Player compare whole-save summaries. Preserve
+   the displaced branch before selecting local or cloud; never merge fields or
+   edit the ancestor. Reconcile durable shared deliveries before publishing.
+4. For response loss, retry the identical checkpoint ID. The API returns its
+   existing accepted revision without creating a duplicate.
+5. Before minimum-version cutover, drain pending Identification command UUIDs
+   into save evidence and verify acceptance. Do not remove the legacy producer
+   while pending keys exist.
+6. Rollback before cutover uses the prior app SHA and leaves additive migration
+   106 untouched. After cutover, disable new checkpoint writes and deploy the
+   last compatible local-save client; never restore legacy tables as authority.
+
+Checkpoint diagnosis (read-only; substitute the authenticated Player UUID):
+
+```sql
+select revision, checkpoint_id, ancestor_revision, reconciliation_cursor,
+       accepted_at, retain_until
+from v3_player_save_revisions
+where player_id = '<player-uuid>'
+order by revision desc;
+```
+
 ### App not loading
 
 1. Check Railway dashboard — is the latest deploy green?

@@ -3,7 +3,7 @@
 flowchart LR
     explorer["<b>Explorer</b><br/>[Person]<br/>Opens the production URL"]
     railway["<b>Railway prod</b><br/>[Deployment Node]<br/>nginx serves the production Flutter bundle"]
-    device["<b>Explorer device</b><br/>[Deployment Node]<br/>Browser runs Flutter and persists its bounded Working Set"]
+    device["<b>Explorer device</b><br/>[Deployment Node]<br/>Browser runs Flutter and persists its atomic whole save"]
     supabase["<b>Supabase prod project</b><br/>[Deployment Node]<br/>Auth, API/RPC, Storage, Edge Functions, automation, PostgreSQL/PostGIS"]
     providers["<b>External providers</b><br/>[External Systems]<br/>Maps, geography, LLM/images, ntfy"]
 

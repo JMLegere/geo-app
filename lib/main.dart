@@ -14,6 +14,9 @@ import 'package:earth_nova/app/readiness/app_readiness_gate.dart';
 import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/app/sync/application/identification_sync_provider.dart';
+import 'package:earth_nova/app/save/application/checkpoint_sync_provider.dart';
+import 'package:earth_nova/app/save/data/supabase_checkpoint_gateway.dart';
+import 'package:earth_nova/app/readiness/client_working_set.dart';
 import 'package:earth_nova/app/sync/application/identification_sync_service.dart';
 import 'package:earth_nova/app/sync/application/sync_retry_policy.dart';
 import 'package:earth_nova/app/sync/data/shared_preferences_pending_command_store.dart';
@@ -228,6 +231,14 @@ void main() async {
     () => runApp(
       ProviderScope(
         overrides: [
+          checkpointLocalSaveStoreProvider.overrideWith(
+            (ref) => ref.watch(localSaveStoreProvider),
+          ),
+          checkpointGatewayProvider.overrideWithValue(
+            supabaseClient == null
+                ? null
+                : SupabaseCheckpointGateway(supabaseClient),
+          ),
           authRepositoryProvider.overrideWithValue(authRepository),
           itemRepositoryProvider.overrideWithValue(itemRepository),
           packRepositoryProvider.overrideWithValue(packRepository),

@@ -2,11 +2,11 @@
 %%{init: {'theme': 'base', 'themeVariables': {'background': '#ffffff', 'primaryTextColor': '#0f172a', 'lineColor': '#475569', 'fontFamily': 'Arial, sans-serif', 'edgeLabelBackground': '#ffffff', 'actorLineColor': '#64748b', 'signalColor': '#334155', 'labelBoxBorderColor': '#475569', 'labelTextColor': '#0f172a', 'loopLineColor': '#64748b', 'loopTextColor': '#0f172a'}, 'sequence': {'mirrorActors': false, 'diagramMarginX': 30, 'diagramMarginY': 20, 'actorMargin': 40, 'messageMargin': 35}, 'flowchart': {'curve': 'linear', 'nodeSpacing': 40, 'rankSpacing': 55}}}%%
 flowchart TB
     player["<b>Player</b><br/>[Person]<br/>Explores, collects, builds Home, visits Town, and joins social play"]
-    app["<b>Player App</b><br/>[Target responsibility]<br/>Responsive Flutter experience and application use cases"]
-    local[("<b>Local State and Sync</b><br/>[Target responsibility]<br/>Bounded working set, safe pending commands, recovery")]
-    api["<b>Identity and Game API</b><br/>[Target responsibility]<br/>Sessions, owner-bound reads, idempotent commands"]
-    world[("<b>Game World Store</b><br/>[Target responsibility]<br/>Authoritative versioned world and Player state")]
-    background["<b>Background World Services</b><br/>[Target responsibility]<br/>Telemetry, enrichment, processing, health, notifications"]
+    app["<b>Player App</b><br/>[Target responsibility · device trust boundary]<br/>Immediate local gameplay presentation"]
+    local[("<b>Local State and Sync</b><br/>[Target responsibility]<br/>Atomic complete saves, revision ancestry, checkpoints, conflicts, recovery")]
+    api["<b>Identity and Game API</b><br/>[Target responsibility · authenticated API trust boundary]<br/>Authentication, validation, revision acceptance, authorized projections"]
+    world[("<b>Game World Store</b><br/>[Target responsibility]<br/>Accepted saves, revision history, shared world, durable interactions")]
+    background["<b>Background World Services</b><br/>[Target responsibility]<br/>Asynchronous interactions, reconciliation, telemetry, enrichment, health"]
     assets[("<b>Asset Delivery</b><br/>[Target responsibility]<br/>Static and generated art delivery")]
     providers["<b>External providers</b><br/>[External systems]<br/>Maps, geography, language, image, and notification APIs"]
 

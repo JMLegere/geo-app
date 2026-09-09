@@ -6,6 +6,8 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
+import 'package:earth_nova/app/readiness/client_working_set.dart';
+import 'package:earth_nova/app/save/data/sembast_local_save_store.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
@@ -15,6 +17,7 @@ import 'package:earth_nova/features/auth/presentation/providers/auth_provider.da
 import 'package:earth_nova/features/map/presentation/providers/desktop_controls_provider.dart';
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
+import 'package:sembast/sembast_memory.dart';
 
 void main() {
   group('SettingsScreen', () {
@@ -47,6 +50,11 @@ void main() {
           appObservabilityProvider.overrideWithValue(obs),
           debugModeObservabilityProvider.overrideWithValue(obs),
           sharedPreferencesProvider.overrideWithValue(prefs),
+          localSaveStoreProvider.overrideWithValue(
+            SembastLocalSaveStore(
+              databaseFactoryMemory.openDatabase('settings-save'),
+            ),
+          ),
           desktopControlsAvailableProvider.overrideWithValue(
             desktopControlsAvailable,
           ),
@@ -162,9 +170,7 @@ void main() {
       tester,
     ) async {
       final container = await buildScreen(tester);
-      await container
-          .read(authProvider.notifier)
-          .signInWithPhone('1234567890');
+      await container.read(authProvider.notifier).signInWithPhone('1234567890');
       await tester.pump();
 
       await tester.tap(find.byKey(const Key('sign_out_button')));

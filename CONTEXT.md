@@ -27,7 +27,7 @@ Focused keyboard movement that updates Player Position while Desktop Mode is ena
 _Avoid_: simulated Visits, desktop-only Encounters, input-specific provenance
 
 **Execution Environment**:
-One of EarthNova’s two active runtime contexts: `local`, for a locally run Flutter/Desktop client, or `prod`, for the deployed production client. Both use the production Supabase source of truth, so local gameplay actions are production mutations. Beta is not an active environment.
+One of EarthNova’s two active runtime contexts: `local`, for a locally run Flutter/Desktop client, or `prod`, for the deployed production client. Both publish validated checkpoints to the production Supabase Game World Store. Gameplay first changes the environment- and Player-bound local save; only an accepted checkpoint becomes published production Player state. Beta is not an active environment.
 _Avoid_: beta, staging, local sandbox data, treating local actions as disposable
 
 **App Readiness**:
@@ -39,8 +39,20 @@ The elapsed time from Player input to the first meaningful UI update rendered fr
 _Avoid_: server response time, network round trip, tap acknowledgement without meaningful UI change
 
 **Client Working Set**:
-The bounded, player-scoped data kept client-resident because primary EarthNova interactions need it to meet the Interaction Response target. It is isolated by environment and Player identity, retained across ordinary restarts, purged on explicit Sign out, and incrementally synchronized; it does not include unbounded world data.
-_Avoid_: complete client replica, preload everything, transient screen cache
+The bounded presentation projection of the complete Player Save kept client-resident because primary EarthNova interactions need it to meet the Interaction Response target. It is not a separate authority or synchronization unit.
+_Avoid_: independent cache authority, unbounded world replica, transient screen cache
+
+**Player Save**:
+The complete, durable, environment- and Player-bound unit of local gameplay and cloud synchronization. It contains all implemented Player-owned mutable progress and the receipts/evidence required to reconcile it, while excluding credentials, shared-world authority, unpublished content and undisclosed information. Local replacement is atomic; accepted server revisions are immutable published Player state. Conflicts select a whole branch rather than merging fields.
+_Avoid_: command queue as save, client timestamp as authority, field-by-field conflict merge
+
+**Checkpoint**:
+One immutable proposal of a complete Player Save, identified idempotently and based on one accepted ancestor revision. The Game API validates state and supported progression and either assigns the next server-controlled revision atomically or returns a defined conflict/rejection.
+_Avoid_: incremental patch, client-ordered revision, upload success reported before acceptance
+
+**Shared Interaction**:
+A durable asynchronous operation that references specific accepted Player checkpoint revisions, is processed under an explicit rules version, and produces uniquely delivered effects. Reconciliation is idempotent so restoring an older local branch cannot duplicate or reverse completed shared effects.
+_Avoid_: interaction against mutable local state, best-effort notification as durable outcome
 
 **Degraded Session**:
 An authenticated session entered from the last internally consistent Client Working Set when required refresh cannot complete. Local browsing remains responsive while synchronization continues, and server-authoritative actions that cannot proceed safely are disabled or queued.
