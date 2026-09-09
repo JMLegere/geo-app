@@ -24,7 +24,7 @@ void main() {
       final readiness = scope.read(mapReadinessProvider.notifier);
 
       readiness.start();
-      readiness.reportOverlayFramePainted();
+      readiness.reportOverlayFramePainted(hasMeaningfulContent: true);
       readiness.reportCellsFetched(true);
       readiness.reportLocationReady(true);
       readiness.reportMapCreated();
@@ -33,9 +33,27 @@ void main() {
 
       expect(scope.read(mapReadinessProvider).overlayFramePainted, isFalse);
 
-      readiness.reportOverlayFramePainted();
+      readiness.reportOverlayFramePainted(hasMeaningfulContent: true);
 
       expect(scope.read(mapReadinessProvider).isSteadyStateReady, isTrue);
+    });
+
+    test('rejects an overlay frame without meaningful map content', () {
+      final scope = container();
+      final readiness = scope.read(mapReadinessProvider.notifier);
+
+      readiness.start();
+      readiness.reportLocationReady(true);
+      readiness.reportMapCreated();
+      readiness.reportStyleLoaded();
+      readiness.reportCellsFetched(true);
+      readiness.reportBaseMapSettled(source: 'map_idle');
+
+      expect(
+        readiness.reportOverlayFramePainted(hasMeaningfulContent: false),
+        isFalse,
+      );
+      expect(scope.read(mapReadinessProvider).isSteadyStateReady, isFalse);
     });
 
     test('reset clears every milestone', () {
@@ -48,7 +66,7 @@ void main() {
       readiness.reportStyleLoaded();
       readiness.reportCellsFetched(true);
       readiness.reportBaseMapSettled(source: 'map_idle');
-      readiness.reportOverlayFramePainted();
+      readiness.reportOverlayFramePainted(hasMeaningfulContent: true);
       readiness.reset();
 
       final state = scope.read(mapReadinessProvider);
@@ -57,8 +75,9 @@ void main() {
       expect(state.bootstrapTimedOut, isFalse);
     });
 
-    testWidgets('settles the base map through the five-second fallback',
-        (tester) async {
+    testWidgets('settles the base map through the five-second fallback', (
+      tester,
+    ) async {
       final scope = container();
       final readiness = scope.read(mapReadinessProvider.notifier);
 
@@ -74,8 +93,9 @@ void main() {
       readiness.reset();
     });
 
-    testWidgets('marks an incomplete bootstrap after twelve seconds',
-        (tester) async {
+    testWidgets('marks an incomplete bootstrap after twelve seconds', (
+      tester,
+    ) async {
       final scope = container();
 
       scope.read(mapReadinessProvider.notifier).start();
@@ -84,27 +104,29 @@ void main() {
       expect(scope.read(mapReadinessProvider).bootstrapTimedOut, isTrue);
     });
 
-    testWidgets('ignores cancelled fallback callbacks after reset and disposal',
-        (tester) async {
-      final scope = ProviderContainer(
-        overrides: [
-          appObservabilityProvider.overrideWithValue(
-            ObservabilityService(sessionId: 'map-readiness-test'),
-          ),
-        ],
-      );
-      final readiness = scope.read(mapReadinessProvider.notifier);
+    testWidgets(
+      'ignores cancelled fallback callbacks after reset and disposal',
+      (tester) async {
+        final scope = ProviderContainer(
+          overrides: [
+            appObservabilityProvider.overrideWithValue(
+              ObservabilityService(sessionId: 'map-readiness-test'),
+            ),
+          ],
+        );
+        final readiness = scope.read(mapReadinessProvider.notifier);
 
-      readiness.start();
-      readiness.reportStyleLoaded();
-      readiness.reset();
-      await tester.pump(kBaseMapSettledFallbackDelay);
-      expect(scope.read(mapReadinessProvider).baseMapSettled, isFalse);
+        readiness.start();
+        readiness.reportStyleLoaded();
+        readiness.reset();
+        await tester.pump(kBaseMapSettledFallbackDelay);
+        expect(scope.read(mapReadinessProvider).baseMapSettled, isFalse);
 
-      readiness.start();
-      readiness.reportStyleLoaded();
-      scope.dispose();
-      await tester.pump(kMapBootstrapTimeout);
-    });
+        readiness.start();
+        readiness.reportStyleLoaded();
+        scope.dispose();
+        await tester.pump(kMapBootstrapTimeout);
+      },
+    );
   });
 }

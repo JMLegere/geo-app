@@ -201,7 +201,10 @@ class CellOverlayPainter extends CustomPainter {
       CellKnowledgeState.present => CellRelationship.present,
       CellKnowledgeState.informed ||
       CellKnowledgeState.explored => CellRelationship.explored,
-      CellKnowledgeState.shrouded => CellRelationship.unknown,
+      CellKnowledgeState.shrouded =>
+        state.relationship == CellRelationship.frontier
+            ? CellRelationship.frontier
+            : CellRelationship.unknown,
     };
     return CellState(
       knowledgeState: state.knowledgeState,

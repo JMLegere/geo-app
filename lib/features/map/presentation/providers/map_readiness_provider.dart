@@ -12,8 +12,8 @@ const kMapBootstrapTimeout = Duration(seconds: 12);
 
 final mapReadinessProvider =
     NotifierProvider<MapReadinessNotifier, MapReadinessState>(
-  MapReadinessNotifier.new,
-);
+      MapReadinessNotifier.new,
+    );
 
 /// Owns the one-shot Map lifecycle milestones observed by app readiness.
 class MapReadinessNotifier extends ObservableNotifier<MapReadinessState> {
@@ -35,10 +35,7 @@ class MapReadinessNotifier extends ObservableNotifier<MapReadinessState> {
   void start() {
     _generation++;
     _cancelTimers();
-    transition(
-      const MapReadinessState.initial(),
-      'map.readiness.started',
-    );
+    transition(const MapReadinessState.initial(), 'map.readiness.started');
     final generation = _generation;
     _bootstrapTimeoutTimer = Timer(kMapBootstrapTimeout, () {
       if (generation != _generation || state.isSteadyStateReady) return;
@@ -52,15 +49,11 @@ class MapReadinessNotifier extends ObservableNotifier<MapReadinessState> {
   void reset() {
     _generation++;
     _cancelTimers();
-    transition(
-      const MapReadinessState.initial(),
-      'map.readiness.reset',
-    );
+    transition(const MapReadinessState.initial(), 'map.readiness.reset');
   }
 
-  bool reportLocationReady(bool isReady) => _update(
-        state.copyWith(locationReady: isReady),
-      );
+  bool reportLocationReady(bool isReady) =>
+      _update(state.copyWith(locationReady: isReady));
 
   bool reportMapCreated() => _update(state.copyWith(mapCreated: true));
 
@@ -80,21 +73,17 @@ class MapReadinessNotifier extends ObservableNotifier<MapReadinessState> {
     if (state.baseMapSettled) return false;
     _baseMapSettledFallbackTimer?.cancel();
     _baseMapSettledFallbackTimer = null;
-    _update(
-      state.copyWith(
-        baseMapSettled: true,
-        baseMapSettledSource: source,
-      ),
-    );
+    _update(state.copyWith(baseMapSettled: true, baseMapSettledSource: source));
     return true;
   }
 
-  bool reportOverlayFramePainted() {
+  bool reportOverlayFramePainted({required bool hasMeaningfulContent}) {
     if (!state.locationReady ||
         !state.mapCreated ||
         !state.styleLoaded ||
         !state.baseMapSettled ||
         !state.cellsFetched ||
+        !hasMeaningfulContent ||
         state.overlayFramePainted) {
       return false;
     }

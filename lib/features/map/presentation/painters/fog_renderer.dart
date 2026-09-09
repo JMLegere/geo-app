@@ -13,6 +13,10 @@ class FogRenderer {
       'unknown_backdrop_src_relationship_paths';
 
   static Color fillColor(CellState state) {
+    if (state.knowledgeState == CellKnowledgeState.shrouded &&
+        state.relationship == CellRelationship.frontier) {
+      return _frontierFillColor();
+    }
     return switch (state.knowledgeState) {
       CellKnowledgeState.present => _presentFillColor(),
       CellKnowledgeState.informed => _informedFillColor(),
@@ -22,6 +26,10 @@ class FogRenderer {
   }
 
   static Color strokeColor(CellState state) {
+    if (state.knowledgeState == CellKnowledgeState.shrouded &&
+        state.relationship == CellRelationship.frontier) {
+      return _frontierStrokeColor();
+    }
     return switch (state.knowledgeState) {
       CellKnowledgeState.present => _presentStrokeColor(),
       CellKnowledgeState.informed ||
@@ -31,6 +39,10 @@ class FogRenderer {
   }
 
   static double seamGlowStrokeWidth(CellState state) {
+    if (state.knowledgeState == CellKnowledgeState.shrouded &&
+        state.relationship == CellRelationship.frontier) {
+      return 0.8;
+    }
     return switch (state.knowledgeState) {
       CellKnowledgeState.present => 1.65,
       CellKnowledgeState.informed || CellKnowledgeState.explored => 1.0,
@@ -39,6 +51,10 @@ class FogRenderer {
   }
 
   static double seamStrokeWidth(CellState state) {
+    if (state.knowledgeState == CellKnowledgeState.shrouded &&
+        state.relationship == CellRelationship.frontier) {
+      return 0.8;
+    }
     return switch (state.knowledgeState) {
       CellKnowledgeState.present => 1.0,
       CellKnowledgeState.informed || CellKnowledgeState.explored => 0.6,
@@ -47,6 +63,10 @@ class FogRenderer {
   }
 
   static double seamGlowBlurSigma(CellState state) {
+    if (state.knowledgeState == CellKnowledgeState.shrouded &&
+        state.relationship == CellRelationship.frontier) {
+      return 0.3;
+    }
     return switch (state.knowledgeState) {
       CellKnowledgeState.present => 0.7,
       CellKnowledgeState.informed || CellKnowledgeState.explored => 0.4,
@@ -83,6 +103,10 @@ class FogRenderer {
     return const Color(0xFF1B1B1B);
   }
 
+  static Color _frontierFillColor() {
+    return const Color(0xB81B1B1B);
+  }
+
   static const Color categoryCueColor = Color(0xFFE8E8E8);
   static const Color categoryCueUnderlayColor = Color(0xFF1B1B1B);
   static const Color categoryCueOutlineColor = Color(0xFFE8E8E8);
@@ -97,5 +121,9 @@ class FogRenderer {
 
   static Color _unknownStrokeColor() {
     return const Color(0x005C5C5C);
+  }
+
+  static Color _frontierStrokeColor() {
+    return const Color(0x995C5C5C);
   }
 }

@@ -148,6 +148,21 @@ void main() {
       expect(source, contains('canvas.restore'));
     });
 
+    test('preserves a shrouded frontier through render canonicalization', () {
+      final source = File(
+        'lib/features/map/presentation/painters/cell_overlay_painter.dart',
+      ).readAsStringSync();
+
+      expect(
+        source,
+        matches(
+          RegExp(
+            r'CellKnowledgeState\.shrouded\s*=>\s*state\.relationship\s*==\s*CellRelationship\.frontier',
+          ),
+        ),
+      );
+    });
+
     test('uses a monochrome category cue with contrasting boundaries', () {
       final source = File(
         'lib/features/map/presentation/painters/cell_overlay_painter.dart',

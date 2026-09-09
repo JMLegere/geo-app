@@ -1083,3 +1083,8 @@ Fresh full regression: 1,645 passed, 136 existing skips, zero failures; CI-filte
 - Added additive accepted revision/head and asynchronous-interaction database contracts with authenticated ownership, row-locked ancestry checks, duplicate checkpoint handling, hidden-information shape checks and progression validation.
 - Replaced the production Map/Pack SharedPreferences working-set store with the local save projection; the legacy Identification command store remains only for the documented compatibility drain.
 - Regenerated C4 with checkpoint, conflict, asynchronous interaction and recovery dynamics. No merge, migration or deployment was performed in this phase.
+
+# 2026-09-09 — Map false-readiness repair
+
+- Preserved the computed Shrouded frontier relationship through the painter and added a static translucent, grayscale-safe frontier treatment, allowing nearby geographic context to remain visible without promoting frontier Cells to known state.
+- Tightened Map steady-state readiness so a painted callback only completes readiness when the viewport contains renderable Cells plus a trusted Present Cell or the legitimate paused-location representation. An opaque backdrop alone is no longer accepted as a playable Map.
