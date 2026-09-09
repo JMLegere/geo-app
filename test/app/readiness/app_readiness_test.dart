@@ -471,7 +471,7 @@ void _readyMapSurface(ProviderContainer container) {
   readiness.reportStyleLoaded();
   readiness.reportCellsFetched(true);
   readiness.reportBaseMapSettled(source: 'test');
-  readiness.reportOverlayFramePainted();
+  readiness.reportOverlayFramePainted(hasMeaningfulContent: true);
 }
 
 Future<void> _drain() async {

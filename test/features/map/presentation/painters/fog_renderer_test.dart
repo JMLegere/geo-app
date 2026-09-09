@@ -71,6 +71,30 @@ void main() {
       }
     });
 
+    test('frontier shroud previews map context without becoming knowledge', () {
+      final frontier = CellState(
+        knowledgeState: CellKnowledgeState.shrouded,
+        relationship: CellRelationship.frontier,
+        contents: CellContents.empty,
+      );
+      final unknown = CellState(
+        knowledgeState: CellKnowledgeState.shrouded,
+        relationship: CellRelationship.unknown,
+        contents: CellContents.empty,
+      );
+
+      expect(frontier.knowledgeState, CellKnowledgeState.shrouded);
+      expect(FogRenderer.fillColor(frontier).a, lessThan(1));
+      expect(
+        FogRenderer.fillColor(frontier).a,
+        greaterThan(
+          FogRenderer.fillColor(_state(CellKnowledgeState.informed)).a,
+        ),
+      );
+      expect(FogRenderer.fillColor(unknown).a, 1);
+      expect(FogRenderer.strokeColor(frontier).a, greaterThan(0));
+    });
+
     test(
       'Informed is visibly distinct from Explored without changing seams',
       () {
