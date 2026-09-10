@@ -8,6 +8,49 @@ import 'package:earth_nova/features/map/presentation/diagnostics/map_render_diag
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 
 void main() {
+  group('mapOverlayHasMeaningfulContent', () {
+    test(
+      'accepts visible frontier geometry without requiring a Present cell',
+      () {
+        expect(
+          mapOverlayHasMeaningfulContent({
+            'render_cell_count': 7,
+            'render_present_cell_count': 0,
+            'render_explored_cell_count': 0,
+            'render_frontier_cell_count': 7,
+            'projection_polygon_count': 7,
+            'projection_viewport_intersecting_polygon_count': 7,
+          }),
+          isTrue,
+        );
+      },
+    );
+
+    test('rejects empty, offscreen, and fully opaque unknown overlays', () {
+      expect(mapOverlayHasMeaningfulContent(const {}), isFalse);
+      expect(
+        mapOverlayHasMeaningfulContent({
+          'render_cell_count': 1,
+          'render_present_cell_count': 1,
+          'projection_polygon_count': 0,
+          'projection_viewport_intersecting_polygon_count': 0,
+        }),
+        isFalse,
+      );
+      expect(
+        mapOverlayHasMeaningfulContent({
+          'render_cell_count': 7,
+          'render_present_cell_count': 0,
+          'render_explored_cell_count': 0,
+          'render_frontier_cell_count': 0,
+          'projection_polygon_count': 7,
+          'projection_viewport_intersecting_polygon_count': 7,
+        }),
+        isFalse,
+      );
+    });
+  });
+
   test('reports canonical informed and frontier diagnostics separately', () {
     final summary = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
@@ -69,9 +112,9 @@ void main() {
     );
     expect(
       summary['style_frontier_fill_alpha'],
-      summary['style_unknown_fill_alpha'],
+      lessThan(summary['style_unknown_fill_alpha'] as double),
     );
-    expect(summary['style_frontier_stroke_alpha'], 0);
+    expect(summary['style_frontier_stroke_alpha'], greaterThan(0));
   });
 
   test('reports the effective visual ring independently of provider ring', () {

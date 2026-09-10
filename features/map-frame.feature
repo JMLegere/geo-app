@@ -46,6 +46,13 @@ Feature: Map Frame
     Then gameplay should remain non-playable until all required dependencies are coherent
     And the map should not expose fake current-cell, fog, or entry feedback states early
 
+  Scenario: Startup position produces a playable first overlay
+    Given nearby cells and a trusted player position are available before Cell entry tracking settles
+    When the first fog overlay is prepared
+    Then the Cell containing the trusted player position should be presented as Present
+    And visible translucent frontier geometry should count as meaningful map content
+    But empty, offscreen, or fully opaque unknown geometry should not complete Map readiness
+
   @action.open-map
   Scenario: Player opens the Map
     Given the player is signed in

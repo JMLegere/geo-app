@@ -22,6 +22,8 @@ Feature: Useful Pack state during loading and failure
     Then a skeleton matching the eventual grid should communicate that loading is incomplete
     But if App Readiness cannot produce a valid working set
     Then app entry should be blocked by the existing Retry and Sign out recovery state
+    And the Player can copy a paste-sized diagnostic summary with build identity, readiness state, Map and Pack diagnostics, recent session logs and traces, and total record counts
+    And copying diagnostics should report success or a recoverable clipboard failure without replacing Retry or Sign out
     And the UI should not show an empty Pack or an indefinitely stalled progress bar as a substitute
 
   @behavior @UI596-041 @Q103 @Q104

@@ -12,6 +12,7 @@ import 'package:earth_nova/features/identification/presentation/providers/items_
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_readiness_provider.dart';
 import 'client_working_set.dart';
+import 'pack_media_readiness.dart';
 
 enum AppReadinessPhase {
   hydrating,
@@ -38,6 +39,7 @@ class AppReadinessState {
   static const requiredCheckpoints = <String>{
     'working_set',
     'pack',
+    'pack_media',
     'map_surface',
   };
 
@@ -73,6 +75,12 @@ final appReadinessProvider =
     NotifierProvider<AppReadinessNotifier, AppReadinessState>(
       AppReadinessNotifier.new,
     );
+
+const kAppReadinessDeadline = Duration(seconds: 30);
+
+final appReadinessDeadlineProvider = Provider<Duration>(
+  (_) => kAppReadinessDeadline,
+);
 
 class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
   int _generation = 0;
@@ -182,6 +190,24 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
     );
     _flow(TelemetryFlowPhase.started, eventName: 'app.readiness.started');
 
+    final timedOut = Completer<void>();
+    final timer = Timer(ref.read(appReadinessDeadlineProvider), () {
+      if (!_isCurrent(generation)) return;
+      _generation++;
+      _failCurrent(
+        'Your expedition could not be prepared within 30 seconds.',
+        reason: 'global_deadline_exceeded',
+      );
+      timedOut.complete();
+    });
+    try {
+      await Future.any([_runAttempt(generation, userId), timedOut.future]);
+    } finally {
+      timer.cancel();
+    }
+  }
+
+  Future<void> _runAttempt(int generation, String userId) async {
     ClientWorkingSet? snapshot;
     if (_persistenceEnabled) {
       try {
@@ -205,6 +231,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
       ref.read(itemsProvider.notifier).hydrate(snapshot.items);
       _complete('working_set');
       _complete('pack');
+      if (!await _preparePackMedia(generation)) return;
       _flow(
         TelemetryFlowPhase.dependencyReady,
         eventName: 'app.readiness.snapshot_hydrated',
@@ -244,6 +271,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
       return;
     }
     _complete('pack');
+    if (!await _preparePackMedia(generation)) return;
     if (!await _waitForMapSurface(generation)) return;
     _complete('map_surface');
     _complete('working_set');
@@ -421,6 +449,22 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
     return true;
   }
 
+  Future<bool> _preparePackMedia(int generation) async {
+    final result = await ref
+        .read(packMediaReadinessProvider)
+        .prepare(ref.read(itemsProvider).items);
+    if (!_isCurrent(generation)) return false;
+    _complete('pack_media');
+    _flow(
+      TelemetryFlowPhase.dependencyReady,
+      eventName: 'app.readiness.pack_media_ready',
+      dependency: 'pack_media',
+      reason:
+          'requested=${result.requested},decoded=${result.decoded},fallbacks=${result.fallbacks}',
+    );
+    return true;
+  }
+
   String? _currentLoadError() {
     final map = ref.read(mapProvider);
     if (map is MapStateError) return map.message;
@@ -430,6 +474,10 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
 
   void _fail(int generation, String message) {
     if (!_isCurrent(generation)) return;
+    _failCurrent(message);
+  }
+
+  void _failCurrent(String message, {String? reason}) {
     transition(
       state.copyWith(phase: AppReadinessPhase.failed, errorMessage: message),
       'app.readiness.state_failed',
@@ -437,7 +485,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
     _flow(
       TelemetryFlowPhase.failed,
       eventName: 'app.readiness.failed',
-      reason: message,
+      reason: reason ?? message,
     );
   }
 
@@ -452,7 +500,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
   }
 
   bool _isCurrent(int generation) =>
-      generation == _generation && _userId != null;
+      ref.mounted && generation == _generation && _userId != null;
 
   void _flow(
     TelemetryFlowPhase phase, {

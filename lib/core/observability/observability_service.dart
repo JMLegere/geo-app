@@ -7,10 +7,77 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:earth_nova/core/observability/trace_context.dart';
 
+const _diagnosticExportCharacterLimit = 24000;
+const _diagnosticRecordLimit = 40;
+const _diagnosticStringLimit = 1000;
+const _diagnosticRecordCharacterLimit = 2500;
+
+List<Object?> _recentDiagnosticRecords(Iterable<Object?> records) {
+  final values = records.toList();
+  final start = values.length > _diagnosticRecordLimit
+      ? values.length - _diagnosticRecordLimit
+      : 0;
+  return [
+    for (final value in values.skip(start)) _boundedDiagnosticValue(value),
+  ];
+}
+
+Object? _boundedDiagnosticValue(
+  Object? value, {
+  int characterLimit = _diagnosticRecordCharacterLimit,
+}) {
+  final sanitized = _sanitizeDiagnosticValue(value);
+  final encoded = jsonEncode(sanitized);
+  if (encoded.length <= characterLimit) return sanitized;
+  return {
+    'truncated_record': true,
+    'preview': '${encoded.substring(0, characterLimit - 40)}…[truncated]',
+  };
+}
+
+Object? _sanitizeDiagnosticValue(Object? value) {
+  return switch (value) {
+    final String text when text.length > _diagnosticStringLimit =>
+      '${text.substring(0, _diagnosticStringLimit)}…[truncated]',
+    String() || num() || bool() || null => value,
+    final List<Object?> values => [
+      for (final item in values.take(_diagnosticRecordLimit))
+        _sanitizeDiagnosticValue(item),
+    ],
+    final Map<Object?, Object?> values => {
+      for (final entry in values.entries)
+        entry.key.toString(): _sanitizeDiagnosticValue(entry.value),
+    },
+    _ => value.toString(),
+  };
+}
+
+bool _removeOldestDiagnosticRecord(
+  List<Object?> logs,
+  List<Object?> spans,
+  List<Object?> activeSpans,
+  List<Object?> browserLogs,
+) {
+  final candidates =
+      [
+          logs,
+          spans,
+          activeSpans,
+          browserLogs,
+        ].where((records) => records.length > 1).toList()
+        ..sort((left, right) => right.length.compareTo(left.length));
+  if (candidates.isEmpty) return false;
+  candidates.first.removeAt(0);
+  return true;
+}
+
 abstract class TelemetryLoggerPort {
   void log(String event, String category, {Map<String, dynamic>? data});
-  void logError(Object error, StackTrace stack,
-      {String event = 'app.crash.unhandled'});
+  void logError(
+    Object error,
+    StackTrace stack, {
+    String event = 'app.crash.unhandled',
+  });
   void setUserId(String id);
   Future<void> flush();
 }
@@ -48,25 +115,25 @@ enum TelemetryFlowPhase {
 
 extension TelemetryFlowPhaseWireName on TelemetryFlowPhase {
   String get wireName => switch (this) {
-        TelemetryFlowPhase.started => 'started',
-        TelemetryFlowPhase.waitingOn => 'waiting_on',
-        TelemetryFlowPhase.dependencyRequested => 'dependency_requested',
-        TelemetryFlowPhase.dependencyReady => 'dependency_ready',
-        TelemetryFlowPhase.dependencyFailed => 'dependency_failed',
-        TelemetryFlowPhase.stateChanged => 'state_changed',
-        TelemetryFlowPhase.completed => 'completed',
-        TelemetryFlowPhase.failed => 'failed',
-        TelemetryFlowPhase.timedOut => 'timed_out',
-        TelemetryFlowPhase.cancelled => 'cancelled',
-      };
+    TelemetryFlowPhase.started => 'started',
+    TelemetryFlowPhase.waitingOn => 'waiting_on',
+    TelemetryFlowPhase.dependencyRequested => 'dependency_requested',
+    TelemetryFlowPhase.dependencyReady => 'dependency_ready',
+    TelemetryFlowPhase.dependencyFailed => 'dependency_failed',
+    TelemetryFlowPhase.stateChanged => 'state_changed',
+    TelemetryFlowPhase.completed => 'completed',
+    TelemetryFlowPhase.failed => 'failed',
+    TelemetryFlowPhase.timedOut => 'timed_out',
+    TelemetryFlowPhase.cancelled => 'cancelled',
+  };
 }
 
 extension on TelemetrySpanStatus {
   String get wireName => switch (this) {
-        TelemetrySpanStatus.unset => 'unset',
-        TelemetrySpanStatus.ok => 'ok',
-        TelemetrySpanStatus.error => 'error',
-      };
+    TelemetrySpanStatus.unset => 'unset',
+    TelemetrySpanStatus.ok => 'ok',
+    TelemetrySpanStatus.error => 'error',
+  };
 }
 
 class TelemetrySpan {
@@ -121,6 +188,9 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
   String? _userId;
   final List<Map<String, dynamic>> _logBuffer = [];
   final List<Map<String, dynamic>> _spanBuffer = [];
+  final List<Map<String, dynamic>> _sessionLogs = [];
+  final List<Map<String, dynamic>> _sessionSpans = [];
+  final Map<String, TelemetrySpan> _activeSpans = {};
   Timer? _flushTimer;
 
   @visibleForTesting
@@ -137,11 +207,12 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
     final attributes = Map<String, dynamic>.from(data ?? const {});
     final traceId = _takeString(attributes, 'trace_id');
     final spanId = _takeString(attributes, 'span_id');
-    final severityText = _takeString(attributes, 'severity_text') ??
+    final severityText =
+        _takeString(attributes, 'severity_text') ??
         (category == 'error' ? 'ERROR' : 'INFO');
     final body = _takeString(attributes, 'body');
 
-    _logBuffer.add({
+    final record = <String, dynamic>{
       'session_id': sessionId,
       'user_id': _userId,
       'trace_id': _validTraceId(traceId),
@@ -153,7 +224,9 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
       'body': body,
       'attributes': attributes,
       'occurred_at': DateTime.now().toUtc().toIso8601String(),
-    });
+    };
+    _logBuffer.add(record);
+    _sessionLogs.add(record);
   }
 
   /// Log a lifecycle event using the debugging grammar:
@@ -187,8 +260,11 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
 
   /// Log an error with full raw detail for diagnosis.
   @override
-  void logError(Object error, StackTrace stack,
-      {String event = 'app.crash.unhandled'}) {
+  void logError(
+    Object error,
+    StackTrace stack, {
+    String event = 'app.crash.unhandled',
+  }) {
     final data = <String, dynamic>{
       'severity_text': 'ERROR',
       'error_type': error.runtimeType.toString(),
@@ -220,12 +296,14 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
       ...?attributes,
       'flow': attributes?['flow'] ?? name,
     };
-    return TelemetrySpan(
+    final span = TelemetrySpan(
       name: name,
       context: context,
       spanKind: _normalizeSpanKind(spanKind),
       attributes: normalizedAttributes,
     );
+    _activeSpans[span.spanId] = span;
+    return span;
   }
 
   @override
@@ -235,12 +313,13 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
     String? statusMessage,
     Map<String, dynamic>? attributes,
   }) {
+    _activeSpans.remove(span.spanId);
     final mergedAttributes = <String, dynamic>{
       ...span.attributes,
       ...?attributes,
     };
 
-    _spanBuffer.add({
+    final record = <String, dynamic>{
       'trace_id': span.traceId,
       'span_id': span.spanId,
       'parent_span_id': span.parentSpanId,
@@ -254,7 +333,94 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
       'user_id': _userId,
       'attributes': mergedAttributes,
       'events': const <Map<String, dynamic>>[],
-    });
+    };
+    _spanBuffer.add(record);
+    _sessionSpans.add(record);
+  }
+
+  /// Serializes a paste-sized summary of the most recent session diagnostics.
+  ///
+  /// Total counts make omitted history explicit. The complete records remain in
+  /// canonical telemetry; this export is deliberately bounded so it can be
+  /// pasted into a support conversation from a phone.
+  String exportDiagnostics({
+    Map<String, dynamic> debugInfo = const {},
+    String? browserLogsJson,
+  }) {
+    Object? browserLogs = const <Object>[];
+    if (browserLogsJson != null && browserLogsJson.isNotEmpty) {
+      try {
+        browserLogs = jsonDecode(browserLogsJson) ?? const <Object>[];
+      } on FormatException {
+        browserLogs = [
+          {'decode_error': 'invalid_browser_diagnostic_log_json'},
+        ];
+      }
+    }
+    final allActiveSpans = [
+      for (final span in _activeSpans.values)
+        {
+          'trace_id': span.traceId,
+          'span_id': span.spanId,
+          'parent_span_id': span.parentSpanId,
+          'span_name': span.name,
+          'span_kind': span.spanKind,
+          'started_at': span.startedAt.toUtc().toIso8601String(),
+          'attributes': span.attributes,
+        },
+    ];
+    final allBrowserLogs = browserLogs is List<Object?>
+        ? browserLogs
+        : <Object?>[browserLogs];
+    final logs = _recentDiagnosticRecords(_sessionLogs);
+    final spans = _recentDiagnosticRecords(_sessionSpans);
+    final activeSpans = _recentDiagnosticRecords(allActiveSpans);
+    final browser = _recentDiagnosticRecords(allBrowserLogs);
+    final totals = {
+      'logs': _sessionLogs.length,
+      'spans': _sessionSpans.length,
+      'active_spans': allActiveSpans.length,
+      'browser_logs': allBrowserLogs.length,
+    };
+
+    Map<String, Object?> summary() => {
+      'format': 'earthnova-session-diagnostics-v2',
+      'generated_at': DateTime.now().toUtc().toIso8601String(),
+      'session_id': sessionId,
+      'resource': {
+        'service_name': serviceName,
+        'service_version': serviceVersion,
+        'deployment_environment': deploymentEnvironment,
+        'platform': platform,
+      },
+      'debug_info': _boundedDiagnosticValue(
+        debugInfo,
+        characterLimit: _diagnosticRecordCharacterLimit,
+      ),
+      'totals': totals,
+      'included': {
+        'logs': logs.length,
+        'spans': spans.length,
+        'active_spans': activeSpans.length,
+        'browser_logs': browser.length,
+      },
+      'truncated':
+          logs.length < totals['logs']! ||
+          spans.length < totals['spans']! ||
+          activeSpans.length < totals['active_spans']! ||
+          browser.length < totals['browser_logs']!,
+      'logs': logs,
+      'spans': spans,
+      'active_spans': activeSpans,
+      'browser_logs': browser,
+    };
+
+    var encoded = const JsonEncoder.withIndent('  ').convert(summary());
+    while (encoded.length > _diagnosticExportCharacterLimit &&
+        _removeOldestDiagnosticRecord(logs, spans, activeSpans, browser)) {
+      encoded = const JsonEncoder.withIndent('  ').convert(summary());
+    }
+    return encoded;
   }
 
   /// Flush buffered records to the canonical telemetry ingest Edge Function.

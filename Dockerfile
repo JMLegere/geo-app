@@ -1,5 +1,5 @@
 FROM instrumentisto/flutter:3.41.3 AS build
-ARG RAILWAY_GIT_COMMIT_SHA=""
+ARG BUILD_COMMIT_SHA=""
 ARG SUPABASE_URL=""
 ARG SUPABASE_ANON_KEY=""
 ARG ENCOUNTER_ENGINE_MODE="legacy"
@@ -10,8 +10,8 @@ COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 COPY . .
 RUN rm -rf build/
-RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
-    SHORT=${SHORT:-$(git -C /app rev-parse --short HEAD 2>/dev/null || echo "local")}; \
+RUN printf '%s' "$BUILD_COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$' && \
+    SHORT=$(printf '%.7s' "$BUILD_COMMIT_SHA"); \
     BUILD_TS="$(TZ=America/Halifax date +%Y-%m-%d-%H%M)-${SHORT}" && \
     test -n "$SUPABASE_URL" && \
     test -n "$SUPABASE_ANON_KEY" && \
@@ -24,7 +24,7 @@ RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
     "--dart-define=DESKTOP_CONTROLS_AVAILABLE=true" \
     "--dart-define=DESKTOP_CONTROLS_DEFAULT=true" \
     "--dart-define=BUILD_TIMESTAMP=$BUILD_TS" \
-    "--dart-define=APP_VERSION=$BUILD_TS"
+    "--dart-define=APP_VERSION=$BUILD_COMMIT_SHA"
 
 FROM nginx:alpine
 COPY --from=build /app/build/web /usr/share/nginx/html

@@ -8,11 +8,7 @@ import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
 
 Cell _cell(String id) => _squareCell(id, minLat: 0, minLng: 0);
 
-Cell _squareCell(
-  String id, {
-  required double minLat,
-  required double minLng,
-}) =>
+Cell _squareCell(String id, {required double minLat, required double minLng}) =>
     Cell(
       id: id,
       habitats: const [],
@@ -35,6 +31,17 @@ Cell _squareCell(
 
 void main() {
   group('FogStateService', () {
+    test('derives the Present Cell from a trusted startup position', () {
+      final states = const FogStateService().compute(
+        cells: [_squareCell('home', minLat: 44, minLng: -64)],
+        currentCellId: null,
+        currentPosition: const (lat: 44.5, lng: -63.5),
+        exploredCellIds: const {},
+      );
+
+      expect(states.single.state.knowledgeState, CellKnowledgeState.present);
+      expect(states.single.state.relationship, CellRelationship.present);
+    });
     test('marks current marker cell as present', () {
       final service = FogStateService();
 
@@ -44,8 +51,9 @@ void main() {
         exploredCellIds: const {},
       );
 
-      final state =
-          states.firstWhere((entry) => entry.cell.id == 'cell-a').state;
+      final state = states
+          .firstWhere((entry) => entry.cell.id == 'cell-a')
+          .state;
       expect(state.relationship, CellRelationship.present);
     });
 
@@ -126,7 +134,7 @@ void main() {
           _cell('current'),
           _cell('informed'),
           _cell('visited'),
-          _cell('hidden')
+          _cell('hidden'),
         ],
         currentCellId: 'current',
         currentPositionIsTrusted: true,

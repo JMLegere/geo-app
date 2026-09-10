@@ -8,10 +8,16 @@ void main() {
       final ciFile = File('.github/workflows/ci.yml');
       final dockerfile = File('Dockerfile');
 
-      expect(ciFile.existsSync(), isTrue,
-          reason: 'Expected CI workflow to exist');
-      expect(dockerfile.existsSync(), isTrue,
-          reason: 'Expected Dockerfile to exist');
+      expect(
+        ciFile.existsSync(),
+        isTrue,
+        reason: 'Expected CI workflow to exist',
+      );
+      expect(
+        dockerfile.existsSync(),
+        isTrue,
+        reason: 'Expected Dockerfile to exist',
+      );
 
       final ci = ciFile.readAsStringSync();
       final docker = dockerfile.readAsStringSync();
@@ -20,8 +26,11 @@ void main() {
         r"flutter-version:\s*'([^']+)'",
       ).firstMatch(ci);
 
-      expect(versionMatch, isNotNull,
-          reason: 'CI workflow must declare a Flutter version pin');
+      expect(
+        versionMatch,
+        isNotNull,
+        reason: 'CI workflow must declare a Flutter version pin',
+      );
 
       final flutterVersion = versionMatch!.group(1)!;
       final expectedImage =
@@ -30,7 +39,8 @@ void main() {
       expect(
         docker,
         contains(expectedImage),
-        reason: 'Railway beta must build with the same Flutter version as CI '
+        reason:
+            'Railway beta must build with the same Flutter version as CI '
             'and local mise tooling. A floating Docker tag can drift to a '
             'different web engine and ship runtime-only regressions.',
       );
@@ -42,9 +52,7 @@ void main() {
       expect(docker, contains('ARG ENCOUNTER_ENGINE_MODE="legacy"'));
       expect(
         docker,
-        contains(
-          'ARG ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES="false"',
-        ),
+        contains('ARG ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES="false"'),
       );
       expect(
         docker,
@@ -58,6 +66,23 @@ void main() {
           '"--dart-define=ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES='
           '\$ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES"',
         ),
+      );
+    });
+
+    test('fails closed unless production receives an exact commit SHA', () {
+      final docker = File('Dockerfile').readAsStringSync();
+
+      expect(docker, contains('ARG BUILD_COMMIT_SHA=""'));
+      expect(
+        docker,
+        contains(
+          "printf '%s' \"\$BUILD_COMMIT_SHA\" | grep -Eq '^[0-9a-f]{40}\$'",
+        ),
+      );
+      expect(docker, isNot(contains('echo "local"')));
+      expect(
+        docker,
+        contains('"--dart-define=APP_VERSION=\$BUILD_COMMIT_SHA"'),
       );
     });
   });

@@ -62,6 +62,13 @@ serve(async (_req: Request) => {
     : 999;
 
   const isStalled = hoursSinceLastEnrichment > 2;
+  const missingRequiredArtwork = Math.max(
+    0,
+    (totalSpecies ?? 0) - Math.min(withIcon ?? 0, withArt ?? 0),
+  );
+  const artworkComplete =
+    (totalSpecies ?? 0) > 0 && missingRequiredArtwork === 0;
+  const isUnhealthy = isStalled || !artworkComplete;
   const pctClassified = totalSpecies ? ((classified ?? 0) / totalSpecies * 100).toFixed(1) : "?";
 
   // 5. Build notification
@@ -105,11 +112,14 @@ serve(async (_req: Request) => {
     with_icon: withIcon,
     with_art: withArt,
     stalled: isStalled,
+    artwork_complete: artworkComplete,
+    missing_required_artwork: missingRequiredArtwork,
     hours_since_last: hoursSinceLastEnrichment,
   };
 
   console.log(`[pipeline-health] ${JSON.stringify(result)}`);
   return new Response(JSON.stringify(result), {
+    status: isUnhealthy ? 503 : 200,
     headers: { "Content-Type": "application/json" },
   });
 });

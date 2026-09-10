@@ -3,10 +3,16 @@ import 'dart:async';
 import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/core/observability/browser_diagnostics.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_readiness_provider.dart';
 
 import 'app_readiness.dart';
 
@@ -27,6 +33,7 @@ class AppReadinessGate extends ConsumerStatefulWidget {
 class _AppReadinessGateState extends ConsumerState<AppReadinessGate> {
   Timer? _detailTimer;
   bool _showDetails = false;
+  String? _copyStatus;
 
   @override
   void initState() {
@@ -49,6 +56,7 @@ class _AppReadinessGateState extends ConsumerState<AppReadinessGate> {
   void _start({bool retry = false}) {
     _detailTimer?.cancel();
     _showDetails = false;
+    _copyStatus = null;
     _detailTimer = Timer(const Duration(milliseconds: 250), () {
       if (mounted) setState(() => _showDetails = true);
     });
@@ -67,6 +75,58 @@ class _AppReadinessGateState extends ConsumerState<AppReadinessGate> {
         .read(appReadinessProvider.notifier)
         .purge(widget.userId);
     if (purged && mounted) await ref.read(authProvider.notifier).signOut();
+  }
+
+  Future<void> _copyDiagnostics() async {
+    final observability = ref.read(appObservabilityProvider);
+    final readiness = ref.read(appReadinessProvider);
+    final mapReadiness = ref.read(mapReadinessProvider);
+    final map = ref.read(mapProvider);
+    final items = ref.read(itemsProvider);
+    observability.log(
+      'app.readiness.diagnostics_copy_requested',
+      'app',
+      data: {'readiness_phase': readiness.phase.name},
+    );
+    final payload = observability.exportDiagnostics(
+      browserLogsJson: readBrowserDiagnosticLogsJson(),
+      debugInfo: {
+        'readiness_phase': readiness.phase.name,
+        'readiness_error': readiness.errorMessage,
+        'readiness_completed_checkpoints': readiness.completedCheckpoints
+            .toList(growable: false),
+        'readiness_required_checkpoints': AppReadinessState.requiredCheckpoints
+            .toList(growable: false),
+        'map_readiness': mapReadiness.toLogData(),
+        'map_state': map.runtimeType.toString(),
+        if (map case MapStateReady ready) ...{
+          'map_cell_count': ready.cells.length,
+          'map_visited_cell_count': ready.visitedCellIds.length,
+          'map_location': {
+            'lat': ready.location.lat,
+            'lng': ready.location.lng,
+            'accuracy': ready.location.accuracy,
+            'is_confident': ready.location.isConfident,
+            'timestamp': ready.location.timestamp.toUtc().toIso8601String(),
+          },
+        },
+        'pack_item_count': items.items.length,
+        'pack_has_loaded': items.hasLoaded,
+        'pack_is_loading': items.isLoading,
+        'pack_error': items.error,
+      },
+    );
+    try {
+      await Clipboard.setData(ClipboardData(text: payload));
+      if (mounted) setState(() => _copyStatus = 'Diagnostic summary copied');
+    } catch (error, stack) {
+      observability.logError(
+        error,
+        stack,
+        event: 'app.readiness.diagnostics_copy_failed',
+      );
+      if (mounted) setState(() => _copyStatus = 'Could not copy diagnostics');
+    }
   }
 
   @override
@@ -90,6 +150,8 @@ class _AppReadinessGateState extends ConsumerState<AppReadinessGate> {
                   showDetails: _showDetails,
                   onRetry: () => _start(retry: true),
                   onSignOut: _signOut,
+                  onCopyDiagnostics: _copyDiagnostics,
+                  copyStatus: _copyStatus,
                 ),
               ),
             ),
@@ -121,12 +183,16 @@ class _ReadinessOverlay extends StatelessWidget {
     required this.showDetails,
     required this.onRetry,
     required this.onSignOut,
+    required this.onCopyDiagnostics,
+    required this.copyStatus,
   });
 
   final AppReadinessState readiness;
   final bool showDetails;
   final VoidCallback onRetry;
   final VoidCallback onSignOut;
+  final VoidCallback onCopyDiagnostics;
+  final String? copyStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -194,6 +260,21 @@ class _ReadinessOverlay extends StatelessWidget {
                 expand: true,
                 onPressed: onSignOut,
               ),
+              const SizedBox(height: 8),
+              AppButton(
+                key: const Key('copy-readiness-diagnostics'),
+                label: 'Copy diagnostic summary',
+                variant: AppButtonVariant.outline,
+                expand: true,
+                onPressed: onCopyDiagnostics,
+              ),
+              if (copyStatus != null) ...[
+                const SizedBox(height: 8),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(copyStatus!, textAlign: TextAlign.center),
+                ),
+              ],
             ],
           ],
         ),
@@ -318,6 +399,7 @@ String _playerPhase(AppReadinessPhase phase) => switch (phase) {
 String _checkpointLabel(String checkpoint) => switch (checkpoint) {
   'working_set' => 'Saved expedition',
   'pack' => 'Pack',
+  'pack_media' => 'Pack artwork',
   'map_surface' => 'Map surface',
   _ => checkpoint,
 };

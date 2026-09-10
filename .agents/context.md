@@ -1088,3 +1088,44 @@ Fresh full regression: 1,645 passed, 136 existing skips, zero failures; CI-filte
 
 - Preserved the computed Shrouded frontier relationship through the painter and added a static translucent, grayscale-safe frontier treatment, allowing nearby geographic context to remain visible without promoting frontier Cells to known state.
 - Tightened Map steady-state readiness so a painted callback only completes readiness when the viewport contains renderable Cells plus a trusted Present Cell or the legitimate paused-location representation. An opaque backdrop alone is no longer accepted as a playable Map.
+# 2026-09-09 — Production readiness repair follow-up
+
+- Production builds now require and embed the exact selected 40-character Git
+  SHA; Railway forwards that revision explicitly.
+- Stable Flutter/static asset URLs revalidate instead of remaining immutable
+  for one year.
+- App Readiness has one 30-second global deadline and includes a Pack media
+  decoded-or-fallback terminal checkpoint before permitting input.
+- Migration 107 allows examined legacy Item projections to use media added to
+  their species definition after acquisition.
+- Pipeline health is unhealthy while required icon/art coverage is incomplete.
+
+# 2026-09-10 — iPhone Map readiness timeout repair
+
+- Diagnosed the new explained Map timeout as a startup ordering race: trusted
+  position and geometry could be ready before Exploration published its current
+  Cell ID, so the stricter overlay predicate could never observe Present.
+- Fog rendering now derives the visual Present Cell from trusted startup
+  position plus fetched geometry when the tracking state has not settled.
+- Overlay readiness accepts only viewport-intersecting non-opaque relationship
+  geometry; empty, offscreen, and fully opaque unknown frames remain rejected.
+
+# 2026-09-10 — Readiness failure diagnostic export
+
+- Readiness Failure now offers Copy diagnostics alongside Retry and Sign out.
+- The clipboard bundle contains build/runtime identity, the readiness snapshot,
+  Map milestones and state, Pack state, all Dart logs and completed spans kept
+  for the app session, plus the bounded low-level browser event journal.
+- Successful and failed clipboard writes provide live feedback, and clipboard
+  failure is itself recorded in observability without removing recovery paths.
+
+# 2026-09-10 — Paste-sized readiness diagnostic summary
+
+- The readiness failure clipboard action now copies a diagnostic summary capped
+  at 24,000 characters rather than an unbounded complete session journal.
+- The summary prioritizes recent logs, traces, and browser records; reports both
+  total and included record counts; and marks truncation explicitly so omitted
+  history cannot be mistaken for absent telemetry.
+- Individual unusually large records are previewed safely, while build identity
+  and the current readiness, Map, location, and Pack debug snapshot remain in
+  the export.
