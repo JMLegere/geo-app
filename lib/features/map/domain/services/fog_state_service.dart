@@ -8,11 +8,14 @@ class FogStateService {
   List<({Cell cell, CellState state})> compute({
     required List<Cell> cells,
     required String? currentCellId,
+    GeoCoord? currentPosition,
     required Set<String> exploredCellIds,
     bool currentPositionIsTrusted = true,
     Map<String, CellKnowledgeProjection> knowledgeByCellId = const {},
   }) {
-    final presentCellId = currentPositionIsTrusted ? currentCellId : null;
+    final presentCellId = currentPositionIsTrusted
+        ? currentCellId ?? _cellContaining(cells, currentPosition)?.id
+        : null;
     final revealedCellIds = {
       ...exploredCellIds,
       ...knowledgeByCellId.entries
@@ -25,29 +28,31 @@ class FogStateService {
       revealedCellIds: revealedCellIds,
     );
 
-    return cells.map((cell) {
-      final projection = knowledgeByCellId[cell.id];
-      final knowledgeState = _knowledgeStateFor(
-        cellId: cell.id,
-        presentCellId: presentCellId,
-        exploredCellIds: exploredCellIds,
-        projection: projection,
-      );
-      return (
-        cell: cell,
-        state: CellState(
-          knowledgeState: knowledgeState,
-          category: knowledgeState == CellKnowledgeState.informed
-              ? projection?.category
-              : null,
-          relationship: _relationshipFor(
-            knowledgeState: knowledgeState,
-            isFrontier: frontierCellIds.contains(cell.id),
-          ),
-          contents: CellContents.empty,
-        ),
-      );
-    }).toList(growable: false);
+    return cells
+        .map((cell) {
+          final projection = knowledgeByCellId[cell.id];
+          final knowledgeState = _knowledgeStateFor(
+            cellId: cell.id,
+            presentCellId: presentCellId,
+            exploredCellIds: exploredCellIds,
+            projection: projection,
+          );
+          return (
+            cell: cell,
+            state: CellState(
+              knowledgeState: knowledgeState,
+              category: knowledgeState == CellKnowledgeState.informed
+                  ? projection?.category
+                  : null,
+              relationship: _relationshipFor(
+                knowledgeState: knowledgeState,
+                isFrontier: frontierCellIds.contains(cell.id),
+              ),
+              contents: CellContents.empty,
+            ),
+          );
+        })
+        .toList(growable: false);
   }
 
   Set<String> _frontierCellIds({
@@ -76,6 +81,40 @@ class FogStateService {
     }
 
     return frontierCellIds;
+  }
+
+  Cell? _cellContaining(List<Cell> cells, GeoCoord? point) {
+    if (point == null) return null;
+    for (final cell in cells) {
+      for (final polygon in cell.polygons) {
+        if (polygon.isEmpty || !_pointInRing(point, polygon.first)) continue;
+        if (polygon.skip(1).any((hole) => _pointInRing(point, hole))) continue;
+        return cell;
+      }
+    }
+    return null;
+  }
+
+  bool _pointInRing(GeoCoord point, GeoRing ring) {
+    if (ring.length < 3) return false;
+    var inside = false;
+    var previous = ring.length - 1;
+    for (var index = 0; index < ring.length; index++) {
+      final currentPoint = ring[index];
+      final previousPoint = ring[previous];
+      final crossesLongitude =
+          (currentPoint.lng > point.lng) != (previousPoint.lng > point.lng);
+      if (crossesLongitude &&
+          point.lat <
+              (previousPoint.lat - currentPoint.lat) *
+                      (point.lng - currentPoint.lng) /
+                      (previousPoint.lng - currentPoint.lng) +
+                  currentPoint.lat) {
+        inside = !inside;
+      }
+      previous = index;
+    }
+    return inside;
   }
 
   Iterable<_GeoEdgeKey> _borderEdgesFor(Cell cell) sync* {
@@ -124,15 +163,13 @@ class FogStateService {
   CellRelationship _relationshipFor({
     required CellKnowledgeState knowledgeState,
     required bool isFrontier,
-  }) =>
-      switch (knowledgeState) {
-        CellKnowledgeState.present => CellRelationship.present,
-        CellKnowledgeState.informed ||
-        CellKnowledgeState.explored =>
-          CellRelationship.explored,
-        CellKnowledgeState.shrouded =>
-          isFrontier ? CellRelationship.frontier : CellRelationship.unknown,
-      };
+  }) => switch (knowledgeState) {
+    CellKnowledgeState.present => CellRelationship.present,
+    CellKnowledgeState.informed ||
+    CellKnowledgeState.explored => CellRelationship.explored,
+    CellKnowledgeState.shrouded =>
+      isFrontier ? CellRelationship.frontier : CellRelationship.unknown,
+  };
 }
 
 class _GeoEdgeKey {

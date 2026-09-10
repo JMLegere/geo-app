@@ -494,7 +494,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _armOverlayFrameReadiness(
     MapReadinessState readiness, {
     required Map<String, dynamic> renderDiagnostics,
-    required bool locationIsPaused,
   }) {
     final canPaintSteadyOverlay =
         readiness.locationReady &&
@@ -507,12 +506,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final renderCellCount = renderDiagnostics['render_cell_count'];
-      final presentCellCount = renderDiagnostics['render_present_cell_count'];
-      final hasMeaningfulContent =
-          renderCellCount is int &&
-          renderCellCount > 0 &&
-          (locationIsPaused || presentCellCount is int && presentCellCount > 0);
+      final hasMeaningfulContent = mapOverlayHasMeaningfulContent(
+        renderDiagnostics,
+      );
       if (!ref
           .read(mapReadinessProvider.notifier)
           .reportOverlayFramePainted(
@@ -974,7 +970,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
           explorationState: explorationState,
           town: townState.town,
           encounterState: encounterState,
-          locationIsPaused: locationState is LocationProviderPaused,
         ),
       },
     );
@@ -992,7 +987,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     required ExplorationStateData explorationState,
     required EncounterState encounterState,
     required TownProjection? town,
-    required bool locationIsPaused,
   }) {
     void logger({
       required String event,
@@ -1124,7 +1118,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
           _armOverlayFrameReadiness(
             readiness,
             renderDiagnostics: renderDiagnostics,
-            locationIsPaused: locationIsPaused,
           );
           _logReadinessWaiting(readiness);
           _logGeometryRenderDiagnostics(
@@ -1552,6 +1545,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     return const FogStateService().compute(
       cells: mapState.cells,
       currentCellId: explorationState.currentCellId,
+      currentPosition: (lat: mapState.location.lat, lng: mapState.location.lng),
       exploredCellIds: exploredCellIds,
       currentPositionIsTrusted: explorationState.currentPositionIsTrusted,
       knowledgeByCellId: mapState.knowledgeByCellId,

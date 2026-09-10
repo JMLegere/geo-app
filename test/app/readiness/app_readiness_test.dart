@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/app/readiness/app_readiness_gate.dart';
 import 'package:earth_nova/app/readiness/client_working_set.dart';
+import 'package:earth_nova/app/readiness/pack_media_readiness.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
@@ -14,6 +16,7 @@ import 'package:earth_nova/features/map/presentation/providers/map_provider.dart
 import 'package:earth_nova/features/map/presentation/providers/map_readiness_provider.dart';
 import 'package:earth_nova/shared/design.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -196,6 +199,65 @@ void main() {
       expect(state.permitsInput, isFalse);
       expect(state.errorMessage, 'Map unavailable');
     });
+
+    test(
+      'fails the complete readiness attempt at its global deadline',
+      () async {
+        final never = Completer<bool>();
+        final store = _FakeWorkingSetStore(_memoryStore());
+        final container = _container(
+          store: store,
+          map: _FakeMapNotifier(refresh: never.future),
+          items: _FakeItemsNotifier(fetch: Completer<void>().future),
+          deadline: const Duration(milliseconds: 10),
+        );
+        addTearDown(container.dispose);
+
+        await container.read(appReadinessProvider.notifier).start('user-1');
+
+        final state = container.read(appReadinessProvider);
+        expect(state.phase, AppReadinessPhase.failed);
+        expect(state.errorMessage, contains('30 seconds'));
+        expect(state.permitsInput, isFalse);
+      },
+    );
+
+    test(
+      'does not permit input until all Pack media reaches a terminal state',
+      () async {
+        final media = _FakePackMediaReadiness.pending();
+        final store = _FakeWorkingSetStore(
+          _memoryStore(),
+          snapshot: _snapshot(),
+        );
+        final container = _container(
+          store: store,
+          map: _FakeMapNotifier(refresh: Future.value(true)),
+          items: _FakeItemsNotifier(),
+          media: media,
+        );
+        addTearDown(container.dispose);
+        _readyMapSurface(container);
+
+        final started = container
+            .read(appReadinessProvider.notifier)
+            .start('user-1');
+        await _drain();
+        expect(container.read(appReadinessProvider).permitsInput, isFalse);
+        expect(
+          container.read(appReadinessProvider).completedCheckpoints,
+          isNot(contains('pack_media')),
+        );
+
+        media.complete();
+        await started;
+        expect(
+          container.read(appReadinessProvider).completedCheckpoints,
+          contains('pack_media'),
+        );
+        expect(container.read(appReadinessProvider).permitsInput, isTrue);
+      },
+    );
   });
 
   group('AppReadinessGate', () {
@@ -260,7 +322,7 @@ void main() {
         find.byKey(const Key('readiness-progress')),
       );
       expect(progress.label, 'Readiness progress');
-      expect(progress.value, '0 of 3 checkpoints complete');
+      expect(progress.value, '0 of 4 checkpoints complete');
       expect(progress.flagsCollection.isLiveRegion, isTrue);
       expect(
         tester
@@ -275,8 +337,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
       expect(find.text('Saved expedition'), findsOneWidget);
       expect(find.text('Pack'), findsOneWidget);
+      expect(find.text('Pack artwork'), findsOneWidget);
       expect(find.text('Map surface'), findsOneWidget);
-      expect(find.text('Pending'), findsNWidgets(3));
+      expect(find.text('Pending'), findsNWidgets(4));
       semantics.dispose();
     });
 
@@ -315,7 +378,8 @@ void main() {
       expect(find.text('Retry'), findsOneWidget);
       expect(find.text('Sign out'), findsOneWidget);
       expect(find.byType(AppCard), findsOneWidget);
-      expect(find.byType(AppButton), findsNWidgets(2));
+      expect(find.text('Copy diagnostics'), findsOneWidget);
+      expect(find.byType(AppButton), findsNWidgets(3));
       expect(find.byType(ShadProgress), findsNothing);
 
       await tester.tap(find.text('Retry'));
@@ -323,6 +387,132 @@ void main() {
       await tester.tap(find.text('Sign out'));
       await tester.pump();
       expect(events, ['purge', 'sign_out']);
+    });
+
+    testWidgets(
+      'failure copies complete session diagnostics and readiness state',
+      (tester) async {
+        String? clipboardText;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              clipboardText = (call.arguments as Map)['text'] as String;
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        final observability = ObservabilityService(sessionId: 'copy-session');
+        observability.log('map.bootstrap.timed_out', 'map');
+        observability.endSpan(observability.startSpan('map.bootstrap'));
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appObservabilityProvider.overrideWithValue(observability),
+              appReadinessProvider.overrideWith(
+                () => _StaticReadinessNotifier(
+                  const AppReadinessState(
+                    phase: AppReadinessPhase.failed,
+                    completedCheckpoints: {'working_set', 'pack'},
+                    errorMessage: 'Map is taking too long to prepare.',
+                  ),
+                ),
+              ),
+              mapProvider.overrideWith(
+                () => _FakeMapNotifier(
+                  initial: const MapStateError('Map timed out'),
+                  refresh: Future.value(false),
+                ),
+              ),
+              itemsProvider.overrideWith(() => _FakeItemsNotifier()),
+            ],
+            child: const ShadApp(
+              home: AppReadinessGate(
+                userId: 'user-1',
+                child: Text('Map mounted'),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Copy diagnostics'));
+        await tester.pump();
+
+        final decoded = jsonDecode(clipboardText!) as Map<String, dynamic>;
+        expect(decoded['session_id'], 'copy-session');
+        expect(decoded['logs'], hasLength(2));
+        expect(decoded['spans'], hasLength(1));
+        expect(
+          decoded['debug_info'],
+          containsPair('readiness_error', 'Map is taking too long to prepare.'),
+        );
+        expect(find.text('Diagnostics copied'), findsOneWidget);
+      },
+    );
+
+    testWidgets('copy failure stays recoverable and is recorded', (
+      tester,
+    ) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            throw StateError('clipboard denied');
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      final observability = ObservabilityService(sessionId: 'copy-failure');
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appObservabilityProvider.overrideWithValue(observability),
+            appReadinessProvider.overrideWith(
+              () => _StaticReadinessNotifier(
+                const AppReadinessState(
+                  phase: AppReadinessPhase.failed,
+                  completedCheckpoints: {},
+                ),
+              ),
+            ),
+            mapProvider.overrideWith(
+              () => _FakeMapNotifier(
+                initial: const MapStateError('Map timed out'),
+                refresh: Future.value(false),
+              ),
+            ),
+            itemsProvider.overrideWith(() => _FakeItemsNotifier()),
+          ],
+          child: const ShadApp(
+            home: AppReadinessGate(
+              userId: 'user-1',
+              child: Text('Map mounted'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Copy diagnostics'));
+      await tester.pump();
+
+      expect(find.text('Could not copy diagnostics'), findsOneWidget);
+      expect(
+        observability.pendingLogRecords.map((row) => row['event_name']),
+        contains('app.readiness.diagnostics_copy_failed'),
+      );
     });
 
     testWidgets('degraded entry keeps the app visible with a status banner', (
@@ -452,10 +642,14 @@ ProviderContainer _container({
   required _FakeMapNotifier map,
   required _FakeItemsNotifier items,
   String environment = 'local',
+  Duration deadline = const Duration(seconds: 30),
+  PackMediaReadiness media = const _FakePackMediaReadiness.ready(),
 }) => ProviderContainer(
   overrides: [
     clientWorkingSetStoreProvider.overrideWithValue(store),
     appReadinessEnvironmentProvider.overrideWithValue(environment),
+    appReadinessDeadlineProvider.overrideWithValue(deadline),
+    packMediaReadinessProvider.overrideWithValue(media),
     mapProvider.overrideWith(() => map),
     itemsProvider.overrideWith(() => items),
     appObservabilityProvider.overrideWithValue(
@@ -559,6 +753,9 @@ class _FakeMapNotifier extends MapNotifier {
 }
 
 class _FakeItemsNotifier extends ItemsNotifier {
+  _FakeItemsNotifier({Future<void>? fetch}) : _fetch = fetch;
+
+  final Future<void>? _fetch;
   int hydrateCalls = 0;
 
   @override
@@ -571,7 +768,22 @@ class _FakeItemsNotifier extends ItemsNotifier {
   }
 
   @override
-  Future<void> fetchItems() async {}
+  Future<void> fetchItems() => _fetch ?? Future.value();
+}
+
+class _FakePackMediaReadiness implements PackMediaReadiness {
+  const _FakePackMediaReadiness.ready() : _completer = null;
+  _FakePackMediaReadiness.pending() : _completer = Completer<void>();
+
+  final Completer<void>? _completer;
+
+  void complete() => _completer!.complete();
+
+  @override
+  Future<PackMediaPreparation> prepare(List<Item> items) async {
+    await _completer?.future;
+    return const PackMediaPreparation(requested: 0, decoded: 0, fallbacks: 0);
+  }
 }
 
 class _StaticReadinessNotifier extends AppReadinessNotifier {

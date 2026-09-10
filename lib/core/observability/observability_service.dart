@@ -9,8 +9,11 @@ import 'package:earth_nova/core/observability/trace_context.dart';
 
 abstract class TelemetryLoggerPort {
   void log(String event, String category, {Map<String, dynamic>? data});
-  void logError(Object error, StackTrace stack,
-      {String event = 'app.crash.unhandled'});
+  void logError(
+    Object error,
+    StackTrace stack, {
+    String event = 'app.crash.unhandled',
+  });
   void setUserId(String id);
   Future<void> flush();
 }
@@ -48,25 +51,25 @@ enum TelemetryFlowPhase {
 
 extension TelemetryFlowPhaseWireName on TelemetryFlowPhase {
   String get wireName => switch (this) {
-        TelemetryFlowPhase.started => 'started',
-        TelemetryFlowPhase.waitingOn => 'waiting_on',
-        TelemetryFlowPhase.dependencyRequested => 'dependency_requested',
-        TelemetryFlowPhase.dependencyReady => 'dependency_ready',
-        TelemetryFlowPhase.dependencyFailed => 'dependency_failed',
-        TelemetryFlowPhase.stateChanged => 'state_changed',
-        TelemetryFlowPhase.completed => 'completed',
-        TelemetryFlowPhase.failed => 'failed',
-        TelemetryFlowPhase.timedOut => 'timed_out',
-        TelemetryFlowPhase.cancelled => 'cancelled',
-      };
+    TelemetryFlowPhase.started => 'started',
+    TelemetryFlowPhase.waitingOn => 'waiting_on',
+    TelemetryFlowPhase.dependencyRequested => 'dependency_requested',
+    TelemetryFlowPhase.dependencyReady => 'dependency_ready',
+    TelemetryFlowPhase.dependencyFailed => 'dependency_failed',
+    TelemetryFlowPhase.stateChanged => 'state_changed',
+    TelemetryFlowPhase.completed => 'completed',
+    TelemetryFlowPhase.failed => 'failed',
+    TelemetryFlowPhase.timedOut => 'timed_out',
+    TelemetryFlowPhase.cancelled => 'cancelled',
+  };
 }
 
 extension on TelemetrySpanStatus {
   String get wireName => switch (this) {
-        TelemetrySpanStatus.unset => 'unset',
-        TelemetrySpanStatus.ok => 'ok',
-        TelemetrySpanStatus.error => 'error',
-      };
+    TelemetrySpanStatus.unset => 'unset',
+    TelemetrySpanStatus.ok => 'ok',
+    TelemetrySpanStatus.error => 'error',
+  };
 }
 
 class TelemetrySpan {
@@ -121,6 +124,9 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
   String? _userId;
   final List<Map<String, dynamic>> _logBuffer = [];
   final List<Map<String, dynamic>> _spanBuffer = [];
+  final List<Map<String, dynamic>> _sessionLogs = [];
+  final List<Map<String, dynamic>> _sessionSpans = [];
+  final Map<String, TelemetrySpan> _activeSpans = {};
   Timer? _flushTimer;
 
   @visibleForTesting
@@ -137,11 +143,12 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
     final attributes = Map<String, dynamic>.from(data ?? const {});
     final traceId = _takeString(attributes, 'trace_id');
     final spanId = _takeString(attributes, 'span_id');
-    final severityText = _takeString(attributes, 'severity_text') ??
+    final severityText =
+        _takeString(attributes, 'severity_text') ??
         (category == 'error' ? 'ERROR' : 'INFO');
     final body = _takeString(attributes, 'body');
 
-    _logBuffer.add({
+    final record = <String, dynamic>{
       'session_id': sessionId,
       'user_id': _userId,
       'trace_id': _validTraceId(traceId),
@@ -153,7 +160,9 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
       'body': body,
       'attributes': attributes,
       'occurred_at': DateTime.now().toUtc().toIso8601String(),
-    });
+    };
+    _logBuffer.add(record);
+    _sessionLogs.add(record);
   }
 
   /// Log a lifecycle event using the debugging grammar:
@@ -187,8 +196,11 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
 
   /// Log an error with full raw detail for diagnosis.
   @override
-  void logError(Object error, StackTrace stack,
-      {String event = 'app.crash.unhandled'}) {
+  void logError(
+    Object error,
+    StackTrace stack, {
+    String event = 'app.crash.unhandled',
+  }) {
     final data = <String, dynamic>{
       'severity_text': 'ERROR',
       'error_type': error.runtimeType.toString(),
@@ -220,12 +232,14 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
       ...?attributes,
       'flow': attributes?['flow'] ?? name,
     };
-    return TelemetrySpan(
+    final span = TelemetrySpan(
       name: name,
       context: context,
       spanKind: _normalizeSpanKind(spanKind),
       attributes: normalizedAttributes,
     );
+    _activeSpans[span.spanId] = span;
+    return span;
   }
 
   @override
@@ -235,12 +249,13 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
     String? statusMessage,
     Map<String, dynamic>? attributes,
   }) {
+    _activeSpans.remove(span.spanId);
     final mergedAttributes = <String, dynamic>{
       ...span.attributes,
       ...?attributes,
     };
 
-    _spanBuffer.add({
+    final record = <String, dynamic>{
       'trace_id': span.traceId,
       'span_id': span.spanId,
       'parent_span_id': span.parentSpanId,
@@ -254,6 +269,53 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
       'user_id': _userId,
       'attributes': mergedAttributes,
       'events': const <Map<String, dynamic>>[],
+    };
+    _spanBuffer.add(record);
+    _sessionSpans.add(record);
+  }
+
+  /// Serializes every log and completed span observed by this app session,
+  /// including records already acknowledged and removed from upload buffers.
+  String exportDiagnostics({
+    Map<String, dynamic> debugInfo = const {},
+    String? browserLogsJson,
+  }) {
+    Object browserLogs = const <Object>[];
+    if (browserLogsJson != null && browserLogsJson.isNotEmpty) {
+      try {
+        browserLogs = jsonDecode(browserLogsJson) ?? const <Object>[];
+      } on FormatException {
+        browserLogs = [
+          {'decode_error': 'invalid_browser_diagnostic_log_json'},
+        ];
+      }
+    }
+    return const JsonEncoder.withIndent('  ').convert({
+      'format': 'earthnova-session-diagnostics-v1',
+      'generated_at': DateTime.now().toUtc().toIso8601String(),
+      'session_id': sessionId,
+      'resource': {
+        'service_name': serviceName,
+        'service_version': serviceVersion,
+        'deployment_environment': deploymentEnvironment,
+        'platform': platform,
+      },
+      'debug_info': debugInfo,
+      'logs': _sessionLogs,
+      'spans': _sessionSpans,
+      'active_spans': [
+        for (final span in _activeSpans.values)
+          {
+            'trace_id': span.traceId,
+            'span_id': span.spanId,
+            'parent_span_id': span.parentSpanId,
+            'span_name': span.name,
+            'span_kind': span.spanKind,
+            'started_at': span.startedAt.toUtc().toIso8601String(),
+            'attributes': span.attributes,
+          },
+      ],
+      'browser_logs': browserLogs,
     });
   }
 

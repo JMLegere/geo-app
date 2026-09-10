@@ -55,6 +55,7 @@ jobs:
             --environment production
           npx -y @railway/cli variable set \
             DEPLOYMENT_ENVIRONMENT=prod \
+            BUILD_COMMIT_SHA="$DEPLOY_REF" \
             --skip-deploys
 
       - name: Deploy to Railway production
