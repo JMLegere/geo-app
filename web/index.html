@@ -190,6 +190,7 @@
   <script>
     (function() {
       var OBS_KEY = 'earthnova_obs';
+      var DIAGNOSTIC_OBS_KEY = 'earthnova_session_diagnostic_logs';
       function telemetryEnvironment() {
         var host = window.location.hostname;
         if (host.indexOf('geo-app-beta') !== -1) return 'beta';
@@ -270,6 +271,16 @@
           var s = JSON.stringify(arr);
           while (s.length > MAX_BYTES && arr.length > 1) { arr.shift(); s = JSON.stringify(arr); }
           localStorage.setItem(OBS_KEY, s);
+          var diagnosticArr = JSON.parse(
+            sessionStorage.getItem(DIAGNOSTIC_OBS_KEY) || '[]'
+          );
+          diagnosticArr.push(entry);
+          var diagnosticJson = JSON.stringify(diagnosticArr);
+          while (diagnosticJson.length > MAX_BYTES && diagnosticArr.length > 1) {
+            diagnosticArr.shift();
+            diagnosticJson = JSON.stringify(diagnosticArr);
+          }
+          sessionStorage.setItem(DIAGNOSTIC_OBS_KEY, diagnosticJson);
         } catch(_) {}
       }
 

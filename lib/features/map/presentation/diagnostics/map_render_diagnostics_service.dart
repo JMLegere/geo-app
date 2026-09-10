@@ -6,6 +6,21 @@ import 'package:earth_nova/features/map/domain/services/cell_geometry_diagnostic
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
 
+/// True only when a completed overlay frame contains projected, visible,
+/// non-opaque Cell geometry. A Present Cell is not required: a new Player can
+/// legitimately start with only translucent frontier Cells.
+bool mapOverlayHasMeaningfulContent(Map<String, dynamic> diagnostics) {
+  int count(String key) =>
+      diagnostics[key] is int ? diagnostics[key] as int : 0;
+
+  return count('render_cell_count') > 0 &&
+      count('projection_polygon_count') > 0 &&
+      count('projection_viewport_intersecting_polygon_count') > 0 &&
+      (count('render_present_cell_count') > 0 ||
+          count('render_explored_cell_count') > 0 ||
+          count('render_frontier_cell_count') > 0);
+}
+
 class MapRenderDiagnosticsService {
   const MapRenderDiagnosticsService();
 
@@ -221,6 +236,7 @@ class MapRenderDiagnosticsService {
     GeoProjector project,
   ) {
     var polygonCount = 0;
+    var viewportIntersectingPolygonCount = 0;
     var viewportEdgeCrossingCount = 0;
     var totalEdgeCount = 0;
     var axisAlignedScreenEdgeCount = 0;
@@ -239,6 +255,13 @@ class MapRenderDiagnosticsService {
         if (exterior.length < 3) continue;
         polygonCount++;
         final bounds = _boundsFor(exterior);
+        final viewportBounds = Rect.fromLTWH(
+          0,
+          0,
+          viewportSize.width,
+          viewportSize.height,
+        );
+        if (bounds.overlaps(viewportBounds)) viewportIntersectingPolygonCount++;
         projectedExteriors.add(
           _ProjectedExterior(points: exterior, bounds: bounds),
         );
@@ -281,6 +304,8 @@ class MapRenderDiagnosticsService {
       'projection_viewport_width_px': _roundPx(viewportSize.width),
       'projection_viewport_height_px': _roundPx(viewportSize.height),
       'projection_polygon_count': polygonCount,
+      'projection_viewport_intersecting_polygon_count':
+          viewportIntersectingPolygonCount,
       'projection_largest_bbox_area_ratio': _roundRatio(largestAreaRatio),
       'projection_viewport_edge_crossing_count': viewportEdgeCrossingCount,
       'projection_axis_aligned_screen_edge_ratio': _roundRatio(
