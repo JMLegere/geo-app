@@ -992,6 +992,15 @@ class _ItemSlotState extends ConsumerState<_ItemSlot> {
       context,
       openedItem,
       onOpenIdentificationService: widget.onOpenIdentificationService,
+      loadRecordedProperties: (item) =>
+          ref
+              .read(itemPropertyValueRepositoryProvider)
+              ?.fetchForIdentifiedItem(item) ??
+          Future.error(
+            StateError(
+              'Recorded property values are unavailable in this mode.',
+            ),
+          ),
     );
     if (!examining) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

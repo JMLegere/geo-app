@@ -29,6 +29,20 @@ import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 // Fake repository for tests
 // ---------------------------------------------------------------------------
 
+const _testDistrictBoundary = DistrictBoundary(
+  polygons: [
+    [
+      [
+        (lat: 44.999, lng: -66.001),
+        (lat: 44.999, lng: -65.999),
+        (lat: 45.001, lng: -65.999),
+        (lat: 45.001, lng: -66.001),
+        (lat: 44.999, lng: -66.001),
+      ],
+    ],
+  ],
+);
+
 class _FakeHierarchyRepository implements HierarchyRepository {
   @override
   Future<HierarchyProgressSummary> getScopeSummary({
@@ -44,6 +58,9 @@ class _FakeHierarchyRepository implements HierarchyRepository {
       cellsTotal: 100,
       progressPercent: 42.0,
       rank: 3,
+      districtBoundary: level == MapLevel.district
+          ? _testDistrictBoundary
+          : null,
     );
   }
 
@@ -274,6 +291,30 @@ void main() {
       expect(find.textContaining('300 explorers'), findsOneWidget);
     });
 
+    testWidgets('states when the authoritative cell total is unavailable', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _designHost(
+          const HierarchyHeader(
+            scopeLevel: 'District',
+            scopeName: 'Town Plat',
+            scopeCode: 'TP',
+            cellsVisited: 55,
+            cellsTotal: 0,
+            cellsTotalKnown: false,
+            progressPercent: 0,
+            rank: 1,
+            explorerCount: 1,
+          ),
+        ),
+      );
+
+      expect(find.text('55 cells explored; total unavailable'), findsOneWidget);
+      expect(find.text('0%'), findsNothing);
+      expect(find.textContaining('55 / 0 cells'), findsNothing);
+    });
+
     testWidgets('keeps back action target and telemetry contract', (
       tester,
     ) async {
@@ -502,6 +543,7 @@ void main() {
           MaterialApp(
             home: Scaffold(
               body: DistrictFootprintMap(
+                districtBoundary: _testDistrictBoundary,
                 cells: cells,
                 currentDistrictId: 'district-1',
                 visitedCellIds: const {'current-1'},
@@ -598,6 +640,17 @@ void main() {
         await tester.pump();
 
         expect(find.byType(DistrictFootprintMap), findsOneWidget);
+        final painter =
+            tester
+                    .widget<CustomPaint>(
+                      find.descendant(
+                        of: find.byType(DistrictFootprintMap),
+                        matching: find.byType(CustomPaint),
+                      ),
+                    )
+                    .painter!
+                as DistrictFootprintMapPainter;
+        expect(painter.districtBoundary, same(_testDistrictBoundary));
         expect(find.byType(HierarchyExplorationMap), findsNothing);
         expect(find.text('Child Area'), findsNothing);
       },

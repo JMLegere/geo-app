@@ -4,6 +4,8 @@ import 'package:flutter/rendering.dart' show SemanticsProperties;
 
 import 'package:flutter/material.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
+import 'package:earth_nova/shared/design.dart';
 
 typedef DistrictFootprintCellStyle = ({
   Color fill,
@@ -38,12 +40,14 @@ class DistrictFootprintMap extends StatelessWidget {
     required this.cells,
     required this.currentDistrictId,
     required this.visitedCellIds,
+    this.districtBoundary,
     this.currentCellId,
   });
 
   final List<Cell> cells;
   final String currentDistrictId;
   final Set<String> visitedCellIds;
+  final DistrictBoundary? districtBoundary;
   final String? currentCellId;
 
   @override
@@ -57,14 +61,14 @@ class DistrictFootprintMap extends StatelessWidget {
         .where((cell) => cell.hasRenderableGeometry)
         .toList(growable: false);
 
-    if (districtCells.isEmpty) {
+    if (districtBoundary == null) {
       return const ColoredBox(
         color: Color(0xFF0A0A0A),
         child: Center(
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text(
-              'District map unavailable until nearby cell geometry loads.',
+              'District boundary unavailable.',
               style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 13),
               textAlign: TextAlign.center,
             ),
@@ -77,6 +81,7 @@ class DistrictFootprintMap extends StatelessWidget {
       color: const Color(0xFF0A0A0A),
       child: CustomPaint(
         painter: DistrictFootprintMapPainter(
+          districtBoundary: districtBoundary!,
           districtCells: districtCells,
           contextCells: contextCells,
           visitedCellIds: visitedCellIds,
@@ -90,12 +95,14 @@ class DistrictFootprintMap extends StatelessWidget {
 
 class DistrictFootprintMapPainter extends CustomPainter {
   const DistrictFootprintMapPainter({
+    required this.districtBoundary,
     required this.districtCells,
     required this.contextCells,
     required this.visitedCellIds,
     this.currentCellId,
   });
 
+  final DistrictBoundary districtBoundary;
   final List<Cell> districtCells;
   final List<Cell> contextCells;
   final Set<String> visitedCellIds;
@@ -103,13 +110,13 @@ class DistrictFootprintMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
     final allRenderableCells = [
       ...contextCells,
       ...districtCells,
     ].where((cell) => cell.hasRenderableGeometry).toList(growable: false);
-    if (allRenderableCells.isEmpty || size.isEmpty) return;
-
     final projection = _DistrictProjection.fit(
+      boundary: districtBoundary,
       cells: allRenderableCells,
       size: size,
       padding: 20,
@@ -144,6 +151,16 @@ class DistrictFootprintMapPainter extends CustomPainter {
         strokeWidth: style.strokeWidth,
       );
     }
+
+    canvas.drawPath(
+      _boundaryPath(projection),
+      Paint()
+        ..color = DesignPalette.text
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = DesignMetrics.outline * 3
+        ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true,
+    );
   }
 
   void _drawCell(
@@ -187,6 +204,24 @@ class DistrictFootprintMapPainter extends CustomPainter {
     }
   }
 
+  Path _boundaryPath(_DistrictProjection projection) {
+    final path = Path();
+    for (final polygon in districtBoundary.polygons) {
+      for (final ring in polygon) {
+        for (var i = 0; i < ring.length; i++) {
+          final point = projection.project(ring[i]);
+          if (i == 0) {
+            path.moveTo(point.dx, point.dy);
+          } else {
+            path.lineTo(point.dx, point.dy);
+          }
+        }
+        path.close();
+      }
+    }
+    return path;
+  }
+
   Rect? _semanticBounds(Cell cell, _DistrictProjection projection) {
     var minX = double.infinity;
     var minY = double.infinity;
@@ -216,9 +251,10 @@ class DistrictFootprintMapPainter extends CustomPainter {
       ...contextCells,
       ...districtCells,
     ].where((cell) => cell.hasRenderableGeometry).toList(growable: false);
-    if (allRenderableCells.isEmpty || size.isEmpty) return const [];
+    if (size.isEmpty) return const [];
 
     final projection = _DistrictProjection.fit(
+      boundary: districtBoundary,
       cells: allRenderableCells,
       size: size,
       padding: 20,
@@ -262,7 +298,8 @@ class DistrictFootprintMapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant DistrictFootprintMapPainter oldDelegate) {
-    return oldDelegate.districtCells != districtCells ||
+    return oldDelegate.districtBoundary != districtBoundary ||
+        oldDelegate.districtCells != districtCells ||
         oldDelegate.contextCells != contextCells ||
         oldDelegate.visitedCellIds != visitedCellIds ||
         oldDelegate.currentCellId != currentCellId;
@@ -283,6 +320,7 @@ class _DistrictProjection {
   final Offset offset;
 
   static _DistrictProjection? fit({
+    required DistrictBoundary boundary,
     required List<Cell> cells,
     required Size size,
     required double padding,
@@ -292,6 +330,17 @@ class _DistrictProjection {
     var maxX = double.negativeInfinity;
     var maxY = double.negativeInfinity;
 
+    for (final polygon in boundary.polygons) {
+      for (final ring in polygon) {
+        for (final coord in ring) {
+          final projected = _projectMercatorUnit(coord);
+          minX = math.min(minX, projected.dx);
+          minY = math.min(minY, projected.dy);
+          maxX = math.max(maxX, projected.dx);
+          maxY = math.max(maxY, projected.dy);
+        }
+      }
+    }
     for (final cell in cells) {
       for (final coord in cell.exteriorPoints) {
         final projected = _projectMercatorUnit(coord);

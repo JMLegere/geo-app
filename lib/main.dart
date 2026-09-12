@@ -42,7 +42,9 @@ import 'package:earth_nova/features/identification/data/repositories/mock_item_r
 import 'package:earth_nova/features/identification/data/repositories/supabase_item_repository.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/data/repositories/supabase_identification_repository.dart';
+import 'package:earth_nova/features/identification/data/repositories/supabase_item_property_value_repository.dart';
 import 'package:earth_nova/features/identification/domain/repositories/identification_repository.dart';
+import 'package:earth_nova/features/identification/domain/repositories/item_property_value_repository.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/index/data/repositories/mock_item_index_repository.dart';
 import 'package:earth_nova/features/index/data/repositories/supabase_item_index_repository.dart';
@@ -167,6 +169,14 @@ void main() async {
       ? SupabasePackRepository(client: supabaseClient, logEvent: obs.log)
       : LegacyItemRepositoryPackAdapter(itemRepository);
 
+  final ItemPropertyValueRepository? itemPropertyValueRepository =
+      supabaseClient != null
+      ? SupabaseItemPropertyValueRepository(
+          client: supabaseClient,
+          logEvent: obs.log,
+        )
+      : null;
+
   final IdentificationRepository? identificationRepository =
       supabaseClient != null
       ? SupabaseIdentificationRepository(
@@ -242,6 +252,9 @@ void main() async {
           authRepositoryProvider.overrideWithValue(authRepository),
           itemRepositoryProvider.overrideWithValue(itemRepository),
           packRepositoryProvider.overrideWithValue(packRepository),
+          itemPropertyValueRepositoryProvider.overrideWithValue(
+            itemPropertyValueRepository,
+          ),
           identificationRepositoryProvider.overrideWithValue(
             identificationRepository,
           ),

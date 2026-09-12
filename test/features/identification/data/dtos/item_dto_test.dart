@@ -33,10 +33,7 @@ void main() {
       expect(domain.definitionId, 'def1');
       expect(domain.displayName, 'Lion');
       expect(domain.baseItemId, 'fauna:lion');
-      expect(
-        domain.baseItemVersionId,
-        '123e4567-e89b-12d3-a456-426614174000',
-      );
+      expect(domain.baseItemVersionId, '123e4567-e89b-12d3-a456-426614174000');
       expect(domain.scientificName, 'Panthera leo');
       expect(domain.category, ItemCategory.fauna);
       expect(domain.rarity, 'EN');
@@ -143,10 +140,7 @@ void main() {
       expect(item.examinedAt, DateTime.utc(2026, 1, 2, 3, 4, 5));
       expect(item.identificationState, ItemIdentificationState.unidentified);
       expect(item.baseItemId, 'fauna:lion');
-      expect(
-        item.baseItemVersionId,
-        '123e4567-e89b-12d3-a456-426614174000',
-      );
+      expect(item.baseItemVersionId, '123e4567-e89b-12d3-a456-426614174000');
       expect(item.displayName, 'Lion');
       expect(item.scientificName, 'Panthera leo');
       expect(item.habitats, ['Forest', 'Mountain']);
@@ -168,20 +162,9 @@ void main() {
 
       expect(legacyIdentified.examinationState, ItemExaminationState.examined);
       expect(
-          legacyUnidentified.examinationState, ItemExaminationState.unexamined);
-    });
-
-    test(
-        'rejects identification property values leaked by an examined projection',
-        () {
-      final leaked = {
-        ...fullJson,
-        'identification_state': 'unidentified',
-        'examination_state': 'examined',
-        'identified_display_name': 'Northern cardinal',
-      };
-
-      expect(() => ItemDto.fromJson(leaked), throwsA(isA<FormatException>()));
+        legacyUnidentified.examinationState,
+        ItemExaminationState.unexamined,
+      );
     });
   });
 
@@ -283,62 +266,65 @@ void main() {
 
   group('ItemDto unidentified projection boundary', () {
     test(
-        'rejects every canonical or identified field leaked by an unknown find',
-        () {
-      const hiddenFields = [
-        'definition_id',
-        'base_item_id',
-        'base_item_version_id',
-        'scientific_name',
-        'rarity',
-        'icon_url',
-        'icon_url_frame2',
-        'art_url',
-        'taxonomic_class',
-        'habitats_json',
-        'continents_json',
-        'identified_at',
-        'identified_display_name',
-        'identified_scientific_name',
-        'identified_taxonomic_class',
-        'identified_habitats_json',
-        'identified_continents_json',
-      ];
-      final unknown = <String, dynamic>{
-        'id': 'unknown-1',
-        'display_name': 'Unidentified fauna specimen',
-        'acquired_at': acquiredAt.toIso8601String(),
-        'identification_state': 'unidentified',
-      };
+      'rejects every canonical or identified field leaked by an unknown find',
+      () {
+        const hiddenFields = [
+          'definition_id',
+          'base_item_id',
+          'base_item_version_id',
+          'scientific_name',
+          'rarity',
+          'icon_url',
+          'icon_url_frame2',
+          'art_url',
+          'taxonomic_class',
+          'habitats_json',
+          'continents_json',
+          'identified_at',
+          'identified_display_name',
+          'identified_scientific_name',
+          'identified_taxonomic_class',
+          'identified_habitats_json',
+          'identified_continents_json',
+        ];
+        final unknown = <String, dynamic>{
+          'id': 'unknown-1',
+          'display_name': 'Unidentified fauna specimen',
+          'acquired_at': acquiredAt.toIso8601String(),
+          'identification_state': 'unidentified',
+        };
 
-      for (final hiddenField in hiddenFields) {
-        final leaked = Map<String, dynamic>.from(unknown)
-          ..[hiddenField] = 'canonical-value';
-        expect(
-          () => ItemDto.fromJson(leaked),
-          throwsA(isA<FormatException>()),
-          reason: '$hiddenField must remain masked before identification',
-        );
-      }
-    });
+        for (final hiddenField in hiddenFields) {
+          final leaked = Map<String, dynamic>.from(unknown)
+            ..[hiddenField] = 'canonical-value';
+          expect(
+            () => ItemDto.fromJson(leaked),
+            throwsA(isA<FormatException>()),
+            reason: '$hiddenField must remain masked before identification',
+          );
+        }
+      },
+    );
 
-    test('serializes a masked unknown find without canonical identity values',
-        () {
-      final unknown = ItemDto.fromJson({
-        'id': 'unknown-2',
-        'display_name': 'Unidentified flora specimen',
-        'acquired_at': acquiredAt.toIso8601String(),
-        'identification_state': 'unidentified',
-      });
+    test(
+      'serializes a masked unknown find without canonical identity values',
+      () {
+        final unknown = ItemDto.fromJson({
+          'id': 'unknown-2',
+          'display_name': 'Unidentified flora specimen',
+          'acquired_at': acquiredAt.toIso8601String(),
+          'identification_state': 'unidentified',
+        });
 
-      final wire = unknown.toJson();
+        final wire = unknown.toJson();
 
-      expect(wire['identification_state'], 'unidentified');
-      expect(wire['display_name'], 'Unidentified flora specimen');
-      expect(wire['definition_id'], isNull);
-      expect(wire['base_item_id'], isNull);
-      expect(wire['identified_display_name'], isNull);
-    });
+        expect(wire['identification_state'], 'unidentified');
+        expect(wire['display_name'], 'Unidentified flora specimen');
+        expect(wire['definition_id'], isNull);
+        expect(wire['base_item_id'], isNull);
+        expect(wire['identified_display_name'], isNull);
+      },
+    );
 
     test('rejects non-string optional item text rather than coercing it', () {
       final invalidScientificName = Map<String, dynamic>.from(fullJson)

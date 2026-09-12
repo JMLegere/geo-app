@@ -5,6 +5,7 @@ import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/domain/entities/iucn_status.dart';
 import 'package:earth_nova/core/domain/entities/taxonomic_group.dart';
+import 'package:earth_nova/features/identification/domain/entities/item_recorded_property.dart';
 import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/product/product_action_surface.dart';
@@ -14,6 +15,8 @@ void showSpeciesCard(
   BuildContext context,
   Item item, {
   void Function(Item item)? onOpenIdentificationService,
+  Future<List<ItemRecordedProperty>> Function(Item item)?
+  loadRecordedProperties,
 }) {
   showGeneralDialog<void>(
     context: context,
@@ -26,6 +29,7 @@ void showSpeciesCard(
     pageBuilder: (_, _, _) => SpeciesCard(
       item: item,
       onOpenIdentificationService: onOpenIdentificationService,
+      loadRecordedProperties: loadRecordedProperties,
     ),
     transitionBuilder: (_, animation, _, child) => FadeTransition(
       opacity: animation,
@@ -43,10 +47,13 @@ class SpeciesCard extends StatefulWidget {
     super.key,
     required this.item,
     this.onOpenIdentificationService,
+    this.loadRecordedProperties,
   });
 
   final Item item;
   final void Function(Item item)? onOpenIdentificationService;
+  final Future<List<ItemRecordedProperty>> Function(Item item)?
+  loadRecordedProperties;
 
   @override
   State<SpeciesCard> createState() => _SpeciesCardState();
@@ -55,7 +62,34 @@ class SpeciesCard extends StatefulWidget {
 class _SpeciesCardState extends State<SpeciesCard> {
   static const _dismissDistance = 80.0;
 
+  late Future<List<ItemRecordedProperty>>? _recordedProperties;
   double _downwardOverscroll = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecordedProperties();
+  }
+
+  @override
+  void didUpdateWidget(covariant SpeciesCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.id != widget.item.id ||
+        oldWidget.item.identificationState != widget.item.identificationState ||
+        oldWidget.item.baseItemId != widget.item.baseItemId ||
+        oldWidget.item.baseItemVersionId != widget.item.baseItemVersionId ||
+        oldWidget.loadRecordedProperties != widget.loadRecordedProperties) {
+      _loadRecordedProperties();
+    }
+  }
+
+  void _loadRecordedProperties() {
+    final loader = widget.loadRecordedProperties;
+    _recordedProperties =
+        !widget.item.isExamined || widget.item.isUnidentified || loader == null
+        ? null
+        : loader(widget.item);
+  }
 
   void _dismiss() {
     Navigator.of(context).maybePop();
@@ -85,6 +119,7 @@ class _SpeciesCardState extends State<SpeciesCard> {
         ? _ExaminedSpeciesContent(
             item: item,
             onOpenIdentificationService: widget.onOpenIdentificationService,
+            recordedProperties: _recordedProperties,
             onDismiss: _dismiss,
           )
         : _UnexaminedSpeciesContent(item: item, onDismiss: _dismiss);
@@ -130,19 +165,23 @@ class _ExaminedSpeciesContent extends StatelessWidget {
   const _ExaminedSpeciesContent({
     required this.item,
     required this.onOpenIdentificationService,
+    required this.recordedProperties,
     required this.onDismiss,
   });
 
   final Item item;
   final void Function(Item item)? onOpenIdentificationService;
+  final Future<List<ItemRecordedProperty>>? recordedProperties;
   final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
     final mobile = MediaQuery.sizeOf(context).width < 700;
     final media = _SpeciesMedia(item: item);
-    final details = _SpeciesDetails(item: item);
-
+    final details = _SpeciesDetails(
+      item: item,
+      recordedProperties: recordedProperties,
+    );
     final footer = item.isUnidentified && onOpenIdentificationService != null
         ? ProductActionSurface(
             actionId: PlayerActions.openIdentificationService,
@@ -272,9 +311,10 @@ class _SpeciesMedia extends StatelessWidget {
 }
 
 class _SpeciesDetails extends StatelessWidget {
-  const _SpeciesDetails({required this.item});
+  const _SpeciesDetails({required this.item, required this.recordedProperties});
 
   final Item item;
+  final Future<List<ItemRecordedProperty>>? recordedProperties;
 
   @override
   Widget build(BuildContext context) {
@@ -325,6 +365,8 @@ class _SpeciesDetails extends StatelessWidget {
         AppFieldRow(label: 'Acquired', value: _formatDate(item.acquiredAt)),
         if (item.acquiredInCellId != null)
           const AppFieldRow(label: 'Provenance', value: 'Map exploration'),
+        if (recordedProperties case final properties?)
+          _RecordedProperties(properties: properties),
       ],
     );
   }
@@ -345,5 +387,41 @@ class _SpeciesDetails extends StatelessWidget {
       'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+}
+
+class _RecordedProperties extends StatelessWidget {
+  const _RecordedProperties({required this.properties});
+
+  final Future<List<ItemRecordedProperty>> properties;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<ItemRecordedProperty>>(
+      future: properties,
+      builder: (context, snapshot) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 12),
+          Text(
+            'Recorded properties',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
+          if (snapshot.hasError)
+            const AppText('Recorded properties unavailable')
+          else if (!snapshot.hasData)
+            const AppText('Loading recorded property values')
+          else if (snapshot.requireData.isEmpty)
+            const AppText('No recorded property values')
+          else
+            for (final property in snapshot.requireData)
+              AppFieldRow(
+                label: property.propertyLabel,
+                value: property.valueText,
+              ),
+        ],
+      ),
+    );
   }
 }

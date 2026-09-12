@@ -358,6 +358,20 @@ class _NeutralSemanticMapHost extends StatelessWidget {
   }
 }
 
+const _fixtureDistrictBoundary = DistrictBoundary(
+  polygons: [
+    [
+      [
+        (lat: 45.9624, lng: -66.6450),
+        (lat: 45.9624, lng: -66.6428),
+        (lat: 45.9642, lng: -66.6428),
+        (lat: 45.9642, lng: -66.6450),
+        (lat: 45.9624, lng: -66.6450),
+      ],
+    ],
+  ],
+);
+
 final _hierarchyScenes =
     <({String name, String level, String scopeName, Widget child})>[
       (
@@ -501,6 +515,9 @@ class _FixtureHierarchyRepository implements HierarchyRepository {
     cellsTotal: 100,
     progressPercent: 42,
     rank: 3,
+    districtBoundary: level == MapLevel.district
+        ? _fixtureDistrictBoundary
+        : null,
   );
 
   @override

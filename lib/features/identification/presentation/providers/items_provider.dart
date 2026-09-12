@@ -5,6 +5,7 @@ import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/identification/domain/repositories/identification_repository.dart';
+import 'package:earth_nova/features/identification/domain/repositories/item_property_value_repository.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/acquire_discovery_item.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/identify_unidentified_find.dart';
@@ -39,13 +40,12 @@ class ItemsState {
     bool? isLoading,
     bool? hasLoaded,
     String? error,
-  }) =>
-      ItemsState(
-        items: items ?? this.items,
-        isLoading: isLoading ?? this.isLoading,
-        hasLoaded: hasLoaded ?? this.hasLoaded,
-        error: error,
-      );
+  }) => ItemsState(
+    items: items ?? this.items,
+    isLoading: isLoading ?? this.isLoading,
+    hasLoaded: hasLoaded ?? this.hasLoaded,
+    error: error,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -69,8 +69,13 @@ final itemRepositoryProvider = Provider<ItemRepository>((ref) {
 /// Read-only Pack boundary — overridden by bootstrap in every runtime mode.
 final packRepositoryProvider = Provider<PackRepository>((ref) {
   throw UnimplementedError(
-      'Must be overridden with real or mock Pack repository');
+    'Must be overridden with real or mock Pack repository',
+  );
 });
+
+/// Presentation-only reader for committed properties; absent outside Supabase.
+final itemPropertyValueRepositoryProvider =
+    Provider<ItemPropertyValueRepository?>((ref) => null);
 
 /// Authoritative Item Identification boundary.
 ///
@@ -98,8 +103,9 @@ final acquireDiscoveryItemProvider = Provider<AcquireDiscoveryItem>((ref) {
   );
 });
 
-final identifyUnidentifiedFindProvider =
-    Provider<IdentifyUnidentifiedFind>((ref) {
+final identifyUnidentifiedFindProvider = Provider<IdentifyUnidentifiedFind>((
+  ref,
+) {
   return IdentifyUnidentifiedFind(
     ref.watch(itemRepositoryProvider),
     ref.watch(itemsObservabilityProvider),
@@ -114,8 +120,9 @@ final examinePackItemProvider = Provider<ExaminePackItem>((ref) {
 });
 
 /// Items provider — fetches and caches the Player's Pack.
-final itemsProvider =
-    NotifierProvider<ItemsNotifier, ItemsState>(ItemsNotifier.new);
+final itemsProvider = NotifierProvider<ItemsNotifier, ItemsState>(
+  ItemsNotifier.new,
+);
 
 class ItemsNotifier extends ObservableNotifier<ItemsState> {
   @override
@@ -132,10 +139,7 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
 
   void hydrate(List<Item> items) {
     transition(
-      ItemsState(
-        items: List<Item>.unmodifiable(items),
-        hasLoaded: true,
-      ),
+      ItemsState(items: List<Item>.unmodifiable(items), hasLoaded: true),
       'items.hydrated',
       data: {'mode': 'pack', 'source': 'working_set', 'count': items.length},
     );
@@ -154,10 +158,7 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     try {
       final items = await ref.read(fetchPackItemsProvider)(authState.user!.id);
       transition(
-        ItemsState(
-          items: List<Item>.unmodifiable(items),
-          hasLoaded: true,
-        ),
+        ItemsState(items: List<Item>.unmodifiable(items), hasLoaded: true),
         'items.fetch_success',
         data: {'mode': 'pack', 'terminal': 'succeeded', 'count': items.length},
       );
@@ -174,8 +175,9 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
   }
 
   void registerOwnedDiscovery(Item item) {
-    final existingIndex =
-        state.items.indexWhere((existing) => existing.id == item.id);
+    final existingIndex = state.items.indexWhere(
+      (existing) => existing.id == item.id,
+    );
     final nextItems = [...state.items];
     if (existingIndex == -1) {
       nextItems.insert(0, item);
@@ -188,7 +190,7 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
       data: {
         'mode': 'encounter',
         'terminal': 'registered',
-        'deduped': existingIndex != -1
+        'deduped': existingIndex != -1,
       },
     );
   }
@@ -202,8 +204,9 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     final trace = TraceContext.start();
     final traceId = trace.traceId;
     final authoritativeRepository = ref.read(identificationRepositoryProvider);
-    final mode =
-        authoritativeRepository == null ? 'legacy_mock' : 'authoritative';
+    final mode = authoritativeRepository == null
+        ? 'legacy_mock'
+        : 'authoritative';
     transition(
       state.copyWith(error: null),
       'items.identification_started',
@@ -214,7 +217,9 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
       final identified = authoritativeRepository == null
           ? await ref.read(identifyUnidentifiedFindProvider).call(item)
           : (await authoritativeRepository.commit(
-              await ref.read(planItemIdentificationProvider).call(
+              await ref
+                  .read(planItemIdentificationProvider)
+                  .call(
                     await authoritativeRepository.prepare(
                       ItemKnowledgeItemId(item.id),
                       traceId: traceId,
@@ -222,8 +227,7 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
                     parent: trace,
                   ),
               traceId: traceId,
-            ))
-              .committedItem;
+            )).committedItem;
       final nextItems = [...state.items];
       nextItems[index] = identified;
       transition(
@@ -242,10 +246,7 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     }
   }
 
-  Future<Item?> examinePackItem(
-    String itemId, {
-    TraceContext? parent,
-  }) async {
+  Future<Item?> examinePackItem(String itemId, {TraceContext? parent}) async {
     final index = state.items.indexWhere((item) => item.id == itemId);
     if (index == -1) return null;
     final item = state.items[index];
@@ -267,15 +268,17 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     );
 
     try {
-      final examined =
-          await ref.read(examinePackItemProvider).call(item, parent: trace);
+      final examined = await ref
+          .read(examinePackItemProvider)
+          .call(item, parent: trace);
       if (examined.id != item.id) {
         throw StateError('Examination returned a different Item.');
       }
 
       final nextItems = [...state.items];
-      final currentIndex =
-          nextItems.indexWhere((existing) => existing.id == item.id);
+      final currentIndex = nextItems.indexWhere(
+        (existing) => existing.id == item.id,
+      );
       if (currentIndex == -1) {
         throw StateError('Examined Item is no longer in the Pack.');
       }
@@ -305,9 +308,7 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
       return examined;
     } catch (_) {
       transition(
-        previousState.copyWith(
-          error: "Couldn't examine that find. Try again.",
-        ),
+        previousState.copyWith(error: "Couldn't examine that find. Try again."),
         'items.examination_completed',
         data: {
           'terminal': 'failed',

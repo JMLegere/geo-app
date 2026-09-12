@@ -13,6 +13,7 @@
     the `--base-href` argument provided to `flutter build`.
   -->
   <base href="$FLUTTER_BASE_HREF">
+  <meta name="flutter-asset-base" content="">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -186,7 +187,7 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="retained_map_renderer.js"></script>
-  <script src="flutter_bootstrap.js" async="" crossorigin="anonymous"></script>
+  <script src="flutter_bootstrap.js" defer="" crossorigin="anonymous"></script>
 
   <script>
     (function() {
@@ -1060,7 +1061,9 @@
                   // Preserve Flutter's engine config instead of calling
                   // initializeEngine() bare; newer web engine paths can fail
                   // before the first frame if the config object is dropped.
-                  var engineConfig = (config && config.config) || {};
+                  var engineConfig = Object.assign({}, (config && config.config) || {});
+                  var assetBase = document.querySelector('meta[name="flutter-asset-base"]').content;
+                  if (assetBase) engineConfig.assetBase = assetBase;
                   var appRunner = await engineInitializer.initializeEngine(engineConfig);
 
                   // Step 2: Inject MapLibre and WAIT for script to execute.

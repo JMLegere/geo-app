@@ -24,11 +24,10 @@ RUN printf '%s' "$BUILD_COMMIT_SHA" | grep -Eq '^[0-9a-f]{40}$' && \
     "--dart-define=DESKTOP_CONTROLS_AVAILABLE=true" \
     "--dart-define=DESKTOP_CONTROLS_DEFAULT=true" \
     "--dart-define=BUILD_TIMESTAMP=$BUILD_TS" \
-    "--dart-define=APP_VERSION=$BUILD_COMMIT_SHA"
+    "--dart-define=APP_VERSION=$BUILD_COMMIT_SHA" && \
+    sh tool/package_web_release_assets.sh build/web "$BUILD_COMMIT_SHA"
 
 FROM nginx:alpine
 COPY --from=build /app/build/web /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-RUN BUILD_HASH=$(md5sum /usr/share/nginx/html/main.dart.js | cut -c1-8) && \
-    sed -i "s|main\.dart\.js|main.dart.js?v=${BUILD_HASH}|g" /usr/share/nginx/html/flutter_bootstrap.js
 EXPOSE 8080

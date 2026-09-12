@@ -14,6 +14,7 @@ class HierarchyHeader extends StatelessWidget {
     required this.progressPercent,
     required this.rank,
     required this.explorerCount,
+    this.cellsTotalKnown = true,
     this.parentScopeName,
     this.onBackTap,
     this.interactionLogger,
@@ -26,6 +27,7 @@ class HierarchyHeader extends StatelessWidget {
   final int cellsTotal;
   final double progressPercent;
   final int rank;
+  final bool cellsTotalKnown;
   final int explorerCount;
   final String? parentScopeName;
   final VoidCallback? onBackTap;
@@ -83,6 +85,7 @@ class HierarchyHeader extends StatelessWidget {
               progressPercent: pct,
               cellsVisited: cellsVisited,
               cellsTotal: cellsTotal,
+              cellsTotalKnown: cellsTotalKnown,
               rank: rank,
               explorerCount: explorerCount,
             )
@@ -91,8 +94,12 @@ class HierarchyHeader extends StatelessWidget {
               items: [
                 AppStatItem(
                   label: 'Explored',
-                  value: '$pct%',
-                  helper: '$cellsVisited / $cellsTotal cells',
+                  value: cellsTotalKnown
+                      ? '$pct%'
+                      : '$cellsVisited cells explored; total unavailable',
+                  helper: cellsTotalKnown
+                      ? '$cellsVisited / $cellsTotal cells'
+                      : 'Authoritative total unavailable',
                 ),
                 AppStatItem(
                   label: 'Rank',
@@ -114,6 +121,7 @@ class _CompactStats extends StatelessWidget {
     required this.progressPercent,
     required this.cellsVisited,
     required this.cellsTotal,
+    required this.cellsTotalKnown,
     required this.rank,
     required this.explorerCount,
   });
@@ -121,6 +129,7 @@ class _CompactStats extends StatelessWidget {
   final String progressPercent;
   final int cellsVisited;
   final int cellsTotal;
+  final bool cellsTotalKnown;
   final int rank;
   final int explorerCount;
 
@@ -130,11 +139,16 @@ class _CompactStats extends StatelessWidget {
       spacing: Spacing.sm,
       runSpacing: Spacing.xs,
       children: [
-        AppBadge(label: 'Explored $progressPercent%'),
         AppBadge(
-          label: '$cellsVisited / $cellsTotal cells',
-          variant: AppBadgeVariant.outline,
+          label: cellsTotalKnown
+              ? 'Explored $progressPercent%'
+              : '$cellsVisited cells explored; total unavailable',
         ),
+        if (cellsTotalKnown)
+          AppBadge(
+            label: '$cellsVisited / $cellsTotal cells',
+            variant: AppBadgeVariant.outline,
+          ),
         AppBadge(label: rank == 0 ? 'Rank —' : 'Rank #$rank'),
         AppBadge(
           label: rank == 0 ? 'No visits yet' : '$explorerCount explorers',
