@@ -10,13 +10,13 @@ import {resolve, join} from 'node:path';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export const sameCellWASD = Object.freeze({
-  keys: Object.freeze(['w', 'd', 's', 'a']),
-  keyDownMs: 50,
-  keyUpMs: 200,
+  keys: Object.freeze(['w', 's', 'd', 'a']),
+  keyDownMs: 200,
+  keyUpMs: 50,
   canonicalSpeedMetersPerSecond: 100,
-  metersPerKey: 5,
-  squareSideMeters: 5,
-  fixtureCellWidthMeters: 36,
+  nominalMetersPerKey: 20,
+  maxNominalExcursionMeters: 20,
+  fixtureNominalRadiusMeters: 36,
 });
 
 // Shared by the browser injection and the regression test; no DOM dependencies.
@@ -404,7 +404,7 @@ export async function runMapPerformance(page, {
         wasd: {...sameCellWASD, directionCycle: sameCellWASD.keys,
           cadenceMs: sameCellWASD.keyDownMs + sameCellWASD.keyUpMs,
           expectedInputs: Math.floor(durationMs / (sameCellWASD.keyDownMs + sameCellWASD.keyUpMs)),
-          boundary: 'Canonical 100m/s: 50ms key-down produces 5m per direction; w,d,s,a repeats a 5m square within the 36m fixture cell.'},
+          boundary: 'Held-key traversal at canonical 100m/s: paired w,s and d,a excursions, nominally 20m per 200ms hold. The warped fixture has nominal 36m cell radius. Same-cell state is checked; short-tap scheduling is a separate scenario.'},
         drag: 'real pointer held down, elliptical movements every >=32ms'},
       viewport: dimensions, localRobotoPath: robotoPath ?? null,
       requestPolicy: 'loopback GET only; inline synthetic style; CDN CanvasKit and exact Roboto font requests fulfilled from local disk; all beacons/other external traffic aborted',
@@ -412,9 +412,13 @@ export async function runMapPerformance(page, {
       screenshots: ['normal.png', 'paused.png', 'after-wasd-before-drag.png', 'after-drag.png'],
       blockedRequests: blocked, errors};
     await writeFile(join(outputDir, 'metrics.json'), JSON.stringify(report, null, 2));
+    if (result.fixture.currentCellId !== initial.fixture.currentCellId ||
+        result.counters.sceneCalls !== initial.counters.sceneCalls) {
+      throw new Error('Same-cell workload crossed a cell or changed its scene; inspect saved evidence');
+    }
     if (!result.metrics.wasd.responseWithin100ms) {
       const {trustedInputs, completedSamples, unresolvedInputs} = result.metrics.wasd;
-      throw new Error(`WASD benchmark incomplete: ${trustedInputs} trusted, ${completedSamples} completed, ${unresolvedInputs} unresolved; do not dismiss modal input to continue`);
+      throw new Error(`WASD acceptance failed: ${trustedInputs} trusted, ${completedSamples} completed, ${unresolvedInputs} unresolved, p95 ${result.metrics.wasd.inputToMeaningfulResponseMs.p95}ms; inspect saved evidence`);
     }
     console.log(JSON.stringify({...report, metrics: Object.fromEntries(Object.entries(report.metrics).map(([key, value]) => {
       const {samples, ...summary} = value;

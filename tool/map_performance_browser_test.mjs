@@ -5,10 +5,12 @@ import {meaningfulInputRendered, responseAccepted, sameCellWASD, scheduleMarkerP
 const sample = {kind: 'wasd', code: 'KeyW', before: {lat: 1, lng: 2},
   rawTarget: {lat: 1.001, lng: 2}, targetRevision: 7};
 
-test('same-cell traversal remains a balanced five-metre square', () => {
-  assert.deepEqual(sameCellWASD.keys, ['w', 'd', 's', 'a']);
-  assert.equal(sameCellWASD.keyDownMs * sameCellWASD.canonicalSpeedMetersPerSecond / 1000, 5);
-  assert.equal(sameCellWASD.squareSideMeters, 5);
+test('held traversal pairs opposing keys within one cell', () => {
+  assert.deepEqual(sameCellWASD.keys, ['w', 's', 'd', 'a']);
+  assert.equal(sameCellWASD.keyDownMs * sameCellWASD.canonicalSpeedMetersPerSecond / 1000, sameCellWASD.nominalMetersPerKey);
+  assert.equal(sameCellWASD.maxNominalExcursionMeters, 20);
+  assert.equal(sameCellWASD.keyDownMs + sameCellWASD.keyUpMs, 250);
+  assert.ok(sameCellWASD.maxNominalExcursionMeters < sameCellWASD.fixtureNominalRadiusMeters);
 });
 
 test('old easing cannot satisfy a repeated key before a new raw target and player update', () => {
