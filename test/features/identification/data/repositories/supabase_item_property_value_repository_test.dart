@@ -105,6 +105,65 @@ void main() {
         throwsStateError,
       );
     });
+    test('emits query start and completion telemetry', () async {
+      final events = <Map<String, Object?>>[];
+      final repository = SupabaseItemPropertyValueRepository(
+        client: null,
+        rowsQuery: (_) async => [
+          _row(ordinal: 0, propertyKey: 'temperament', resolvedValueId: 'calm'),
+        ],
+        logEvent: (event, category, {data}) {
+          events.add({'event': event, 'category': category, 'data': data});
+        },
+      );
+
+      await repository.fetchForIdentifiedItem(_item());
+
+      expect(events.map((event) => event['event']), [
+        'db.query_started',
+        'db.query_completed',
+      ]);
+      expect(
+        events.every(
+          (event) =>
+              event['category'] ==
+              'identification.item_property_value_repository',
+        ),
+        isTrue,
+      );
+      final completed = events.last['data']! as Map<String, dynamic>;
+      expect(completed['operation'], 'fetch_item_recorded_properties');
+      expect(completed['row_count'], 1);
+      expect(completed['duration_ms'], isA<int>());
+    });
+
+    test('emits safe query failure telemetry', () async {
+      const secret = 'property-values-must-not-leak';
+      final events = <Map<String, Object?>>[];
+      final repository = SupabaseItemPropertyValueRepository(
+        client: null,
+        rowsQuery: (_) async => throw FormatException(secret),
+        logEvent: (event, category, {data}) {
+          events.add({'event': event, 'category': category, 'data': data});
+        },
+      );
+
+      await expectLater(
+        () => repository.fetchForIdentifiedItem(_item()),
+        throwsFormatException,
+      );
+
+      expect(events.map((event) => event['event']), [
+        'db.query_started',
+        'db.query_failed',
+      ]);
+      final failed = events.last['data']! as Map<String, dynamic>;
+      expect(failed['operation'], 'fetch_item_recorded_properties');
+      expect(failed['duration_ms'], isA<int>());
+      expect(failed['error_type'], 'FormatException');
+      expect(failed['error_message'], 'repository_operation_failed');
+      expect(events.toString(), isNot(contains(secret)));
+    });
     test(
       'uses owner-bound exact-version queries and canonical metadata',
       () async {

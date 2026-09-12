@@ -171,7 +171,10 @@ void main() async {
 
   final ItemPropertyValueRepository? itemPropertyValueRepository =
       supabaseClient != null
-      ? SupabaseItemPropertyValueRepository(client: supabaseClient)
+      ? SupabaseItemPropertyValueRepository(
+          client: supabaseClient,
+          logEvent: obs.log,
+        )
       : null;
 
   final IdentificationRepository? identificationRepository =

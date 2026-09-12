@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Injectable flattened rows for [SupabaseItemPropertyValueRepository].
 typedef ItemPropertyValueRowsQuery =
     Future<List<Map<String, dynamic>>> Function(Item item);
+typedef ItemPropertyValueRepositoryLogEvent =
+    void Function(String event, String category, {Map<String, dynamic>? data});
 
 /// Presentation-only reader for an identified Item's committed property values.
 final class SupabaseItemPropertyValueRepository
@@ -14,25 +16,61 @@ final class SupabaseItemPropertyValueRepository
   SupabaseItemPropertyValueRepository({
     required SupabaseClient? client,
     ItemPropertyValueRowsQuery? rowsQuery,
+    ItemPropertyValueRepositoryLogEvent? logEvent,
   }) : _client = client,
-       _rowsQuery = rowsQuery;
+       _rowsQuery = rowsQuery,
+       _logEvent = logEvent;
+
+  static const _category = 'identification.item_property_value_repository';
 
   final SupabaseClient? _client;
   final ItemPropertyValueRowsQuery? _rowsQuery;
+  final ItemPropertyValueRepositoryLogEvent? _logEvent;
 
   @override
   Future<List<ItemRecordedProperty>> fetchForIdentifiedItem(Item item) async {
     _validateItem(item);
-    final rows = await _runRowsQuery(item);
-    final properties = rows.map((row) => _propertyFromRow(row, item)).toList()
-      ..sort((left, right) => left.ordinal.compareTo(right.ordinal));
-    final ordinals = <int>{};
-    for (final property in properties) {
-      if (!ordinals.add(property.ordinal)) {
-        throw StateError('Item Property Values contain duplicate ordinals.');
+    const operation = 'fetch_item_recorded_properties';
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call(
+      'db.query_started',
+      _category,
+      data: {'operation': operation},
+    );
+    try {
+      final rows = await _runRowsQuery(item);
+      final properties = rows.map((row) => _propertyFromRow(row, item)).toList()
+        ..sort((left, right) => left.ordinal.compareTo(right.ordinal));
+      final ordinals = <int>{};
+      for (final property in properties) {
+        if (!ordinals.add(property.ordinal)) {
+          throw StateError('Item Property Values contain duplicate ordinals.');
+        }
       }
+      final result = List<ItemRecordedProperty>.unmodifiable(properties);
+      _logEvent?.call(
+        'db.query_completed',
+        _category,
+        data: {
+          'operation': operation,
+          'row_count': result.length,
+          'duration_ms': stopwatch.elapsedMilliseconds,
+        },
+      );
+      return result;
+    } catch (error) {
+      _logEvent?.call(
+        'db.query_failed',
+        _category,
+        data: {
+          'operation': operation,
+          'duration_ms': stopwatch.elapsedMilliseconds,
+          'error_type': error.runtimeType.toString(),
+          'error_message': _safeErrorMessage(error),
+        },
+      );
+      rethrow;
     }
-    return List.unmodifiable(properties);
   }
 
   Future<List<Map<String, dynamic>>> _runRowsQuery(Item item) async {
@@ -239,3 +277,8 @@ int _requiredOrdinal(Object? value) {
 
 String? _optionalDisplayName(Object? value) =>
     value is String && value.trim().isNotEmpty ? value.trim() : null;
+
+String _safeErrorMessage(Object error) => switch (error) {
+  StateError() => 'invalid_repository_response',
+  _ => 'repository_operation_failed',
+};

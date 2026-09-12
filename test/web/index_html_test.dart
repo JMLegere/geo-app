@@ -107,7 +107,9 @@ void main() {
       test('preserves Flutter engine config when initializing engine', () {
         expect(
           html,
-          contains('var engineConfig = (config && config.config) || {};'),
+          contains(
+            'var engineConfig = Object.assign({}, (config && config.config) || {});',
+          ),
           reason:
               'The custom bootstrap wrapper must preserve Flutter engine '
               'config instead of calling initializeEngine() with no args, or '
