@@ -17,6 +17,8 @@ abstract final class DesignPalette {
   static const highlight = Color(0xff557661);
   static const unavailable = Color(0xff4b5650);
   static const shadow = Color(0x99000000);
+  static const fogFrontierFill = Color(0xB81B1B1B);
+  static const fogFrontierStroke = Color(0x995C5C5C);
 }
 
 abstract final class DesignMetrics {

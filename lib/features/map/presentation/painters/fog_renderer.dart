@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/shared/design.dart';
 
 class FogRenderer {
   FogRenderer._();
@@ -104,7 +105,7 @@ class FogRenderer {
   }
 
   static Color _frontierFillColor() {
-    return const Color(0xB81B1B1B);
+    return DesignPalette.fogFrontierFill;
   }
 
   static const Color categoryCueColor = Color(0xFFE8E8E8);
@@ -124,6 +125,6 @@ class FogRenderer {
   }
 
   static Color _frontierStrokeColor() {
-    return const Color(0x995C5C5C);
+    return DesignPalette.fogFrontierStroke;
   }
 }

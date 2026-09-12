@@ -26,7 +26,8 @@ void main() {
       expect(
         head,
         isNot(contains('<script src="maplibre-gl.js">')),
-        reason: 'maplibre-gl.js must not be loaded synchronously in <head> — '
+        reason:
+            'maplibre-gl.js must not be loaded synchronously in <head> — '
             'it causes a WebGL context race with CanvasKit on iOS Safari '
             '(see docs/ios-safari-maplibre.md, Constraint 1)',
       );
@@ -55,20 +56,38 @@ void main() {
         final injectIndex = html.indexOf("s.src = 'maplibre-gl.js'");
         final runAppIndex = html.indexOf('appRunner.runApp()');
 
-        expect(initEngineIndex, isNot(-1),
-            reason: 'initializeEngine(engineConfig) must be called');
-        expect(injectIndex, isNot(-1),
-            reason: "MapLibre script injection (s.src = 'maplibre-gl.js') "
-                'must be present inside the loader callback');
-        expect(runAppIndex, isNot(-1),
-            reason: 'appRunner.runApp() must be called');
+        expect(
+          initEngineIndex,
+          isNot(-1),
+          reason: 'initializeEngine(engineConfig) must be called',
+        );
+        expect(
+          injectIndex,
+          isNot(-1),
+          reason:
+              "MapLibre script injection (s.src = 'maplibre-gl.js') "
+              'must be present inside the loader callback',
+        );
+        expect(
+          runAppIndex,
+          isNot(-1),
+          reason: 'appRunner.runApp() must be called',
+        );
 
-        expect(initEngineIndex, lessThan(injectIndex),
-            reason: 'initializeEngine must precede MapLibre injection '
-                '(CanvasKit acquires WebGL context first)');
-        expect(injectIndex, lessThan(runAppIndex),
-            reason: 'MapLibre must be injected BEFORE runApp — '
-                'MapLibreMap widget builds on first frame and needs maplibregl');
+        expect(
+          initEngineIndex,
+          lessThan(injectIndex),
+          reason:
+              'initializeEngine must precede MapLibre injection '
+              '(CanvasKit acquires WebGL context first)',
+        );
+        expect(
+          injectIndex,
+          lessThan(runAppIndex),
+          reason:
+              'MapLibre must be injected BEFORE runApp — '
+              'MapLibreMap widget builds on first frame and needs maplibregl',
+        );
       });
 
       test('awaits MapLibre load inside the loader callback before runApp', () {
@@ -89,14 +108,16 @@ void main() {
         expect(
           html,
           contains('var engineConfig = (config && config.config) || {};'),
-          reason: 'The custom bootstrap wrapper must preserve Flutter engine '
+          reason:
+              'The custom bootstrap wrapper must preserve Flutter engine '
               'config instead of calling initializeEngine() with no args, or '
               'the web engine can fail before the first frame.',
         );
         expect(
           html,
           contains('initializeEngine(engineConfig)'),
-          reason: 'The wrapper should pass the preserved engine config into '
+          reason:
+              'The wrapper should pass the preserved engine config into '
               'initializeEngine(engineConfig).',
         );
       });
@@ -105,10 +126,22 @@ void main() {
         expect(
           html,
           contains("push('js', 'flutter_bootstrap_complete'"),
-          reason: 'Must log flutter_bootstrap_complete when MapLibre is ready '
+          reason:
+              'Must log flutter_bootstrap_complete when MapLibre is ready '
               'before runApp — key diagnostic signal in telemetry_logs',
         );
       });
+    });
+
+    test('loads the retained renderer before Flutter bootstrap', () {
+      final rendererIndex = html.indexOf(
+        '<script src="retained_map_renderer.js"></script>',
+      );
+      final bootstrapIndex = html.indexOf('<script src="flutter_bootstrap.js"');
+
+      expect(rendererIndex, isNot(-1));
+      expect(bootstrapIndex, isNot(-1));
+      expect(rendererIndex, lessThan(bootstrapIndex));
     });
 
     // -------------------------------------------------------------------------
@@ -125,7 +158,8 @@ void main() {
         expect(
           html,
           contains("Object.defineProperty(window._flutter, 'loader'"),
-          reason: 'Must use Object.defineProperty with a setter — '
+          reason:
+              'Must use Object.defineProperty with a setter — '
               'direct monkey-patch silently fails because window._flutter '
               'does not exist when the inline script runs',
         );
@@ -135,7 +169,8 @@ void main() {
         expect(
           html,
           contains('onEntrypointLoaded'),
-          reason: 'onEntrypointLoaded callback gives control over the '
+          reason:
+              'onEntrypointLoaded callback gives control over the '
               'initializeEngine → inject → runApp sequence',
         );
       });
@@ -144,7 +179,8 @@ void main() {
         expect(
           html,
           contains('window._flutter = window._flutter || {}'),
-          reason: 'window._flutter must be pre-created so that '
+          reason:
+              'window._flutter must be pre-created so that '
               'flutter_bootstrap.js sees it and does not overwrite the '
               'property descriptor',
         );
@@ -156,18 +192,20 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('observability events', () {
-      test('attaches lifecycle grammar attributes to JS bootstrap telemetry',
-          () {
-        expect(
-          html,
-          contains('Object.assign({ msg: msg }, attrs || {})'),
-          reason: 'JS bootstrap logs should accept bounded structured attrs.',
-        );
-        expect(html, contains("push('js', 'bootstrap_started'"));
-        expect(html, contains("flow: 'web.bootstrap'"));
-        expect(html, contains("phase: 'dependency_ready'"));
-        expect(html, contains("phase: 'dependency_failed'"));
-      });
+      test(
+        'attaches lifecycle grammar attributes to JS bootstrap telemetry',
+        () {
+          expect(
+            html,
+            contains('Object.assign({ msg: msg }, attrs || {})'),
+            reason: 'JS bootstrap logs should accept bounded structured attrs.',
+          );
+          expect(html, contains("push('js', 'bootstrap_started'"));
+          expect(html, contains("flow: 'web.bootstrap'"));
+          expect(html, contains("phase: 'dependency_ready'"));
+          expect(html, contains("phase: 'dependency_failed'"));
+        },
+      );
 
       test('logs maplibre_lazy_loaded on successful load', () {
         expect(
@@ -194,7 +232,8 @@ void main() {
         expect(
           html,
           contains("push('js', 'maplibre_fallback_inject'"),
-          reason: 'Fallback must log so we can detect when the '
+          reason:
+              'Fallback must log so we can detect when the '
               'defineProperty path is not working',
         );
       });
@@ -203,7 +242,8 @@ void main() {
         expect(
           html,
           contains('_mapLibreInjected'),
-          reason: 'Guard prevents double injection if both loader callback '
+          reason:
+              'Guard prevents double injection if both loader callback '
               'and fallback fire',
         );
       });
@@ -212,21 +252,25 @@ void main() {
         expect(
           html,
           contains(
-              "window.dispatchEvent(new CustomEvent('earthnova.maplibre.idle'"),
-          reason: 'The Flutter web plugin does not currently forward MapLibre '
+            "window.dispatchEvent(new CustomEvent('earthnova.maplibre.idle'",
+          ),
+          reason:
+              'The Flutter web plugin does not currently forward MapLibre '
               'GL JS idle to onMapIdle, so the app must bridge the real JS '
               'idle event into Dart before relying on a timer fallback.',
         );
         expect(
           html,
           contains('map.loaded()'),
-          reason: 'The bridge should prove the map reports loaded before '
+          reason:
+              'The bridge should prove the map reports loaded before '
               'clearing the startup gate.',
         );
         expect(
           html,
           contains('map.areTilesLoaded()'),
-          reason: 'The bridge should prove viewport tiles are loaded before '
+          reason:
+              'The bridge should prove viewport tiles are loaded before '
               'clearing the startup gate.',
         );
       });
@@ -235,7 +279,8 @@ void main() {
         expect(
           html,
           contains(
-              "window.dispatchEvent(new CustomEvent('earthnova.maplibre.load'"),
+            "window.dispatchEvent(new CustomEvent('earthnova.maplibre.load'",
+          ),
           reason:
               'The Flutter web plugin style callback is not reliable enough '
               'to be the only source of truth for style readiness on web, so the '
@@ -268,13 +313,15 @@ void main() {
         expect(
           html,
           contains("push('map', 'web_layout_sample'"),
-          reason: 'Web MapLibre layout should be queryable from telemetry '
+          reason:
+              'Web MapLibre layout should be queryable from telemetry '
               'without browser DOM inspection.',
         );
         expect(
           html,
           isNot(contains("push('map', 'map.web_layout_sample'")),
-          reason: 'push() prefixes category into event_name; passing an '
+          reason:
+              'push() prefixes category into event_name; passing an '
               'already-prefixed event would create map.map.web_layout_sample.',
         );
         expect(html, contains('canvas_container_height_px'));
@@ -295,7 +342,8 @@ void main() {
         expect(
           html,
           contains('installLowLevelEventTelemetry'),
-          reason: 'Low-level observability must be a shared browser surface, '
+          reason:
+              'Low-level observability must be a shared browser surface, '
               'not a one-off map/pinch probe.',
         );
         expect(html, contains("surface: 'web_low_level'"));
@@ -305,145 +353,162 @@ void main() {
         expect(html, contains('within_maplibre'));
         expect(html, contains('window.__earthnovaLowLevelTelemetryInstalled'));
       });
-      test('captures browser responsiveness with long tasks and frame pacing',
-          () {
-        expect(
-          html,
-          contains('installResponsivenessTelemetry'),
-          reason: 'Responsiveness regressions need a browser-level signal, not '
-              'only Flutter screen build timing.',
-        );
-        expect(
-          html,
-          contains('PerformanceObserver'),
-          reason: 'Long main-thread tasks should be captured when the browser '
-              'supports the Long Tasks API.',
-        );
-        expect(html, contains("entryTypes: ['longtask']"));
-        expect(
-          html,
-          contains("push('low_level', 'long_task'"),
-          reason: 'Long task events must be queryable in telemetry_logs.',
-        );
-        expect(
-          html,
-          contains('requestAnimationFrame(sampleFramePacing)'),
-          reason: 'Frame pacing needs requestAnimationFrame deltas so dropped '
-              'frames are visible even when Dart build timing looks fine.',
-        );
-        expect(
-          html,
-          contains("push('low_level', 'frame_pacing_sample'"),
-          reason: 'Frame pacing summaries must be queryable in telemetry_logs.',
-        );
-        expect(html, contains("'low_level.responsiveness'"));
-        expect(html, contains('blocking_duration_ms'));
-        expect(html, contains('long_frame_count'));
-        expect(html, contains('dropped_frame_count'));
-        expect(html, contains('worst_frame_delta_ms'));
-        expect(html, contains('fps_estimate'));
-      });
+      test(
+        'captures browser responsiveness with long tasks and frame pacing',
+        () {
+          expect(
+            html,
+            contains('installResponsivenessTelemetry'),
+            reason:
+                'Responsiveness regressions need a browser-level signal, not '
+                'only Flutter screen build timing.',
+          );
+          expect(
+            html,
+            contains('PerformanceObserver'),
+            reason:
+                'Long main-thread tasks should be captured when the browser '
+                'supports the Long Tasks API.',
+          );
+          expect(html, contains("entryTypes: ['longtask']"));
+          expect(
+            html,
+            contains("push('low_level', 'long_task'"),
+            reason: 'Long task events must be queryable in telemetry_logs.',
+          );
+          expect(
+            html,
+            contains('requestAnimationFrame(sampleFramePacing)'),
+            reason:
+                'Frame pacing needs requestAnimationFrame deltas so dropped '
+                'frames are visible even when Dart build timing looks fine.',
+          );
+          expect(
+            html,
+            contains("push('low_level', 'frame_pacing_sample'"),
+            reason:
+                'Frame pacing summaries must be queryable in telemetry_logs.',
+          );
+          expect(html, contains("'low_level.responsiveness'"));
+          expect(html, contains('blocking_duration_ms'));
+          expect(html, contains('long_frame_count'));
+          expect(html, contains('dropped_frame_count'));
+          expect(html, contains('worst_frame_delta_ms'));
+          expect(html, contains('fps_estimate'));
+        },
+      );
 
       test(
-          'covers core browser input, viewport, lifecycle, network, and resource events',
-          () {
-        const requiredListeners = {
-          "document.addEventListener('pointerdown'": 'pointer sequence start',
-          "document.addEventListener('pointermove'": 'pointer movement summary',
-          "document.addEventListener('pointerup'": 'pointer sequence end',
-          "document.addEventListener('pointercancel'": 'pointer cancellation',
-          "document.addEventListener('touchstart'": 'touch sequence start',
-          "document.addEventListener('touchmove'":
-              'touch/pinch movement summary',
-          "document.addEventListener('touchend'": 'touch sequence end',
-          "document.addEventListener('touchcancel'": 'touch cancellation',
-          "document.addEventListener('gesturestart'": 'Safari gesture start',
-          "document.addEventListener('gestureend'": 'Safari gesture end',
-          "document.addEventListener('wheel'": 'wheel/trackpad input',
-          "document.addEventListener('keydown'": 'keyboard input',
-          "document.addEventListener('keyup'": 'keyboard release',
-          "window.addEventListener('resize'": 'viewport resize',
-          "window.addEventListener('orientationchange'": 'orientation change',
-          "window.addEventListener('online'": 'network online',
-          "window.addEventListener('offline'": 'network offline',
-          "window.addEventListener('focus'": 'window focus',
-          "window.addEventListener('blur'": 'window blur',
-          "window.addEventListener('error'": 'resource load errors',
-          "document.addEventListener('copy'": 'clipboard copy',
-          "document.addEventListener('cut'": 'clipboard cut',
-          "document.addEventListener('paste'": 'clipboard paste',
-        };
+        'covers core browser input, viewport, lifecycle, network, and resource events',
+        () {
+          const requiredListeners = {
+            "document.addEventListener('pointerdown'": 'pointer sequence start',
+            "document.addEventListener('pointermove'":
+                'pointer movement summary',
+            "document.addEventListener('pointerup'": 'pointer sequence end',
+            "document.addEventListener('pointercancel'": 'pointer cancellation',
+            "document.addEventListener('touchstart'": 'touch sequence start',
+            "document.addEventListener('touchmove'":
+                'touch/pinch movement summary',
+            "document.addEventListener('touchend'": 'touch sequence end',
+            "document.addEventListener('touchcancel'": 'touch cancellation',
+            "document.addEventListener('gesturestart'": 'Safari gesture start',
+            "document.addEventListener('gestureend'": 'Safari gesture end',
+            "document.addEventListener('wheel'": 'wheel/trackpad input',
+            "document.addEventListener('keydown'": 'keyboard input',
+            "document.addEventListener('keyup'": 'keyboard release',
+            "window.addEventListener('resize'": 'viewport resize',
+            "window.addEventListener('orientationchange'": 'orientation change',
+            "window.addEventListener('online'": 'network online',
+            "window.addEventListener('offline'": 'network offline',
+            "window.addEventListener('focus'": 'window focus',
+            "window.addEventListener('blur'": 'window blur',
+            "window.addEventListener('error'": 'resource load errors',
+            "document.addEventListener('copy'": 'clipboard copy',
+            "document.addEventListener('cut'": 'clipboard cut',
+            "document.addEventListener('paste'": 'clipboard paste',
+          };
 
-        for (final entry in requiredListeners.entries) {
-          expect(html, contains(entry.key), reason: 'Missing ${entry.value}');
-        }
-        expect(html, contains('window.visualViewport.addEventListener'));
-        expect(html, contains('capture: true'));
-      });
+          for (final entry in requiredListeners.entries) {
+            expect(html, contains(entry.key), reason: 'Missing ${entry.value}');
+          }
+          expect(html, contains('window.visualViewport.addEventListener'));
+          expect(html, contains('capture: true'));
+        },
+      );
 
       test(
-          'emits bounded low-level event names and privacy-safe payload fields',
-          () {
-        const requiredEvents = [
-          "push('low_level', 'pointer_sequence_started'",
-          "push('low_level', 'pointer_sequence_ended'",
-          "push('low_level', 'touch_sequence_started'",
-          "push('low_level', 'touch_sequence_ended'",
-          "push('low_level', 'gesture_pinch_started'",
-          "push('low_level', 'gesture_pinch_ended'",
-          "push('low_level', 'wheel_input'",
-          "push('low_level', 'keyboard_input'",
-          "push('low_level', 'keyboard_released'",
-          "push('low_level', 'viewport_changed'",
-          "push('low_level', 'network_changed'",
-          "push('low_level', 'window_focus_changed'",
-          "push('low_level', 'resource_error'",
-          "push('low_level', 'clipboard_event'",
-        ];
+        'emits bounded low-level event names and privacy-safe payload fields',
+        () {
+          const requiredEvents = [
+            "push('low_level', 'pointer_sequence_started'",
+            "push('low_level', 'pointer_sequence_ended'",
+            "push('low_level', 'touch_sequence_started'",
+            "push('low_level', 'touch_sequence_ended'",
+            "push('low_level', 'gesture_pinch_started'",
+            "push('low_level', 'gesture_pinch_ended'",
+            "push('low_level', 'wheel_input'",
+            "push('low_level', 'keyboard_input'",
+            "push('low_level', 'keyboard_released'",
+            "push('low_level', 'viewport_changed'",
+            "push('low_level', 'network_changed'",
+            "push('low_level', 'window_focus_changed'",
+            "push('low_level', 'resource_error'",
+            "push('low_level', 'clipboard_event'",
+          ];
 
-        for (final event in requiredEvents) {
-          expect(html, contains(event),
-              reason: 'Missing low-level event $event');
-        }
+          for (final event in requiredEvents) {
+            expect(
+              html,
+              contains(event),
+              reason: 'Missing low-level event $event',
+            );
+          }
 
-        const requiredPayloadFields = [
-          "'low_level.input'",
-          "'low_level.viewport'",
-          "'low_level.network'",
-          "'low_level.lifecycle'",
-          "'low_level.resource'",
-          "'low_level.clipboard'",
-          'pointer_type',
-          'pointer_count',
-          'touch_count',
-          'gesture_direction',
-          'threshold_met',
-          'wheel_delta_y',
-          'key_class',
-          'modifier_keys',
-          'viewport_width_px',
-          'viewport_height_px',
-          'network_state',
-          'resource_tag',
-          'clipboard_action',
-          'duration_ms',
-        ];
+          const requiredPayloadFields = [
+            "'low_level.input'",
+            "'low_level.viewport'",
+            "'low_level.network'",
+            "'low_level.lifecycle'",
+            "'low_level.resource'",
+            "'low_level.clipboard'",
+            'pointer_type',
+            'pointer_count',
+            'touch_count',
+            'gesture_direction',
+            'threshold_met',
+            'wheel_delta_y',
+            'key_class',
+            'modifier_keys',
+            'viewport_width_px',
+            'viewport_height_px',
+            'network_state',
+            'resource_tag',
+            'clipboard_action',
+            'duration_ms',
+          ];
 
-        for (final field in requiredPayloadFields) {
-          expect(html, contains(field), reason: 'Missing payload field $field');
-        }
+          for (final field in requiredPayloadFields) {
+            expect(
+              html,
+              contains(field),
+              reason: 'Missing payload field $field',
+            );
+          }
 
-        expect(
-          html,
-          isNot(contains('event.key,')),
-          reason: 'Keyboard telemetry must not log raw character keys.',
-        );
-        expect(
-          html,
-          isNot(contains('clipboardData.getData')),
-          reason: 'Clipboard telemetry must never read copied/pasted content.',
-        );
-      });
+          expect(
+            html,
+            isNot(contains('event.key,')),
+            reason: 'Keyboard telemetry must not log raw character keys.',
+          );
+          expect(
+            html,
+            isNot(contains('clipboardData.getData')),
+            reason:
+                'Clipboard telemetry must never read copied/pasted content.',
+          );
+        },
+      );
 
       test('stitches low-level telemetry to the active Dart app session', () {
         expect(html, contains('earthnova_app_session_id'));
@@ -454,8 +519,7 @@ void main() {
         expect(html, contains('bootstrap_session_id'));
       });
 
-      test('bridges thresholded MapLibre pinches into Dart map-level events',
-          () {
+      test('bridges thresholded MapLibre pinches into Dart map-level events', () {
         expect(html, contains('earthnova.map_level_pinch.close'));
         expect(html, contains('earthnova.map_level_pinch.spread'));
         expect(html, contains('emitMapLevelPinch'));
@@ -464,37 +528,49 @@ void main() {
         expect(
           html,
           contains('meta.within_maplibre'),
-          reason: 'Only pinches that start inside the MapLibre platform view '
+          reason:
+              'Only pinches that start inside the MapLibre platform view '
               'need the JS-to-Dart bridge; Flutter gestures cover other areas.',
         );
       });
 
-      test('hides MapLibre platform views while hierarchy screens are active',
-          () {
-        expect(html, contains('earthnova.maplibre.visibility'));
-        expect(html, contains('function setMapLibrePlatformViewVisible'));
-        expect(html, contains('earthnova-maplibre-hidden'));
-        expect(
+      test(
+        'hides MapLibre platform views while hierarchy screens are active',
+        () {
+          expect(html, contains('earthnova.maplibre.visibility'));
+          expect(html, contains('function setMapLibrePlatformViewVisible'));
+          expect(html, contains('earthnova-maplibre-hidden'));
+          expect(
             html,
             contains(
-                "platformView.style.pointerEvents = visible ? '' : 'none'"));
-        expect(
-            html, contains("mapEl.style.visibility = visible ? '' : 'hidden'"));
-      });
+              "platformView.style.pointerEvents = visible ? '' : 'none'",
+            ),
+          );
+          expect(
+            html,
+            contains("mapEl.style.visibility = visible ? '' : 'hidden'"),
+          );
+        },
+      );
 
       test('normalizes zero-height platform hosts before logging layout', () {
         expect(
           html,
           contains("mapEl.closest('flt-platform-view')"),
-          reason: 'Layout fixes should target the actual platform-view host '
+          reason:
+              'Layout fixes should target the actual platform-view host '
               'for the active MapLibre instance, not a global guess.',
         );
-        expect(html,
-            contains("canvasContainer.style.height = mapHeightPx + 'px'"));
+        expect(
+          html,
+          contains("canvasContainer.style.height = mapHeightPx + 'px'"),
+        );
         expect(html, contains("platformView.style.display = 'block'"));
         expect(html, contains("platformView.style.position = 'absolute'"));
         expect(
-            html, contains("platformView.style.height = mapHeightPx + 'px'"));
+          html,
+          contains("platformView.style.height = mapHeightPx + 'px'"),
+        );
         expect(html, contains('map.resize()'));
       });
     });
@@ -504,7 +580,8 @@ void main() {
         expect(
           html,
           contains('earthnova-maplibre-attribution-compact'),
-          reason: 'MapLibre attribution must stay available but collapsed; '
+          reason:
+              'MapLibre attribution must stay available but collapsed; '
               'the expanded attribution pill covers the map status bar on mobile.',
         );
         expect(

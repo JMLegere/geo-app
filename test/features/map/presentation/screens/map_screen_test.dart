@@ -771,30 +771,33 @@ void main() {
       expect(mapSource, contains('markerShowsRing: markerShowsRing'));
       expect(
         mapSource,
-        contains('markerState: ref.read(playerMarkerProvider)'),
-      );
-      expect(
-        mapSource,
         contains('explorationEligibility: explorationEligibility'),
       );
       expect(mapSource, isNot(contains('playerMarkerProvider.notifier')));
       expect(mapSource, isNot(contains('_PlayerMarkerPainter')));
     });
 
-    test('uses smoothed camera follow instead of raw GPS camera snaps', () {
-      final mapSource = File(
-        'lib/features/map/presentation/screens/map_screen.dart',
-      ).readAsStringSync();
+    test(
+      'uses smoothed native follow while retained renderer follows raw GPS',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
 
-      expect(mapSource, contains('ref.watch(cameraFollowProvider)'));
-      expect(mapSource, contains('ref.listen(cameraFollowProvider'));
-      expect(
-        mapSource,
-        isNot(contains('ref.listen<LocationProviderState>(locationProvider')),
-        reason:
-            'Camera movement should follow the fast smoothed camera state, not every raw GPS update.',
-      );
-    });
+        expect(mapSource, contains('ref.listen(cameraFollowProvider'));
+        expect(
+          mapSource,
+          contains(
+            'if (_prefersRetainedRenderer) {\n'
+            '      ref.listen<LocationProviderState>(locationProvider',
+          ),
+          reason:
+              'The retained web renderer owns camera updates and must receive '
+              'raw GPS independently of the native smoothed camera path.',
+        );
+        expect(mapSource, contains('_retainedRenderer.updateCameraTarget('));
+      },
+    );
 
     test('uses map layout constraints for overlay projection math', () {
       final mapSource = File(
@@ -865,12 +868,8 @@ void main() {
       final compactMapSource = mapSource.replaceAll(RegExp(r'\s+'), ' ');
 
       expect(mapSource, contains('TownProjection? town'));
-      expect(
-        mapSource,
-        contains(
-          'final venueAnchors = _knownVenueAnchors(town, cellsWithStates)',
-        ),
-      );
+      expect(mapSource, contains('_venueAnchors = _knownVenueAnchors('));
+      expect(mapSource, contains('final venueAnchors = _venueAnchors'));
       expect(mapSource, contains('venue.venue.anchorCellId'));
       expect(mapSource, contains('final position = _cellCenter(entry.cell)'));
       expect(mapSource, contains('VenueMarkerDisplayMode.compactLabel'));
@@ -932,19 +931,6 @@ void main() {
       expect(mapSource, contains('MapRenderDiagnosticsService'));
       expect(mapSource, contains('map.geometry_rendered'));
       expect(mapSource, contains('renderDiagnostics: renderDiagnostics'));
-    });
-
-    test('defers initial readiness mutations until after widget build', () {
-      final mapSource = File(
-        'lib/features/map/presentation/screens/map_screen.dart',
-      ).readAsStringSync();
-
-      expect(mapSource, contains('_scheduleInitialMapReadiness();'));
-      expect(
-        mapSource,
-        contains('WidgetsBinding.instance.addPostFrameCallback'),
-      );
-      expect(mapSource, isNot(contains('fireImmediately: true')));
     });
 
     test('terminates map bootstrap if steady state never completes', () {

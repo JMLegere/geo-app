@@ -5,6 +5,11 @@ import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/app/readiness/app_readiness_gate.dart';
 import 'package:earth_nova/app/readiness/client_working_set.dart';
 import 'package:earth_nova/app/readiness/pack_media_readiness.dart';
+import 'package:earth_nova/app/save/application/checkpoint_sync_coordinator.dart';
+import 'package:earth_nova/app/save/application/checkpoint_sync_provider.dart';
+import 'package:earth_nova/app/save/data/sembast_local_save_store.dart';
+import 'package:earth_nova/app/save/domain/checkpoint_gateway.dart';
+import 'package:earth_nova/app/save/domain/player_save.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
@@ -20,7 +25,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:earth_nova/app/save/data/sembast_local_save_store.dart';
 import 'package:sembast/sembast_memory.dart';
 
 void main() {
@@ -258,6 +262,172 @@ void main() {
         expect(container.read(appReadinessProvider).permitsInput, isTrue);
       },
     );
+    test(
+      'retry keeps input blocked while the required map remains unavailable',
+      () async {
+        final map = _FakeMapNotifier(
+          initial: const MapStateError('Map unavailable'),
+          refresh: Future.value(false),
+        );
+        final container = _container(
+          store: _FakeWorkingSetStore(_memoryStore()),
+          map: map,
+          items: _FakeItemsNotifier(),
+        );
+        addTearDown(container.dispose);
+
+        await container.read(appReadinessProvider.notifier).start('user-1');
+        await container.read(appReadinessProvider.notifier).retry();
+
+        expect(map.refreshCalls, 2);
+        expect(
+          container.read(appReadinessProvider).phase,
+          AppReadinessPhase.failed,
+        );
+        expect(container.read(appReadinessProvider).permitsInput, isFalse);
+      },
+    );
+
+    test('load failure falls back to a complete cold bootstrap', () async {
+      final store = _FakeWorkingSetStore(_memoryStore(), throwOnLoad: true);
+      final container = _container(
+        store: store,
+        map: _FakeMapNotifier(
+          initial: _snapshot().map,
+          refresh: Future.value(true),
+        ),
+        items: _FakeItemsNotifier(),
+      );
+      addTearDown(container.dispose);
+      _readyMapSurface(container);
+
+      await container.read(appReadinessProvider.notifier).start('user-1');
+
+      expect(store.loadCalls, 1);
+      expect(store.saved, 1);
+      expect(
+        container.read(appReadinessProvider).phase,
+        AppReadinessPhase.usable,
+      );
+      expect(container.read(appReadinessProvider).permitsInput, isTrue);
+      expect(
+        container
+            .read(appObservabilityProvider)
+            .pendingLogRecords
+            .map((record) => record['event_name']),
+        contains('app.readiness.snapshot_load_failed'),
+      );
+    });
+
+    test('whole-save branches remain playable through recovery', () async {
+      final checkpointStore = _memoryStore();
+      await checkpointStore.replace(_checkpointSave('local'));
+      final gateway = _CheckpointGateway(
+        CheckpointConflict(
+          reason: 'stale_ancestor',
+          cloud: PublishedPlayerSave(
+            revision: 4,
+            save: _checkpointSave('cloud'),
+          ),
+        ),
+      );
+      final container = _container(
+        store: _FakeWorkingSetStore(_memoryStore()),
+        map: _FakeMapNotifier(
+          initial: _snapshot().map,
+          refresh: Future.value(true),
+        ),
+        items: _FakeItemsNotifier(),
+        sync: CheckpointSyncCoordinator(
+          store: checkpointStore,
+          gateway: gateway,
+        ),
+      );
+      addTearDown(container.dispose);
+      _readyMapSurface(container);
+
+      await container.read(appReadinessProvider.notifier).start('user-1');
+      await _drain();
+      await _drain();
+      expect(
+        container.read(appReadinessProvider).phase,
+        AppReadinessPhase.conflict,
+      );
+      expect(container.read(appReadinessProvider).permitsInput, isTrue);
+
+      await container.read(appReadinessProvider.notifier).selectLocalSave();
+      expect(
+        container.read(appReadinessProvider).phase,
+        AppReadinessPhase.syncing,
+      );
+      expect(container.read(appReadinessProvider).permitsInput, isTrue);
+      await _drain();
+      await _drain();
+      expect(
+        container.read(appReadinessProvider).phase,
+        AppReadinessPhase.conflict,
+      );
+
+      gateway.result = const CheckpointRejected(
+        'requires_recovery',
+        'Review this save.',
+      );
+      await container.read(appReadinessProvider.notifier).selectCloudSave();
+      expect(
+        container.read(appReadinessProvider).phase,
+        AppReadinessPhase.recovery,
+      );
+      expect(container.read(appReadinessProvider).permitsInput, isTrue);
+      await _drain();
+      await _drain();
+      expect(
+        container.read(appReadinessProvider).phase,
+        AppReadinessPhase.recovery,
+      );
+    });
+
+    test('background checkpoint errors preserve a usable expedition', () async {
+      final checkpointStore = _memoryStore();
+      await checkpointStore.replace(_checkpointSave('local'));
+      final container = _container(
+        store: _FakeWorkingSetStore(_memoryStore()),
+        map: _FakeMapNotifier(
+          initial: _snapshot().map,
+          refresh: Future.value(true),
+        ),
+        items: _FakeItemsNotifier(),
+        sync: CheckpointSyncCoordinator(
+          store: checkpointStore,
+          gateway: _CheckpointGateway(
+            const CheckpointAccepted(
+              checkpointId: 'local',
+              revision: 1,
+              reconciliationCursor: 0,
+            ),
+            error: StateError('offline'),
+          ),
+        ),
+      );
+      addTearDown(container.dispose);
+      _readyMapSurface(container);
+
+      await container.read(appReadinessProvider.notifier).start('user-1');
+      await _drain();
+      await _drain();
+
+      expect(
+        container.read(appReadinessProvider).phase,
+        AppReadinessPhase.usable,
+      );
+      expect(container.read(appReadinessProvider).permitsInput, isTrue);
+      expect(
+        container
+            .read(appObservabilityProvider)
+            .pendingLogRecords
+            .map((record) => record['event_name']),
+        contains('checkpoint.background_sync_failed'),
+      );
+    });
   });
 
   group('AppReadinessGate', () {
@@ -590,6 +760,42 @@ void main() {
       );
     });
 
+    testWidgets('recovery keeps gameplay visible with a warning', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appReadinessProvider.overrideWith(
+              () => _StaticReadinessNotifier(
+                const AppReadinessState(
+                  phase: AppReadinessPhase.recovery,
+                  completedCheckpoints: AppReadinessState.requiredCheckpoints,
+                ),
+              ),
+            ),
+          ],
+          child: const ShadApp(
+            home: AppReadinessGate(
+              userId: 'user-1',
+              child: Text('Map mounted'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Map mounted'), findsOneWidget);
+      expect(find.text('Progress needs attention'), findsOneWidget);
+      expect(
+        tester
+            .widget<AbsorbPointer>(
+              find.byKey(const Key('readiness-input-gate')),
+            )
+            .absorbing,
+        isFalse,
+      );
+    });
+
     testWidgets(
       'whole-save conflict keeps gameplay visible and offers branches',
       (tester) async {
@@ -644,12 +850,14 @@ ProviderContainer _container({
   String environment = 'local',
   Duration deadline = const Duration(seconds: 30),
   PackMediaReadiness media = const _FakePackMediaReadiness.ready(),
+  CheckpointSyncCoordinator? sync,
 }) => ProviderContainer(
   overrides: [
     clientWorkingSetStoreProvider.overrideWithValue(store),
     appReadinessEnvironmentProvider.overrideWithValue(environment),
     appReadinessDeadlineProvider.overrideWithValue(deadline),
     packMediaReadinessProvider.overrideWithValue(media),
+    if (sync != null) checkpointSyncCoordinatorProvider.overrideWithValue(sync),
     mapProvider.overrideWith(() => map),
     itemsProvider.overrideWith(() => items),
     appObservabilityProvider.overrideWithValue(
@@ -691,14 +899,37 @@ ClientWorkingSet _snapshot({String environment = 'local'}) => ClientWorkingSet(
   items: const [],
 );
 
+PlayerSave _checkpointSave(String checkpointId) => PlayerSave(
+  checkpointId: checkpointId,
+  playerId: 'user-1',
+  environment: 'local',
+  ancestorRevision: null,
+  rulesVersion: 'rules-1',
+  contentVersion: 'content-1',
+  createdAt: DateTime.utc(2026, 9, 10),
+  updatedAt: DateTime.utc(2026, 9, 10),
+  payload: const {
+    'profile': <String, Object?>{},
+    'pack': <Object?>[],
+    'itemKnowledge': <Object?>[],
+    'disciplineProgress': <Object?>[],
+    'map': <String, Object?>{},
+    'encounters': <Object?>[],
+    'home': <String, Object?>{},
+    'town': <String, Object?>{},
+  },
+);
+
 class _FakeWorkingSetStore extends ClientWorkingSetStore {
   _FakeWorkingSetStore(
     super.preferences, {
     this.snapshot,
+    this.throwOnLoad = false,
     this.throwOnPurge = false,
   });
 
   final ClientWorkingSet? snapshot;
+  final bool throwOnLoad;
   final bool throwOnPurge;
   int loadCalls = 0;
   int saved = 0;
@@ -710,6 +941,7 @@ class _FakeWorkingSetStore extends ClientWorkingSetStore {
     required String userId,
   }) async {
     loadCalls++;
+    if (throwOnLoad) throw StateError('storage unavailable');
     return snapshot;
   }
 
@@ -738,6 +970,7 @@ class _FakeMapNotifier extends MapNotifier {
   final MapState initial;
   final Future<bool> _refreshResult;
   int hydrateCalls = 0;
+  int refreshCalls = 0;
 
   @override
   MapState build() => initial;
@@ -749,7 +982,10 @@ class _FakeMapNotifier extends MapNotifier {
   }
 
   @override
-  Future<bool> refresh() => _refreshResult;
+  Future<bool> refresh() {
+    refreshCalls++;
+    return _refreshResult;
+  }
 }
 
 class _FakeItemsNotifier extends ItemsNotifier {
@@ -769,6 +1005,27 @@ class _FakeItemsNotifier extends ItemsNotifier {
 
   @override
   Future<void> fetchItems() => _fetch ?? Future.value();
+}
+
+final class _CheckpointGateway implements CheckpointGateway {
+  _CheckpointGateway(this.result, {this.error});
+
+  CheckpointResult result;
+  final Object? error;
+
+  @override
+  Future<PublishedPlayerSave?> fetchLatest() async => null;
+
+  @override
+  Future<List<SharedInteractionDelivery>> fetchInteractions({
+    required int afterCursor,
+  }) async => const [];
+
+  @override
+  Future<CheckpointResult> submit(PlayerSave save) async {
+    if (error != null) throw error!;
+    return result;
+  }
 }
 
 class _FakePackMediaReadiness implements PackMediaReadiness {

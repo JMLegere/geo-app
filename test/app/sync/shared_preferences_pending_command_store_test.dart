@@ -13,51 +13,55 @@ void main() {
 
   late SharedPreferences preferences;
   late SharedPreferencesPendingCommandStore store;
-
+  late DateTime testNow;
   setUp(() async {
+    testNow = DateTime.now().toUtc();
     SharedPreferences.setMockInitialValues({});
     preferences = await SharedPreferences.getInstance();
     store = SharedPreferencesPendingCommandStore(preferences);
   });
 
-  test('round trips the exact Identification plan separately by owner', () async {
-    final command = PendingCommand(
-      schemaVersion: PendingCommand.currentSchemaVersion,
-      commandId: 'command-with-properties',
-      idempotencyKey: 'identify:item-with-properties',
-      kind: PendingCommandKind.identifyItem,
-      payloadVersion: IdentificationCommandPayload.currentVersion,
-      payload: IdentificationCommandPayload(
-        plan: testIdentificationPlan(
-          itemId: 'item-with-properties',
-          includeProperties: true,
+  test(
+    'round trips the exact Identification plan separately by owner',
+    () async {
+      final command = PendingCommand(
+        schemaVersion: PendingCommand.currentSchemaVersion,
+        commandId: 'command-with-properties',
+        idempotencyKey: 'identify:item-with-properties',
+        kind: PendingCommandKind.identifyItem,
+        payloadVersion: IdentificationCommandPayload.currentVersion,
+        payload: IdentificationCommandPayload(
+          plan: testIdentificationPlan(
+            itemId: 'item-with-properties',
+            includeProperties: true,
+          ),
         ),
-      ),
-      environment: 'local',
-      playerId: testPlayerId,
-      enqueuedAt: DateTime.utc(2026, 9, 1),
-      state: PendingCommandState.pending,
-    );
-    await store.enqueue(command);
+        environment: 'local',
+        playerId: testPlayerId,
+        enqueuedAt: DateTime.utc(2026, 9, 1),
+        state: PendingCommandState.pending,
+      );
+      await store.enqueue(command);
 
-    final loaded = await store.load(
-      environment: 'local',
-      playerId: testPlayerId,
-      now: DateTime.utc(2026, 9, 2),
-    );
-
-    expect(loaded, hasLength(1));
-    expect(loaded.single.commandId, command.commandId);
-    expect(loaded.single.payload.plan, command.payload.plan);
-    expect(
-      await store.load(
-        environment: 'prod',
+      final loaded = await store.load(
+        environment: 'local',
         playerId: testPlayerId,
         now: DateTime.utc(2026, 9, 2),
-      ),
-      isEmpty,
-    );
-  });
+      );
+
+      expect(loaded, hasLength(1));
+      expect(loaded.single.commandId, command.commandId);
+      expect(loaded.single.payload.plan, command.payload.plan);
+      expect(
+        await store.load(
+          environment: 'prod',
+          playerId: testPlayerId,
+          now: DateTime.utc(2026, 9, 2),
+        ),
+        isEmpty,
+      );
+    },
+  );
 
   test('normalizes dispatching to pending on validated reload', () async {
     await store.enqueue(
@@ -96,24 +100,20 @@ void main() {
   });
 
   test('rejects duplicate command and idempotency identities', () async {
-    await store.enqueue(testPendingCommand());
+    await store.enqueue(testPendingCommand(enqueuedAt: testNow));
 
     await expectLater(
       store.enqueue(testPendingCommand(commandId: 'different-command')),
       throwsArgumentError,
     );
     await expectLater(
-      store.enqueue(
-        testPendingCommand(
-          itemId: 'different-item',
-        ),
-      ),
+      store.enqueue(testPendingCommand(itemId: 'different-item')),
       throwsArgumentError,
     );
   });
 
   test('replace and remove preserve explicit command identity', () async {
-    final original = testPendingCommand();
+    final original = testPendingCommand(enqueuedAt: testNow);
     await store.enqueue(original);
     final terminal = original.copyWith(
       state: PendingCommandState.terminal,
@@ -125,7 +125,7 @@ void main() {
       (await store.load(
         environment: 'local',
         playerId: testPlayerId,
-        now: DateTime.utc(2026, 9, 2),
+        now: testNow,
       )).single.state,
       PendingCommandState.terminal,
     );
@@ -157,24 +157,18 @@ void main() {
       expect(preferences.containsKey(key), isFalse);
     }
 
-    await reject(
-      {
-        'version': 2,
-        'environment': 'local',
-        'playerId': testPlayerId,
-        'commands': const [],
-      },
-      isA<QueueCorruptFailure>(),
-    );
-    await reject(
-      {
-        'version': 1,
-        'environment': 'prod',
-        'playerId': testPlayerId,
-        'commands': const [],
-      },
-      isA<QueueCorruptFailure>(),
-    );
+    await reject({
+      'version': 2,
+      'environment': 'local',
+      'playerId': testPlayerId,
+      'commands': const [],
+    }, isA<QueueCorruptFailure>());
+    await reject({
+      'version': 1,
+      'environment': 'prod',
+      'playerId': testPlayerId,
+      'commands': const [],
+    }, isA<QueueCorruptFailure>());
 
     await preferences.setString(key, List.filled(256 * 1024 + 1, 'x').join());
     await expectLater(
@@ -188,52 +182,56 @@ void main() {
     expect(preferences.containsKey(key), isFalse);
   });
 
-  test('round trips terminal, auth-paused, and confirmed lifecycle states', () async {
-    await store.enqueue(
-      testPendingCommand(
-        commandId: 'terminal-command',
-        itemId: 'terminal-item',
-        state: PendingCommandState.terminal,
-        lastFailure: SyncFailureKind.contract,
-      ),
-    );
-    await store.enqueue(
-      testPendingCommand(
-        commandId: 'auth-command',
-        itemId: 'auth-item',
-        state: PendingCommandState.pausedAuth,
-        lastFailure: SyncFailureKind.auth,
-      ),
-    );
-    await store.enqueue(
-      testPendingCommand(
-        commandId: 'confirmed-command',
-        itemId: 'confirmed-item',
-        state: PendingCommandState.confirmed,
-      ),
-    );
+  test(
+    'round trips terminal, auth-paused, and confirmed lifecycle states',
+    () async {
+      await store.enqueue(
+        testPendingCommand(
+          commandId: 'terminal-command',
+          itemId: 'terminal-item',
+          enqueuedAt: testNow,
+          state: PendingCommandState.terminal,
+          lastFailure: SyncFailureKind.contract,
+        ),
+      );
+      await store.enqueue(
+        testPendingCommand(
+          commandId: 'auth-command',
+          itemId: 'auth-item',
+          enqueuedAt: testNow,
+          state: PendingCommandState.pausedAuth,
+          lastFailure: SyncFailureKind.auth,
+        ),
+      );
+      await store.enqueue(
+        testPendingCommand(
+          commandId: 'confirmed-command',
+          itemId: 'confirmed-item',
+          enqueuedAt: testNow,
+          state: PendingCommandState.confirmed,
+        ),
+      );
 
-    final loaded = await store.load(
-      environment: 'local',
-      playerId: testPlayerId,
-      now: DateTime.utc(2026, 9, 2),
-    );
+      final loaded = await store.load(
+        environment: 'local',
+        playerId: testPlayerId,
+        now: testNow,
+      );
 
-    expect(
-      loaded.map((command) => command.state),
-      [
+      expect(loaded.map((command) => command.state), [
         PendingCommandState.terminal,
         PendingCommandState.pausedAuth,
         PendingCommandState.confirmed,
-      ],
-    );
-  });
+      ]);
+    },
+  );
 
   test('rejects unknown persisted command enums without guessing', () async {
     final key = 'pending_commands.v1.local.$testPlayerId';
     Future<void> reject(void Function(Map<String, dynamic>) mutate) async {
       await store.enqueue(testPendingCommand());
-      final root = jsonDecode(preferences.getString(key)!) as Map<String, dynamic>;
+      final root =
+          jsonDecode(preferences.getString(key)!) as Map<String, dynamic>;
       final commands = root['commands'] as List<dynamic>;
       final command = commands.single as Map<String, dynamic>;
       mutate(command);
@@ -255,7 +253,7 @@ void main() {
   });
 
   test('rejects an oversized payload and preserves the last queue', () async {
-    final original = testPendingCommand();
+    final original = testPendingCommand(enqueuedAt: testNow);
     await store.enqueue(original);
     final oversized = PendingCommand(
       schemaVersion: PendingCommand.currentSchemaVersion,
@@ -275,11 +273,14 @@ void main() {
       state: PendingCommandState.pending,
     );
 
-    await expectLater(store.enqueue(oversized), throwsA(isA<QueueBoundFailure>()));
+    await expectLater(
+      store.enqueue(oversized),
+      throwsA(isA<QueueBoundFailure>()),
+    );
     final loaded = await store.load(
       environment: 'local',
       playerId: testPlayerId,
-      now: DateTime.utc(2026, 9, 2),
+      now: testNow,
     );
     expect(loaded.map((entry) => entry.commandId), [original.commandId]);
   });
@@ -301,38 +302,41 @@ void main() {
     expect(preferences.getKeys(), isEmpty);
   });
 
-  test('removes an over-count or expired queue instead of truncating it', () async {
-    final key = 'pending_commands.v1.local.$testPlayerId';
-    await preferences.setString(
-      key,
-      jsonEncode({
-        'version': 1,
-        'environment': 'local',
-        'playerId': testPlayerId,
-        'commands': List<Object?>.filled(101, const {}),
-      }),
-    );
-    await expectLater(
-      store.load(
-        environment: 'local',
-        playerId: testPlayerId,
-        now: DateTime.utc(2026, 9, 2),
-      ),
-      throwsA(isA<QueueBoundFailure>()),
-    );
-    expect(preferences.containsKey(key), isFalse);
+  test(
+    'removes an over-count or expired queue instead of truncating it',
+    () async {
+      final key = 'pending_commands.v1.local.$testPlayerId';
+      await preferences.setString(
+        key,
+        jsonEncode({
+          'version': 1,
+          'environment': 'local',
+          'playerId': testPlayerId,
+          'commands': List<Object?>.filled(101, const {}),
+        }),
+      );
+      await expectLater(
+        store.load(
+          environment: 'local',
+          playerId: testPlayerId,
+          now: DateTime.utc(2026, 9, 2),
+        ),
+        throwsA(isA<QueueBoundFailure>()),
+      );
+      expect(preferences.containsKey(key), isFalse);
 
-    await store.enqueue(testPendingCommand());
-    await expectLater(
-      store.load(
-        environment: 'local',
-        playerId: testPlayerId,
-        now: DateTime.utc(2026, 9, 10),
-      ),
-      throwsA(isA<QueueBoundFailure>()),
-    );
-    expect(preferences.containsKey(key), isFalse);
-  });
+      await store.enqueue(testPendingCommand());
+      await expectLater(
+        store.load(
+          environment: 'local',
+          playerId: testPlayerId,
+          now: DateTime.utc(2026, 9, 10),
+        ),
+        throwsA(isA<QueueBoundFailure>()),
+      );
+      expect(preferences.containsKey(key), isFalse);
+    },
+  );
 
   test('removes a queue timestamped implausibly in the future', () async {
     await store.enqueue(
@@ -375,13 +379,13 @@ void main() {
       'pending_commands.v0.local.$testPlayerId',
       'legacy',
     );
-    await preferences.setString('pending_commands.v0.prod.$testPlayerId', 'keep');
+    await preferences.setString(
+      'pending_commands.v0.prod.$testPlayerId',
+      'keep',
+    );
 
     await store.purge(environment: 'local', playerId: testPlayerId);
 
-    expect(
-      preferences.getKeys(),
-      {'pending_commands.v0.prod.$testPlayerId'},
-    );
+    expect(preferences.getKeys(), {'pending_commands.v0.prod.$testPlayerId'});
   });
 }

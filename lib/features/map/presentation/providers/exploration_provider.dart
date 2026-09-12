@@ -58,8 +58,9 @@ class ExplorationStateData extends ExplorationState {
     bool clearLastBorderCrossingEvent = false,
   }) {
     return ExplorationStateData(
-      currentCellId:
-          clearCurrentCellId ? null : (currentCellId ?? this.currentCellId),
+      currentCellId: clearCurrentCellId
+          ? null
+          : (currentCellId ?? this.currentCellId),
       currentPositionIsTrusted:
           currentPositionIsTrusted ?? this.currentPositionIsTrusted,
       visitedCellIds: visitedCellIds ?? this.visitedCellIds,
@@ -86,18 +87,18 @@ final detectCellEntryProvider = Provider<DetectCellEntry>((ref) {
   return DetectCellEntry(ref.watch(explorationObservabilityProvider));
 });
 
-final recordCellVisitProvider = Provider<RecordCellVisit>(
-  (ref) {
-    ref.watch(observableUseCaseProvider);
-    return RecordCellVisit(ref.watch(cellRepositoryProvider),
-        ref.watch(explorationObservabilityProvider));
-  },
-);
+final recordCellVisitProvider = Provider<RecordCellVisit>((ref) {
+  ref.watch(observableUseCaseProvider);
+  return RecordCellVisit(
+    ref.watch(cellRepositoryProvider),
+    ref.watch(explorationObservabilityProvider),
+  );
+});
 
 final explorationProvider =
     NotifierProvider<ExplorationNotifier, ExplorationStateData>(
-  ExplorationNotifier.new,
-);
+      ExplorationNotifier.new,
+    );
 
 class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
   @override
@@ -124,10 +125,12 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     final detectCellEntry = ref.read(detectCellEntryProvider);
     final currentPoint = (lat: markerState.lat, lng: markerState.lng);
 
-    // Detect current cell
+    // Most movement remains inside the current cell. Check it before scanning
+    // every visible cell so animation ticks stay cheap.
     final currentCell = detectCellEntry.detectCell(
       cells: cells,
       point: currentPoint,
+      preferredCellId: state.currentCellId,
     );
 
     if (currentCell == null) {
@@ -158,7 +161,8 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
 
     final canRecordVisits =
         explorationEligibility?.canRecordVisits ?? !markerState.isRing;
-    final pauseReason = explorationEligibility?.reason?.name ??
+    final pauseReason =
+        explorationEligibility?.reason?.name ??
         (markerState.isRing
             ? ExplorationEligibilityPauseReason.lowGpsConfidence.name
             : null);
@@ -188,7 +192,8 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
       return;
     }
 
-    final isFirstVisit = !visitedCellIds.contains(currentCell.id) &&
+    final isFirstVisit =
+        !visitedCellIds.contains(currentCell.id) &&
         !state.visitedCellIds.contains(currentCell.id);
     final isInformed =
         knowledgeByCellId[currentCell.id]?.state == CellKnowledgeState.informed;
@@ -204,10 +209,7 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
           visitedCellIds: {...state.visitedCellIds, ...visitedCellIds},
         ),
         'map.cell_tracked',
-        data: {
-          'cellId': currentCell.id,
-          'tracking_reason': 'known_occupancy',
-        },
+        data: {'cellId': currentCell.id, 'tracking_reason': 'known_occupancy'},
       );
       _triggerQueuedVisitRetry(userId);
       return;
@@ -291,16 +293,15 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     final recordVisit = ref.read(recordCellVisitProvider);
     late final CellVisit persistedCellVisit;
     try {
-      persistedCellVisit = await recordVisit.call(
-        (
-          userId: userId,
-          cellId: currentCell.id,
-          clientEventId: borderCrossingEvent.mapCellEntryId,
-        ),
-        parent: rootTrace,
-      );
+      persistedCellVisit = await recordVisit.call((
+        userId: userId,
+        cellId: currentCell.id,
+        clientEventId: borderCrossingEvent.mapCellEntryId,
+      ), parent: rootTrace);
     } catch (_) {
-      ref.read(visitQueueProvider.notifier).enqueue(
+      ref
+          .read(visitQueueProvider.notifier)
+          .enqueue(
             userId: userId,
             cellId: currentCell.id,
             clientEventId: borderCrossingEvent.mapCellEntryId,
@@ -317,7 +318,9 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
         rootTrace: rootTrace,
       );
     } catch (_) {
-      ref.read(visitQueueProvider.notifier).enqueue(
+      ref
+          .read(visitQueueProvider.notifier)
+          .enqueue(
             userId: userId,
             cellId: currentCell.id,
             clientEventId: borderCrossingEvent.mapCellEntryId,
@@ -346,10 +349,13 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     // Retry only from updates that have no immediate border-entry operation,
     // so recovery cannot race a new persistence/Encounter handoff.
     unawaited(
-      ref.read(visitQueueProvider.notifier).flush(
+      ref
+          .read(visitQueueProvider.notifier)
+          .flush(
             recordVisit: ref.read(recordCellVisitProvider),
-            encounterHandler:
-                ref.read(persistedCellVisitEncounterHandlerProvider),
+            encounterHandler: ref.read(
+              persistedCellVisitEncounterHandlerProvider,
+            ),
           ),
     );
   }
@@ -381,9 +387,6 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
   }
 
   void clearVisitedCells() {
-    transition(
-      const ExplorationStateData(),
-      'map.visited_cells_cleared',
-    );
+    transition(const ExplorationStateData(), 'map.visited_cells_cleared');
   }
 }
