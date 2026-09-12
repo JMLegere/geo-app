@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'package:earth_nova/core/domain/entities/item.dart';
+import 'package:earth_nova/features/identification/domain/entities/item_recorded_property.dart';
+import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:earth_nova/features/pack/presentation/widgets/species_card.dart';
 
 void main() {
@@ -39,6 +41,80 @@ void main() {
       expect(find.text('◆'), findsNothing);
       expect(find.text('🌲'), findsNothing);
       expect(find.text('🌍'), findsNothing);
+    });
+    testWidgets('identified card presents its recorded properties only', (
+      tester,
+    ) async {
+      await _pumpCard(
+        tester,
+        _item(),
+        loadRecordedProperties: (_) async => [
+          ItemRecordedProperty(
+            ordinal: 0,
+            propertyKey: 'temperament',
+            propertyLabel: 'Temperament',
+            resolution: SelectedPropertyValue('calm'),
+            valueLabel: 'Calm',
+          ),
+          ItemRecordedProperty(
+            ordinal: 1,
+            propertyKey: 'size',
+            propertyLabel: 'Size',
+            resolution: const NoPropertyValue(),
+          ),
+        ],
+      );
+      await tester.pump();
+
+      expect(find.text('Recorded properties'), findsOneWidget);
+      expect(find.text('Temperament'), findsOneWidget);
+      expect(find.text('Calm'), findsOneWidget);
+      expect(find.text('Size'), findsOneWidget);
+      expect(find.text('None'), findsOneWidget);
+    });
+
+    testWidgets('distinguishes no recorded properties from unavailable reads', (
+      tester,
+    ) async {
+      await _pumpCard(tester, _item(), loadRecordedProperties: (_) async => []);
+      await tester.pump();
+
+      expect(find.text('No recorded property values'), findsOneWidget);
+
+      await _pumpCard(
+        tester,
+        _item(),
+        loadRecordedProperties: (_) async => throw StateError('offline'),
+      );
+      await tester.pump();
+
+      expect(find.text('Recorded properties unavailable'), findsOneWidget);
+      expect(find.text('No recorded property values'), findsNothing);
+    });
+
+    testWidgets('unknown Item never loads or displays recorded properties', (
+      tester,
+    ) async {
+      var reads = 0;
+      await _pumpCard(
+        tester,
+        _item(
+          name: 'Amberwing Warbler',
+          scientificName: 'Setophaga aestiva',
+          examinationState: ItemExaminationState.unexamined,
+          identificationState: ItemIdentificationState.unidentified,
+        ),
+        loadRecordedProperties: (_) async {
+          reads++;
+          return const [];
+        },
+      );
+      await tester.pump();
+
+      expect(reads, 0);
+      expect(find.text('Recorded properties'), findsNothing);
+      expect(find.text('Amberwing Warbler'), findsNothing);
+      expect(find.text('Setophaga aestiva'), findsNothing);
     });
 
     testWidgets('unexamined card is a safe semantic silhouette', (
@@ -251,6 +327,8 @@ Future<void> _pumpCard(
   Item item, {
   Size size = const Size(800, 900),
   void Function(Item item)? onOpenIdentificationService,
+  Future<List<ItemRecordedProperty>> Function(Item item)?
+  loadRecordedProperties,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -262,6 +340,7 @@ Future<void> _pumpCard(
         body: SpeciesCard(
           item: item,
           onOpenIdentificationService: onOpenIdentificationService,
+          loadRecordedProperties: loadRecordedProperties,
         ),
       ),
     ),

@@ -32,6 +32,10 @@ void main() {
       expect(restored.map.visitedCellIds, {'cell-1'});
       expect(restored.map.knowledgeByCellId['cell-1']!.category, 'fauna');
       expect(restored.items.single.id, 'item-1');
+      expect(restored.items.single.isExamined, isTrue);
+      expect(restored.items.single.isUnidentified, isFalse);
+      expect(restored.items.single.examinedAt, DateTime.utc(2026, 9, 7, 1));
+      expect(restored.items.single.identifiedAt, DateTime.utc(2026, 9, 7, 2));
     },
   );
 
@@ -94,6 +98,8 @@ ClientWorkingSet _workingSet() => ClientWorkingSet(
       category: ItemCategory.fauna,
       acquiredAt: DateTime.utc(2026, 9, 7),
       status: ItemStatus.active,
+      examinedAt: DateTime.utc(2026, 9, 7, 1),
+      identifiedAt: DateTime.utc(2026, 9, 7, 2),
     ),
   ],
 );

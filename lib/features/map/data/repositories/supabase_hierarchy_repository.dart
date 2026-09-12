@@ -2,27 +2,31 @@ import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-typedef HierarchyRpcCaller = Future<List<Map<String, dynamic>>> Function(
-  String functionName,
-  Map<String, dynamic> params,
-);
-typedef RepositoryLogEvent = void Function(
-  String event,
-  String category, {
-  Map<String, dynamic>? data,
-});
+typedef HierarchyRpcCaller =
+    Future<List<Map<String, dynamic>>> Function(
+      String functionName,
+      Map<String, dynamic> params,
+    );
+
+typedef DistrictMetadataQuery =
+    Future<Map<String, dynamic>?> Function(String districtId);
+typedef RepositoryLogEvent =
+    void Function(String event, String category, {Map<String, dynamic>? data});
 
 class SupabaseHierarchyRepository implements HierarchyRepository {
   SupabaseHierarchyRepository({
     required SupabaseClient client,
     HierarchyRpcCaller? rpcCaller,
+    DistrictMetadataQuery? districtMetadataQuery,
     RepositoryLogEvent? logEvent,
-  })  : _client = client,
-        _rpcCaller = rpcCaller,
-        _logEvent = logEvent;
+  }) : _client = client,
+       _rpcCaller = rpcCaller,
+       _districtMetadataQuery = districtMetadataQuery,
+       _logEvent = logEvent;
 
   final SupabaseClient _client;
   final HierarchyRpcCaller? _rpcCaller;
+  final DistrictMetadataQuery? _districtMetadataQuery;
   final RepositoryLogEvent? _logEvent;
   static const _category = 'map.hierarchy_repository';
 
@@ -50,7 +54,10 @@ class SupabaseHierarchyRepository implements HierarchyRepository {
             'scopeId=$scopeId.',
           );
         }
-        return _summaryFromRow(rows.first);
+        final summary = _summaryFromRow(rows.first);
+        return level == MapLevel.district && scopeId != null
+            ? _withDistrictMetadata(summary, scopeId)
+            : summary;
       },
     );
   }
@@ -86,30 +93,42 @@ class SupabaseHierarchyRepository implements HierarchyRepository {
     required int Function(T result) rowCount,
   }) async {
     final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.rpc_started', _category, data: {
-      'operation': operation,
-      'rpc_function': operation,
-      'scope_level': scopeLevel,
-      'scope_id': scopeId,
-    });
-    try {
-      final result = await action();
-      _logEvent?.call('db.rpc_completed', _category, data: {
+    _logEvent?.call(
+      'db.rpc_started',
+      _category,
+      data: {
         'operation': operation,
         'rpc_function': operation,
-        'row_count': rowCount(result),
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+        'scope_level': scopeLevel,
+        'scope_id': scopeId,
+      },
+    );
+    try {
+      final result = await action();
+      _logEvent?.call(
+        'db.rpc_completed',
+        _category,
+        data: {
+          'operation': operation,
+          'rpc_function': operation,
+          'row_count': rowCount(result),
+          'duration_ms': stopwatch.elapsedMilliseconds,
+        },
+      );
       return result;
     } catch (error) {
       final failure = _safeHierarchyFailure(error);
-      _logEvent?.call('db.rpc_failed', _category, data: {
-        'operation': operation,
-        'rpc_function': operation,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-        'error_type': failure.runtimeType.toString(),
-        'error_message': failure.kind.name,
-      });
+      _logEvent?.call(
+        'db.rpc_failed',
+        _category,
+        data: {
+          'operation': operation,
+          'rpc_function': operation,
+          'duration_ms': stopwatch.elapsedMilliseconds,
+          'error_type': failure.runtimeType.toString(),
+          'error_message': failure.kind.name,
+        },
+      );
       throw failure;
     }
   }
@@ -127,6 +146,45 @@ class SupabaseHierarchyRepository implements HierarchyRepository {
         .whereType<Map>()
         .map((row) => Map<String, dynamic>.from(row))
         .toList();
+  }
+
+  Future<HierarchyProgressSummary> _withDistrictMetadata(
+    HierarchyProgressSummary summary,
+    String districtId,
+  ) async {
+    final metadata = await _fetchDistrictMetadata(districtId);
+    final cellsTotal = _asNullableInt(metadata?['cells_total']);
+    final geometryJson = metadata?['geometry_json'];
+    return summary.copyWith(
+      cellsTotal: cellsTotal ?? 0,
+      cellsTotalKnown: cellsTotal != null,
+      districtBoundary: DistrictBoundary.tryParseGeoJson(
+        geometryJson is String ? geometryJson : null,
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>?> _fetchDistrictMetadata(
+    String districtId,
+  ) async {
+    if (_districtMetadataQuery != null) {
+      return _districtMetadataQuery!(districtId);
+    }
+    final locationNode = await _client
+        .from('location_nodes')
+        .select('geometry_json')
+        .eq('id', districtId)
+        .maybeSingle();
+    final district = await _client
+        .from('districts')
+        .select('cells_total')
+        .eq('id', districtId)
+        .maybeSingle();
+    if (locationNode == null && district == null) return null;
+    return {
+      'geometry_json': (locationNode as Map?)?['geometry_json'],
+      'cells_total': (district as Map?)?['cells_total'],
+    };
   }
 
   HierarchyProgressSummary _summaryFromRow(Map<String, dynamic> row) {
@@ -160,6 +218,13 @@ class SupabaseHierarchyRepository implements HierarchyRepository {
     return 0;
   }
 
+  int? _asNullableInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num && value.isFinite) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
   double _asDouble(dynamic value) {
     if (value is double) return value;
     if (value is num) return value.toDouble();
@@ -174,7 +239,6 @@ HierarchyRepositoryFailure _safeHierarchyFailure(Object error) =>
       StateError() ||
       ArgumentError() ||
       FormatException() ||
-      TypeError() =>
-        const HierarchyRepositoryFailure.malformedPayload(),
+      TypeError() => const HierarchyRepositoryFailure.malformedPayload(),
       _ => const HierarchyRepositoryFailure.unavailable(),
     };

@@ -70,6 +70,7 @@ class DistrictScreen extends ConsumerWidget {
         scopeCode: _initials(scope.name),
         cellsVisited: scope.cellsVisited,
         cellsTotal: scope.cellsTotal,
+        cellsTotalKnown: scope.cellsTotalKnown,
         progressPercent: scope.progressPercent,
         rank: scope.rank,
         explorerCount: children.length,
@@ -80,12 +81,14 @@ class DistrictScreen extends ConsumerWidget {
 
   Widget _buildMap(HierarchyState state) {
     return switch (state) {
-      HierarchyStateData() when scopeId != null => DistrictFootprintMap(
-        cells: cells,
-        currentDistrictId: scopeId!,
-        visitedCellIds: visitedCellIds,
-        currentCellId: currentCellId,
-      ),
+      HierarchyStateData(:final scope) when scopeId != null =>
+        DistrictFootprintMap(
+          districtBoundary: scope.districtBoundary,
+          cells: cells,
+          currentDistrictId: scopeId!,
+          visitedCellIds: visitedCellIds,
+          currentCellId: currentCellId,
+        ),
       _ => const HierarchyExplorationMap(
         children: [],
         playerLat: null,

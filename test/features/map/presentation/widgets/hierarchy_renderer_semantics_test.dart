@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/presentation/widgets/district_footprint_map.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_exploration_map.dart';
+import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -165,9 +169,121 @@ void main() {
       },
     );
 
+    testWidgets(
+      'renders a cached boundary with polygon holes and multipolygons',
+      (tester) async {
+        final boundary = DistrictBoundary.tryParseGeoJson(
+          jsonEncode({
+            'type': 'MultiPolygon',
+            'coordinates': [
+              [
+                [
+                  [-66.65, 45.96],
+                  [-66.64, 45.96],
+                  [-66.64, 45.97],
+                  [-66.65, 45.97],
+                  [-66.65, 45.96],
+                ],
+                [
+                  [-66.648, 45.963],
+                  [-66.645, 45.963],
+                  [-66.645, 45.966],
+                  [-66.648, 45.966],
+                  [-66.648, 45.963],
+                ],
+              ],
+              [
+                [
+                  [-66.63, 45.96],
+                  [-66.62, 45.96],
+                  [-66.62, 45.97],
+                  [-66.63, 45.97],
+                  [-66.63, 45.96],
+                ],
+              ],
+            ],
+          }),
+        )!;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SizedBox(
+              width: 320,
+              height: 240,
+              child: DistrictFootprintMap(
+                districtBoundary: boundary,
+                cells: const [],
+                currentDistrictId: 'district-1',
+                visitedCellIds: const {},
+              ),
+            ),
+          ),
+        );
+
+        final customPaint = tester.widget<CustomPaint>(
+          find.descendant(
+            of: find.byType(DistrictFootprintMap),
+            matching: find.byType(CustomPaint),
+          ),
+        );
+        final painter = customPaint.painter! as DistrictFootprintMapPainter;
+        expect(painter.districtBoundary, same(boundary));
+        expect(painter.districtBoundary!.polygons, hasLength(2));
+        expect(painter.districtBoundary!.polygons.first, hasLength(2));
+      },
+    );
+
+    testWidgets(
+      'reports an unavailable boundary rather than a cell working-set footprint',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SizedBox(
+              width: 320,
+              height: 240,
+              child: DistrictFootprintMap(
+                cells: [
+                  _cell(
+                    id: 'district-cell',
+                    districtId: 'district-1',
+                    polygons: _square(45, -66),
+                  ),
+                ],
+                currentDistrictId: 'district-1',
+                visitedCellIds: const {},
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('District boundary unavailable.'), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byType(DistrictFootprintMap),
+            matching: find.byType(CustomPaint),
+          ),
+          findsNothing,
+        );
+      },
+    );
+
     testWidgets('keeps district/context counts and organic exterior paths', (
       tester,
     ) async {
+      final boundary = DistrictBoundary.tryParseGeoJson(
+        jsonEncode({
+          'type': 'Polygon',
+          'coordinates': [
+            [
+              [-66.008, 44.998],
+              [-65.996, 44.998],
+              [-65.996, 45.008],
+              [-66.008, 45.008],
+              [-66.008, 44.998],
+            ],
+          ],
+        }),
+      )!;
       final current = _cell(
         id: 'current',
         districtId: 'district-1',
@@ -215,6 +331,7 @@ void main() {
             height: 240,
             child: DistrictFootprintMap(
               cells: [current, unvisited, context, unavailable],
+              districtBoundary: boundary,
               currentDistrictId: 'district-1',
               visitedCellIds: const {'current'},
               currentCellId: 'current',

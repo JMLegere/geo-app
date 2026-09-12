@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
+import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
@@ -409,6 +410,7 @@ class _DistrictScene extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const DistrictFootprintMap(
+      districtBoundary: _districtFixtureBoundary,
       cells: _districtCells,
       currentDistrictId: 'district-a',
       visitedCellIds: {'district-current', 'district-visited'},
@@ -632,6 +634,20 @@ const _mapShrouded = Cell(
   countryId: 'country-a',
 );
 const _mapCells = [_mapPresent, _mapInformed, _mapExplored, _mapShrouded];
+
+const _districtFixtureBoundary = DistrictBoundary(
+  polygons: [
+    [
+      [
+        (lat: 45.958, lng: -66.653),
+        (lat: 45.958, lng: -66.635),
+        (lat: 45.972, lng: -66.635),
+        (lat: 45.972, lng: -66.653),
+        (lat: 45.958, lng: -66.653),
+      ],
+    ],
+  ],
+);
 
 const _districtCells = [
   Cell(
