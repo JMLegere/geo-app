@@ -33,6 +33,7 @@ function map() {
     getCanvas() { return canvas; }, sourcesLoaded: true,
     isSourceLoaded() { return this.sourcesLoaded; },
     isStyleLoaded() { return this.loaded; },
+    getStyle() { return this.loaded ? {version:8} : undefined; },
     addSource(id, source) { sources.set(id, {...source, uploads: 0, setData(data) { this.data = data; this.uploads++; }}); },
     getSource: id => sources.get(id), removeSource: id => sources.delete(id),
     addLayer(layer) { layers.set(layer.id, layer); }, getLayer: id => layers.get(id), removeLayer: id => layers.delete(id),
@@ -217,4 +218,27 @@ test('early style-ready bridge attaches but delays scene until native style fini
   await Promise.all([first,latest]);
   assert.equal(m.stateCalls.filter(c=>c.feature.source==='earthnova-cells').at(-1).state.knowledge,'explored');
   h.dispose();
+});
+
+test('native map removal cleans up after MapLibre has destroyed its style', async () => {
+  const m=map(), h=attach(m), firstMarker=markers.length;
+  m.sourcesLoaded=false;
+  const pending=h.updateScene(scene(
+    [feature('a',[[ring(0,0)]])],
+    [{...state('a','informed'),category:'fauna',cue:'F'}],
+  ));
+  h.updatePlayer({lat:0,lng:0,trust:'trusted'});
+  h.updateCameraTarget({lat:1,lng:1});
+  // Map.remove() calls setStyle(null) before emitting its remove event.
+  m.sources.clear();m.layers.clear();
+  m.getStyle=()=>undefined;
+  m.getLayer=m.getSource=()=>{throw new TypeError('Native style has been destroyed');};
+  assert.doesNotThrow(()=>m.emit('remove'));
+  await pending;
+  assert.equal(h.isAttached,false);
+  assert.equal(frames.size,0);
+  assert.ok(markers.slice(firstMarker).every(marker=>marker.removed));
+  assert.equal([...m.listeners.values()].reduce((n,set)=>n+set.size,0),0);
+  assert.equal(m.getCanvas().getAttribute('aria-label'),null);
+  assert.doesNotThrow(()=>h.dispose());
 });
