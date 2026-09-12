@@ -15,7 +15,8 @@ final playerMarkerObservabilityProvider = Provider<ObservabilityService>((ref) {
 
 final playerMarkerProvider =
     NotifierProvider<PlayerMarkerNotifier, PlayerMarkerState>(
-        PlayerMarkerNotifier.new);
+      PlayerMarkerNotifier.new,
+    );
 
 class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
   Timer? _ticker;
@@ -107,6 +108,23 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
 
     final wasRing = current.isRing;
     final isRingNow = gapMeters >= SplineConfig.ringThresholdMeters;
+    if (!wasRing && gapMeters <= SplineConfig.settleDistanceMeters) {
+      if (current.lat == _gpsLat &&
+          current.lng == _gpsLng &&
+          current.gapDistance == 0.0) {
+        return;
+      }
+      // silentTransition: sub-centimetre animation settling is non-diagnostic.
+      silentTransition(
+        PlayerMarkerState(
+          lat: _gpsLat,
+          lng: _gpsLng,
+          isRing: false,
+          gapDistance: 0.0,
+        ),
+      );
+      return;
+    }
     final factor = SplineConfig.boundedLerpFactor(
       gapMeters: gapMeters,
       tickInterval: _tickInterval,
@@ -148,12 +166,14 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
       // silentTransition: 60 fps interpolation tick — logging every frame
       // (~3600 events/min/user) would flood Supabase. Ring transitions above
       // are logged; smooth movement is intentionally silent.
-      silentTransition(PlayerMarkerState(
-        lat: newLat,
-        lng: newLng,
-        isRing: isRingNow,
-        gapDistance: gapMeters,
-      ));
+      silentTransition(
+        PlayerMarkerState(
+          lat: newLat,
+          lng: newLng,
+          isRing: isRingNow,
+          gapDistance: gapMeters,
+        ),
+      );
     }
   }
 
@@ -168,7 +188,8 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
     const earthRadiusM = 6371000.0;
     final dLat = _toRad(lat2 - lat1);
     final dLng = _toRad(lng2 - lng1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_toRad(lat1)) *
             math.cos(_toRad(lat2)) *
             math.sin(dLng / 2) *

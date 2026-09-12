@@ -93,17 +93,32 @@ bool _isForbiddenDomainImport(File sourceFile, String importUri) {
       _isFeatureLayerImport(sourceFile, importUri, 'data');
 }
 
+bool _isFeaturePresentationUiFile(File file) {
+  final segments = _normalizePath(file.path).split('/');
+  final featuresIndex = segments.indexOf('features');
+  const uiDirectories = {'screens', 'widgets', 'painters'};
+
+  return featuresIndex >= 0 &&
+      featuresIndex + 3 < segments.length &&
+      segments[featuresIndex + 2] == 'presentation' &&
+      uiDirectories.contains(segments[featuresIndex + 3]);
+}
+
+bool _isFeatureObservabilitySharedImportViolation(File file, String contents) =>
+    contents.contains('ObservabilityService') &&
+    contents.contains("import 'package:earth_nova/shared/") &&
+    !_isFeaturePresentationUiFile(file);
+
 void main() {
   group('shared observability architecture guards', () {
-    test('feature observability files do not import lib/shared', () {
+    test('non-UI feature observability files do not import lib/shared', () {
       final featuresDir = Directory('lib/features');
       final violations = <String>[];
 
       for (final entity in featuresDir.listSync(recursive: true)) {
         if (entity is! File || !entity.path.endsWith('.dart')) continue;
         final contents = entity.readAsStringSync();
-        if (!contents.contains('ObservabilityService')) continue;
-        if (contents.contains("import 'package:earth_nova/shared/")) {
+        if (_isFeatureObservabilitySharedImportViolation(entity, contents)) {
           violations.add(entity.path);
         }
       }
@@ -114,10 +129,47 @@ void main() {
         violations,
         isEmpty,
         reason:
-            'Feature observability files must not import lib/shared:\n'
+            'Non-UI feature observability files must not import lib/shared:\n'
             '${violations.join('\n')}',
       );
     });
+
+    test(
+      'allows shared imports for presentation screen observability consumers',
+      () {
+        expect(
+          _isFeatureObservabilitySharedImportViolation(
+            File('lib/features/map/presentation/screens/map_screen.dart'),
+            '''
+import 'package:earth_nova/shared/design.dart';
+final ObservabilityService observabilityService;
+''',
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'rejects shared imports for domain and provider observability sources',
+      () {
+        const source = '''
+import 'package:earth_nova/shared/design.dart';
+final ObservabilityService observabilityService;
+''';
+
+        for (final path in [
+          'lib/features/map/domain/use_cases/record_visit.dart',
+          'lib/features/map/presentation/providers/map_provider.dart',
+        ]) {
+          expect(
+            _isFeatureObservabilitySharedImportViolation(File(path), source),
+            isTrue,
+            reason: path,
+          );
+        }
+      },
+    );
 
     test(
       'core domain files do not import framework or feature presentation/data layers',

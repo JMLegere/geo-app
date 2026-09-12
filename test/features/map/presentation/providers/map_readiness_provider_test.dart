@@ -19,6 +19,13 @@ void main() {
   }
 
   group('MapReadinessNotifier', () {
+    test('deferred view cleanup is safe after provider disposal', () {
+      final scope = container();
+      final readiness = scope.read(mapReadinessProvider.notifier);
+      scope.dispose();
+      expect(readiness.reset, returnsNormally);
+    });
+
     test('reaches steady state only after ordered required milestones', () {
       final scope = container();
       final readiness = scope.read(mapReadinessProvider.notifier);

@@ -47,6 +47,7 @@ class MapReadinessNotifier extends ObservableNotifier<MapReadinessState> {
   }
 
   void reset() {
+    if (!ref.mounted) return;
     _generation++;
     _cancelTimers();
     transition(const MapReadinessState.initial(), 'map.readiness.reset');

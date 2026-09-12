@@ -58,6 +58,7 @@ Every Markdown file in the repository must match exactly one row below. A docume
 | `docs/frontend-usability-design-system.md` | `CURRENT-SCOPED` | Frontend usability and design-system rules |
 | `docs/observability-interaction-coverage.md` | `CURRENT-SCOPED` | Interaction observability contract |
 | `docs/ios-safari-maplibre.md` | `CURRENT-SCOPED` | Scoped platform compatibility evidence |
+| `docs/production-readiness-investigation-2026-09-09.md` | `CURRENT-SCOPED` | Production readiness findings, implemented follow-up, and required release evidence |
 | `docs/c4/README.md` | `CURRENT-SCOPED` | Generated current C4 architecture views and maintenance instructions |
 | `docs/prd-target-container-migration.md` | `CURRENT-SCOPED` | Approved Issue #592 migration requirements; only the explicitly authorized first deployable slice is active |
 | `docs/prd-shadcn-ui-reset.md` | `CURRENT-SCOPED` | Phases 1–7 complete locally; final [Phase 7 acceptance](../.agents/qa/2026-09-02-shadcn-reset-phase-7-final-acceptance.md) passed; production deployment remains unauthorized |

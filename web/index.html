@@ -185,6 +185,7 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script src="retained_map_renderer.js"></script>
   <script src="flutter_bootstrap.js" async="" crossorigin="anonymous"></script>
 
   <script>
@@ -432,7 +433,6 @@
             phase: phase
           });
         }
-
         function installResponsivenessTelemetry() {
           if (window.__earthnovaResponsivenessTelemetryInstalled) return;
           window.__earthnovaResponsivenessTelemetryInstalled = true;
@@ -449,6 +449,11 @@
           var droppedFrameCount = 0;
           var totalFrameDeltaMs = 0;
           var worstFrameDeltaMs = 0;
+          // Keep hot callbacks free of persistence and layout work.
+          // ponytail: latest frame window only; use bounded history if delayed drains must retain every window.
+          var pendingFrameSample = null;
+          var pendingLongTaskSample = null;
+          var longTaskWindowStartedAt = performance.now();
 
           function resetFrameWindow(at) {
             sampleStartedAt = typeof at === 'number' ? at : 0;
@@ -459,15 +464,12 @@
             worstFrameDeltaMs = 0;
           }
 
-          function logFramePacingSample(at, source) {
+          function queueFramePacingSample(at) {
             var sampleWindowMs = sampleStartedAt === null
               ? frameSampleWindowMs
               : Math.max(1, at - sampleStartedAt);
-            push('low_level', 'frame_pacing_sample', source, lowLevelAttrs(
-              'low_level.responsiveness',
-              'state_changed',
-              document.documentElement,
-              {
+            if (frameCount > 0) {
+              pendingFrameSample = {
                 sample_window_ms: Math.round(sampleWindowMs),
                 frame_count: frameCount,
                 long_frame_count: longFrameCount,
@@ -478,8 +480,8 @@
                 long_frame_threshold_ms: longFrameThresholdMs,
                 dropped_frame_threshold_ms: droppedFrameThresholdMs,
                 visibility_state: document.visibilityState || 'unknown'
-              }
-            ));
+              };
+            }
             resetFrameWindow(at);
           }
 
@@ -508,7 +510,7 @@
               lastFrameAt = at;
 
               if (sampleStartedAt !== null && at - sampleStartedAt >= frameSampleWindowMs) {
-                logFramePacingSample(at, 'requestAnimationFrame');
+                queueFramePacingSample(at);
               }
             } catch (_) {}
             window.requestAnimationFrame(sampleFramePacing);
@@ -521,26 +523,33 @@
           if (window.PerformanceObserver) {
             try {
               var observer = new PerformanceObserver(function(list) {
-                var entries = list.getEntries ? list.getEntries() : [];
-                entries.forEach(function(entry) {
+                if (!list.getEntries) return;
+                var entries = list.getEntries();
+                for (var i = 0; i < entries.length; i += 1) {
+                  var entry = entries[i];
                   var duration = entry && typeof entry.duration === 'number'
                     ? entry.duration
                     : 0;
-                  if (duration < longTaskThresholdMs) return;
-                  push('low_level', 'long_task', entry.name || 'longtask', lowLevelAttrs(
-                    'low_level.responsiveness',
-                    'blocked',
-                    document.documentElement,
-                    {
-                      duration_ms: round(duration),
-                      blocking_duration_ms: round(Math.max(0, duration - longTaskThresholdMs)),
-                      start_time_ms: round(entry.startTime || 0),
-                      long_task_name: entry.name || null,
-                      attribution_count: entry.attribution ? entry.attribution.length : 0,
-                      visibility_state: document.visibilityState || 'unknown'
-                    }
-                  ));
-                });
+                  if (duration < longTaskThresholdMs) continue;
+                  if (!pendingLongTaskSample) {
+                    pendingLongTaskSample = {
+                      task_count: 0,
+                      total_duration_ms: 0,
+                      total_blocking_duration_ms: 0,
+                      duration_ms: 0
+                    };
+                  }
+                  pendingLongTaskSample.task_count += 1;
+                  pendingLongTaskSample.total_duration_ms += duration;
+                  pendingLongTaskSample.total_blocking_duration_ms += Math.max(0, duration - longTaskThresholdMs);
+                  if (duration > pendingLongTaskSample.duration_ms) {
+                    pendingLongTaskSample.duration_ms = duration;
+                    pendingLongTaskSample.start_time_ms = entry.startTime || 0;
+                    pendingLongTaskSample.long_task_name = entry.name || null;
+                    pendingLongTaskSample.attribution_count = entry.attribution ? entry.attribution.length : 0;
+                    pendingLongTaskSample.visibility_state = document.visibilityState || 'unknown';
+                  }
+                }
               });
               observer.observe({ entryTypes: ['longtask'] });
             } catch (e) {
@@ -552,6 +561,40 @@
               ));
             }
           }
+
+          setInterval(function() {
+            var frameSample = pendingFrameSample;
+            var longTaskSample = pendingLongTaskSample;
+            pendingFrameSample = null;
+            pendingLongTaskSample = null;
+            var at = performance.now();
+            var longTaskWindowMs = Math.max(1, at - longTaskWindowStartedAt);
+            longTaskWindowStartedAt = at;
+
+            if (frameSample) {
+              push('low_level', 'frame_pacing_sample', 'requestAnimationFrame', lowLevelAttrs(
+                'low_level.responsiveness',
+                'state_changed',
+                document.documentElement,
+                frameSample
+              ));
+            }
+            if (longTaskSample) {
+              longTaskSample.blocking_duration_ms = round(Math.max(0, longTaskSample.duration_ms - longTaskThresholdMs));
+              longTaskSample.duration_ms = round(longTaskSample.duration_ms);
+              longTaskSample.start_time_ms = round(longTaskSample.start_time_ms);
+              longTaskSample.total_duration_ms = round(longTaskSample.total_duration_ms);
+              longTaskSample.total_blocking_duration_ms = round(longTaskSample.total_blocking_duration_ms);
+              longTaskSample.sample_window_ms = Math.round(longTaskWindowMs);
+              longTaskSample.aggregation = 'window';
+              push('low_level', 'long_task', longTaskSample.long_task_name || 'longtask', lowLevelAttrs(
+                'low_level.responsiveness',
+                'blocked',
+                document.documentElement,
+                longTaskSample
+              ));
+            }
+          }, frameSampleWindowMs);
         }
 
         function pointerValues() {
@@ -1203,6 +1246,13 @@
                           };
                           maplibregl.Map = function(opts) {
                             var map = new origMap(opts);
+                            window.__earthnovaMapLibreMap = map;
+                            var didPersistIdle = false;
+                            map.on('remove', function() {
+                              if (window.__earthnovaMapLibreMap === map) {
+                                window.__earthnovaMapLibreMap = null;
+                              }
+                            });
                             ensureMapLibreStyleReady(map);
                             map.on('error', function(e) {
                               push('js', 'maplibre_map_error', (e && e.error && e.error.message) || 'unknown');
@@ -1216,7 +1266,10 @@
                               emitMapLibreLayout(map, 'maplibre_js_resize');
                             });
                             map.on('idle', function() {
-                              push('js', 'maplibre_map_idle', 'render_complete');
+                              if (!didPersistIdle) {
+                                didPersistIdle = true;
+                                push('js', 'maplibre_map_idle', 'render_complete');
+                              }
                               emitMapLibreIdle(map);
                             });
                             return map;

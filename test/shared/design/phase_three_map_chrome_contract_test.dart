@@ -28,9 +28,8 @@ const _neutralCompositionFiles = <String>[
   'lib/features/encounters/presentation/widgets/pending_encounter_layer.dart',
 ];
 
-const _phaseFourProtectedSources = <String>[
+const _unmigratedRendererSources = <String>[
   'lib/features/map/presentation/painters/cell_overlay_painter.dart',
-  'lib/features/map/presentation/painters/fog_renderer.dart',
   'lib/features/map/presentation/painters/player_marker.dart',
   'lib/features/map/presentation/rendering/cell_tessellation_render_model.dart',
   'lib/features/living_world/domain/entities/town_projection.dart',
@@ -138,30 +137,33 @@ void main() {
       );
     });
 
-    test(
-      'keeps player hierarchy copy State while leaving Phase 4 sources alone',
-      () {
-        for (final path in _phaseThreeChromeFiles.skip(1).take(5)) {
-          final source = File(path).readAsStringSync();
-          expect(source, isNot(contains("'Province'")));
-          expect(source, isNot(contains('"Province"')));
-          expect(source, isNot(contains("'PROVINCE'")));
-          expect(source, isNot(contains('"PROVINCE"')));
-        }
-        expect(
-          File(_phaseThreeChromeFiles[3]).readAsStringSync(),
-          contains("scopeLevel: 'State'"),
-        );
+    test('keeps State copy and preserves unmigrated renderer boundaries', () {
+      for (final path in _phaseThreeChromeFiles.skip(1).take(5)) {
+        final source = File(path).readAsStringSync();
+        expect(source, isNot(contains("'Province'")));
+        expect(source, isNot(contains('"Province"')));
+        expect(source, isNot(contains("'PROVINCE'")));
+        expect(source, isNot(contains('"PROVINCE"')));
+      }
+      expect(
+        File(_phaseThreeChromeFiles[3]).readAsStringSync(),
+        contains("scopeLevel: 'State'"),
+      );
 
-        for (final path in _phaseFourProtectedSources) {
-          expect(
-            File(path).readAsStringSync(),
-            isNot(contains('package:earth_nova/shared/design.dart')),
-            reason:
-                '$path is a Phase 4 renderer/projection boundary, not Phase 3 chrome.',
-          );
-        }
-      },
-    );
+      // Frontier colors now belong to canonical design tokens (#605).
+      final fogSource = File(
+        'lib/features/map/presentation/painters/fog_renderer.dart',
+      ).readAsStringSync();
+      expect(fogSource, contains('DesignPalette.fogFrontierFill'));
+      expect(fogSource, contains('DesignPalette.fogFrontierStroke'));
+      for (final path in _unmigratedRendererSources) {
+        expect(
+          File(path).readAsStringSync(),
+          isNot(contains('package:earth_nova/shared/design.dart')),
+          reason:
+              '$path is a Phase 4 renderer/projection boundary, not Phase 3 chrome.',
+        );
+      }
+    });
   });
 }

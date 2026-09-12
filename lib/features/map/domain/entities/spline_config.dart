@@ -7,6 +7,9 @@ class SplineConfig {
   /// into ring state.
   static const double ringThresholdMeters = 100.0;
 
+  /// Snap sub-five-centimeter residuals once instead of easing indefinitely.
+  static const double settleDistanceMeters = 0.05;
+
   /// Minimum lerp factor applied when the marker is very close to GPS.
   /// At near-zero gap, the marker barely moves per tick.
   static const double minLerpFactor = 0.02;

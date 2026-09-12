@@ -35,6 +35,7 @@ import 'package:earth_nova/features/map/presentation/providers/desktop_controls_
 import 'package:earth_nova/features/map/presentation/platform/base_map_settled_signal.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_style_loaded_signal.dart';
 import 'package:earth_nova/features/map/presentation/platform/map_style_label_layers.dart';
+import 'package:earth_nova/features/map/presentation/platform/retained_map_renderer.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
@@ -67,10 +68,24 @@ bool _isPendingEncounterVisible(PendingEncounterState state) {
       (state is PendingEncounterFailure && state.pendingEncounter != null);
 }
 
+PlayerMarkerTrust _playerMarkerTrust(LocationProviderState state) {
+  return switch (state) {
+    LocationProviderPaused() => PlayerMarkerTrust.paused,
+    LocationProviderActive(location: final location) =>
+      location.isConfident
+          ? PlayerMarkerTrust.trusted
+          : PlayerMarkerTrust.lowConfidence,
+    _ => PlayerMarkerTrust.trusted,
+  };
+}
+
 const _kExactProjectionCenterTolerancePx = 96.0;
 
 class MapScreen extends ConsumerStatefulWidget {
-  const MapScreen({super.key});
+  const MapScreen({super.key, this.retainedRenderer});
+
+  /// Allows the platform renderer lifecycle to be exercised without a browser.
+  final RetainedMapRenderer? retainedRenderer;
 
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
@@ -79,6 +94,8 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen>
     with WidgetsBindingObserver {
   maplibre.MapLibreMapController? _mapController;
+  late final ObservabilityService _observability;
+  late final MapReadinessNotifier _readinessNotifier;
 
   bool _baseMapTextLabelsHidden = false;
   bool _steadyStateLogged = false;
@@ -92,6 +109,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   String? _lastGeometryDiagnosticsKey;
   GeoCoord? _renderCameraPosition;
   double? _renderCameraZoom;
+  bool _renderCameraMoving = false;
+  Timer? _renderCameraIdleTimer;
   _ExactScreenProjectionRequest? _pendingExactScreenProjectionRequest;
   bool _exactScreenProjectionInFlight = false;
   String? _exactScreenProjectionInFlightKey;
@@ -104,6 +123,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
   bool _webMapResizeScheduled = false;
   String? _pendingWebMapResizeReason;
   String? _lastRejectedExactProjectionKey;
+  late final RetainedMapRenderer _retainedRenderer;
+  bool _retainedAttachInFlight = false;
+  bool _retainedAttachFailed = false;
+  bool _retainedScenePainted = false;
+  int _retainedMapGeneration = 0;
+  Object? _cellSceneKey;
+  List<({Cell cell, CellState state})> _cellScene = const [];
+  List<_KnownVenueAnchor> _venueAnchors = const [];
+  List<({Cell cell, CellState state})>? _uploadedScene;
+  Map<String, dynamic> Function()? _retainedReadinessDiagnostics;
+
+  bool get _prefersRetainedRenderer =>
+      (kIsWeb || widget.retainedRenderer != null) && !_retainedAttachFailed;
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
@@ -112,84 +144,79 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void initState() {
     super.initState();
+    _observability = ref.read(appObservabilityProvider);
+    _readinessNotifier = ref.read(mapReadinessProvider.notifier);
     WidgetsBinding.instance.addObserver(this);
-    _mapBootstrapSpan = ref
-        .read(appObservabilityProvider)
-        .startSpan(
-          'map.bootstrap',
-          attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
-        );
-    ref
-        .read(appObservabilityProvider)
-        .logFlowEvent(
-          'map.bootstrap',
-          TelemetryFlowPhase.started,
-          'map',
-          span: _mapBootstrapSpan,
-          data: {'screen': 'map_screen'},
-        );
-    _mapReadinessSubscription = ref.listenManual<MapReadinessState>(
-      mapReadinessProvider,
-      (previous, next) {
-        if (!mounted) return;
-        if (previous?.baseMapSettled != true && next.baseMapSettled) {
-          _logMapFlowEvent(
-            TelemetryFlowPhase.dependencyReady,
-            eventName: 'map.base_map_settled',
-            dependency: 'base_map',
-            data: {'source': next.baseMapSettledSource},
-          );
-        }
-        if (previous?.bootstrapTimedOut != true && next.bootstrapTimedOut) {
-          _handleMapBootstrapTimeout(next);
-        }
-      },
+    _retainedRenderer = widget.retainedRenderer ?? RetainedMapRenderer();
+    _retainedRenderer.onCellTap = _onRetainedCellTap;
+    _mapBootstrapSpan = _observability.startSpan(
+      'map.bootstrap',
+      attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
     );
-    _locationReadinessSubscription = ref.listenManual<LocationProviderState>(
-      locationProvider,
-      (_, next) {
-        ref
-            .read(mapReadinessProvider.notifier)
-            .reportLocationReady(
-              next is LocationProviderActive || next is LocationProviderPaused,
-            );
-      },
+    _observability.logFlowEvent(
+      'map.bootstrap',
+      TelemetryFlowPhase.started,
+      'map',
+      span: _mapBootstrapSpan,
+      data: {'screen': 'map_screen'},
     );
-    _mapReadinessStateSubscription = ref.listenManual<MapState>(mapProvider, (
-      _,
-      next,
-    ) {
-      ref
-          .read(mapReadinessProvider.notifier)
-          .reportCellsFetched(_renderableMapState(next) != null);
-      if (next is MapStateLoading) _resetOverlayReadinessForRefetch();
-    });
-    _baseMapSettledSignal = BaseMapSettledSignal(
-      onSettled: (source) {
-        if (!mounted) return;
-        _markBaseMapSettled(source: source);
-      },
-    );
-    _baseMapStyleLoadedSignal = BaseMapStyleLoadedSignal(
-      onLoaded: (source) {
-        if (!mounted) return;
-        _handleStyleLoaded(source: source);
-      },
-    );
-    _scheduleInitialMapReadiness();
-  }
-
-  void _scheduleInitialMapReadiness() {
+    // Riverpod mutations must happen after the first widget build, including
+    // the immediate readiness reports from these subscriptions.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final readiness = ref.read(mapReadinessProvider.notifier)..start();
-      final location = ref.read(locationProvider);
-      readiness.reportLocationReady(
-        location is LocationProviderActive ||
-            location is LocationProviderPaused,
+      _readinessNotifier.start();
+      _mapReadinessSubscription = ref.listenManual<MapReadinessState>(
+        mapReadinessProvider,
+        (previous, next) {
+          if (!mounted) return;
+          if (previous?.baseMapSettled != true && next.baseMapSettled) {
+            _logMapFlowEvent(
+              TelemetryFlowPhase.dependencyReady,
+              eventName: 'map.base_map_settled',
+              dependency: 'base_map',
+              data: {'source': next.baseMapSettledSource},
+            );
+          }
+          if (previous?.bootstrapTimedOut != true && next.bootstrapTimedOut) {
+            _handleMapBootstrapTimeout(next);
+          }
+        },
       );
-      readiness.reportCellsFetched(
-        _renderableMapState(ref.read(mapProvider)) != null,
+      _locationReadinessSubscription = ref.listenManual<LocationProviderState>(
+        locationProvider,
+        (_, next) {
+          final locationReady =
+              next is LocationProviderActive || next is LocationProviderPaused;
+          _readinessNotifier.reportLocationReady(locationReady);
+          if (!locationReady) {
+            _retainedMapGeneration++;
+            _retainedScenePainted = false;
+            _uploadedScene = null;
+            _resetOverlayReadinessForRefetch();
+          }
+        },
+        fireImmediately: true,
+      );
+      _mapReadinessStateSubscription = ref.listenManual<MapState>(mapProvider, (
+        _,
+        next,
+      ) {
+        _readinessNotifier.reportCellsFetched(
+          _renderableMapState(next) != null,
+        );
+        if (next is MapStateLoading) _resetOverlayReadinessForRefetch();
+      }, fireImmediately: true);
+      _baseMapSettledSignal = BaseMapSettledSignal(
+        onSettled: (source) {
+          if (!mounted) return;
+          _markBaseMapSettled(source: source);
+        },
+      );
+      _baseMapStyleLoadedSignal = BaseMapStyleLoadedSignal(
+        onLoaded: (source) {
+          if (!mounted) return;
+          _handleStyleLoaded(source: source);
+        },
       );
     });
   }
@@ -200,27 +227,30 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _locationReadinessSubscription?.close();
     _mapReadinessStateSubscription?.close();
     _notificationTimer?.cancel();
+    _renderCameraIdleTimer?.cancel();
     _baseMapSettledSignal?.dispose();
     _baseMapStyleLoadedSignal?.dispose();
+    _retainedRenderer.dispose();
     final span = _mapBootstrapSpan;
     if (span != null && !_steadyStateLogged) {
-      ref
-          .read(appObservabilityProvider)
-          .logFlowEvent(
-            'map.bootstrap',
-            TelemetryFlowPhase.cancelled,
-            'map',
-            eventName: 'map.bootstrap.cancelled',
-            span: span,
-            reason: 'disposed_before_steady_state',
-          );
+      _observability.logFlowEvent(
+        'map.bootstrap',
+        TelemetryFlowPhase.cancelled,
+        'map',
+        eventName: 'map.bootstrap.cancelled',
+        span: span,
+        reason: 'disposed_before_steady_state',
+      );
     }
     _endMapBootstrapSpan(
       statusCode: TelemetrySpanStatus.unset,
       statusMessage: 'disposed_before_steady_state',
     );
-    _mapController?.dispose();
-    ref.read(mapReadinessProvider.notifier).reset();
+    // The MapLibreMap child owns and disposes its controller.
+    _mapController = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _readinessNotifier.reset();
+    });
     super.dispose();
   }
 
@@ -255,18 +285,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
       TelemetrySpanStatus.error => TelemetryFlowPhase.failed,
       TelemetrySpanStatus.unset => TelemetryFlowPhase.cancelled,
     };
-    ref
-        .read(appObservabilityProvider)
-        .endSpan(
-          span,
-          statusCode: statusCode,
-          statusMessage: statusMessage,
-          attributes: {
-            ...?attributes,
-            'flow': 'map.bootstrap',
-            'phase': terminalPhase.wireName,
-          },
-        );
+    _observability.endSpan(
+      span,
+      statusCode: statusCode,
+      statusMessage: statusMessage,
+      attributes: {
+        ...?attributes,
+        'flow': 'map.bootstrap',
+        'phase': terminalPhase.wireName,
+      },
+    );
     _mapBootstrapSpan = null;
   }
 
@@ -325,23 +353,261 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _scheduleWebMapResize(reason: 'map_created');
   }
 
-  void _updateRenderCamera(maplibre.CameraPosition cameraPosition) {
+  Future<void> _attachRetainedRenderer() async {
+    if (_retainedRenderer.isAttached || _retainedAttachInFlight) return;
+    _retainedAttachInFlight = true;
+    try {
+      final attached = await _retainedRenderer.attach();
+      if (!mounted) return;
+      if (!attached) {
+        _useFlutterRenderer('unsupported_or_unavailable');
+        return;
+      }
+      // A recreated native map has no sources, even when the Dart scene has
+      // not changed. Its first rendered frame must satisfy readiness again.
+      _retainedMapGeneration++;
+      _uploadedScene = null;
+      _retainedScenePainted = false;
+      _resetOverlayReadinessForRefetch();
+      _renderCameraIdleTimer?.cancel();
+      _pendingExactScreenProjectionRequest = null;
+      final location = ref.read(locationProvider);
+      _retainedRenderer.updatePlayer(
+        ref.read(playerMarkerProvider),
+        trust: _playerMarkerTrust(location),
+      );
+      if (location is LocationProviderActive) {
+        _retainedRenderer.updateCameraTarget((
+          lat: location.location.lat,
+          lng: location.location.lng,
+        ));
+      }
+      setState(() {});
+    } catch (error) {
+      if (mounted) _useFlutterRenderer(error.toString());
+    } finally {
+      _retainedAttachInFlight = false;
+    }
+  }
+
+  void _useFlutterRenderer(String reason) {
+    _retainedRenderer.dispose();
+    setState(() => _retainedAttachFailed = true);
+    _logMapEvent('map.retained_renderer_unavailable', data: {'reason': reason});
+  }
+
+  void _updateCellScene(
+    MapStateReady? mapState,
+    Set<String> exploredCellIds,
+    ExplorationStateData explorationState,
+    TownProjection? town,
+  ) {
+    final key = (
+      mapState?.cells,
+      mapState?.visitedCellIds,
+      mapState?.knowledgeByCellId,
+      explorationState.visitedCellIds,
+      explorationState.currentCellId,
+      explorationState.currentPositionIsTrusted,
+      town,
+    );
+    if (_cellSceneKey == key) return;
+    _cellSceneKey = key;
+    _cellScene = mapState == null
+        ? const []
+        : _buildCellStates(mapState, exploredCellIds, explorationState);
+    _venueAnchors = _knownVenueAnchors(town, _cellScene);
+  }
+
+  void _uploadCellScene(Map<String, dynamic> renderDiagnostics) {
+    if (!_retainedRenderer.isAttached ||
+        identical(_uploadedScene, _cellScene)) {
+      return;
+    }
+    final scene = _cellScene;
+    final generation = _retainedMapGeneration;
+    _uploadedScene = scene;
+    _retainedScenePainted = false;
+    final venues = [
+      for (final anchor in _venueAnchors)
+        <String, Object?>{
+          'id': anchor.venue.knownVenue.venueId.value,
+          'cellId': anchor.anchorCellId,
+          'name': anchor.venue.venue.displayName,
+          'kind': anchor.venue.venue.kind,
+          'lat': anchor.position.lat,
+          'lng': anchor.position.lng,
+          'present': anchor.relationship == CellRelationship.present,
+        },
+    ];
+    bool isCurrentScene() =>
+        mounted &&
+        _retainedRenderer.isAttached &&
+        generation == _retainedMapGeneration &&
+        identical(_uploadedScene, scene);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!isCurrentScene()) return;
+      try {
+        await _retainedRenderer.updateScene(scene, venues: venues);
+      } catch (error) {
+        if (isCurrentScene()) _useFlutterRenderer(error.toString());
+        return;
+      }
+      if (!isCurrentScene()) return;
+      _retainedScenePainted = true;
+      _armOverlayFrameReadiness(
+        ref.read(mapReadinessProvider),
+        renderDiagnostics:
+            _retainedReadinessDiagnostics?.call() ?? renderDiagnostics,
+      );
+    });
+  }
+
+  bool get _canHandleMapTap =>
+      ref.read(mapReadinessProvider).isSteadyStateReady &&
+      (ModalRoute.of(context)?.isCurrent ?? true) &&
+      !_isPendingEncounterVisible(ref.read(pendingEncounterProvider)) &&
+      !ref.read(encounterProvider).hasActiveReward;
+
+  void _onRetainedCellTap(String cellId) {
+    if (!mounted || !_canHandleMapTap) return;
+    final mapState = _renderableMapState(ref.read(mapProvider));
+    if (mapState == null) return;
+    for (final entry in _cellScene) {
+      if (entry.cell.id != cellId) continue;
+      final interaction = _startCellInspection();
+      _showCellDetailSheet(
+        context,
+        entry.cell,
+        !mapState.visitedCellIds.contains(cellId),
+        entry.state,
+        _venueAnchors
+            .where((anchor) => anchor.anchorCellId == cellId)
+            .map((anchor) => anchor.venue)
+            .toList(growable: false),
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) interaction.complete(transition: 'cell_sheet_visible');
+      });
+      return;
+    }
+  }
+
+  ObservableInteractionTrace _startCellInspection() =>
+      ObservableInteractionTrace.start(
+        observability: ref.read(appObservabilityProvider),
+        interaction: PlayerActions.inspectMapCell,
+        surface: 'map.cell_overlay',
+        readinessState: ref.read(appReadinessProvider).phase.name,
+        screenName: 'map_screen',
+        widgetName: 'cell_overlay',
+        actionType: 'cell_overlay_tap',
+      );
+
+  void _updateRenderCamera(
+    maplibre.CameraPosition cameraPosition, {
+    bool isMoving = true,
+  }) {
     final nextPosition = (
       lat: cameraPosition.target.latitude,
       lng: cameraPosition.target.longitude,
     );
     final nextZoom = cameraPosition.zoom;
+    if (_retainedRenderer.isAttached) {
+      _renderCameraPosition = nextPosition;
+      _renderCameraZoom = nextZoom;
+      _renderCameraMoving = isMoving;
+      return;
+    }
+    if (isMoving) {
+      _renderCameraIdleTimer?.cancel();
+      _pendingExactScreenProjectionRequest = null;
+    }
     final currentPosition = _renderCameraPosition;
     final currentZoom = _renderCameraZoom;
     if (currentPosition != null &&
         currentZoom != null &&
         _sameGeoCoord(currentPosition, nextPosition) &&
-        (currentZoom - nextZoom).abs() < 0.0001) {
+        (currentZoom - nextZoom).abs() < 0.0001 &&
+        _renderCameraMoving == isMoving) {
       return;
     }
     setState(() {
       _renderCameraPosition = nextPosition;
       _renderCameraZoom = nextZoom;
+      _renderCameraMoving = isMoving;
+    });
+  }
+
+  Map<String, dynamic> _retainedRenderDiagnostics({
+    required List<({Cell cell, CellState state})> cellsWithStates,
+    required Size viewportSize,
+    required GeoCoord fallbackCameraPosition,
+    required PlayerMarkerState playerMarkerState,
+    required PlayerMarkerTrust markerTrust,
+    required String? currentCellId,
+    required int visitedCellCount,
+  }) {
+    final screenCenter = Offset(
+      viewportSize.width / 2,
+      viewportSize.height / 2,
+    );
+    final cameraPosition = _renderCameraPosition ?? fallbackCameraPosition;
+    final zoom = _renderCameraZoom ?? _kGpsZoom;
+    Offset project(GeoCoord coord) => _projectGeoCoordToScreen(
+      coord,
+      exactProjector: null,
+      cameraPosition: cameraPosition,
+      screenCenter: screenCenter,
+      zoom: zoom,
+    );
+    return {
+      ...const MapRenderDiagnosticsService().summarize(
+        cellsWithStates: cellsWithStates,
+        viewportSize: viewportSize,
+        project: project,
+        markerScreenPosition: screenCenter,
+        currentCellId: currentCellId,
+        visitedCellCount: visitedCellCount,
+        markerIsRing: playerMarkerState.isRing,
+        markerShowsRing: playerMarkerShowsRing(playerMarkerState, markerTrust),
+        markerGapDistanceMeters: playerMarkerState.gapDistance,
+      ),
+      'projection_mode': 'maplibre_retained',
+      'screen_projection_revision': null,
+    };
+  }
+
+  void _retryRetainedOverlayReadiness() {
+    if (!mounted || !_retainedRenderer.isAttached || !_retainedScenePainted)
+      return;
+    final readiness = ref.read(mapReadinessProvider);
+    if (readiness.isSteadyStateReady || readiness.overlayFramePainted) return;
+    final renderDiagnostics = _retainedReadinessDiagnostics?.call();
+    if (renderDiagnostics == null) return;
+    _armOverlayFrameReadiness(readiness, renderDiagnostics: renderDiagnostics);
+  }
+
+  void _handleRenderCameraIdle() {
+    if (_retainedRenderer.isAttached) {
+      final cameraPosition = _mapController?.cameraPosition;
+      if (cameraPosition != null) {
+        _updateRenderCamera(cameraPosition, isMoving: false);
+      } else {
+        _renderCameraMoving = false;
+      }
+      _retryRetainedOverlayReadiness();
+      return;
+    }
+    _renderCameraIdleTimer?.cancel();
+    _renderCameraIdleTimer = Timer(DesignMotion.release, () {
+      if (!mounted) return;
+      final cameraPosition = _mapController?.cameraPosition;
+      if (cameraPosition != null) {
+        _updateRenderCamera(cameraPosition, isMoving: false);
+      } else if (_renderCameraMoving) {
+        setState(() => _renderCameraMoving = false);
+      }
     });
   }
 
@@ -384,7 +650,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final resizeReason = _pendingWebMapResizeReason ?? reason;
       _pendingWebMapResizeReason = null;
       controller.forceResizeWebMap();
-      _clearExactScreenProjection();
+      if (!_retainedRenderer.isAttached) _clearExactScreenProjection();
 
       _logMapFlowEvent(
         TelemetryFlowPhase.dependencyReady,
@@ -412,6 +678,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   void _handleStyleLoaded({required String source}) {
+    if (_prefersRetainedRenderer) unawaited(_attachRetainedRenderer());
     if (ref.read(mapReadinessProvider).styleLoaded) {
       unawaited(_hideBaseMapTextLabels(source: source));
       return;
@@ -495,6 +762,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     MapReadinessState readiness, {
     required Map<String, dynamic> renderDiagnostics,
   }) {
+    if (_prefersRetainedRenderer && !_retainedScenePainted) return;
     final canPaintSteadyOverlay =
         readiness.locationReady &&
         readiness.mapCreated &&
@@ -506,21 +774,35 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      var currentDiagnostics = renderDiagnostics;
+      if (_prefersRetainedRenderer) {
+        if (!_retainedScenePainted) return;
+        final retainedDiagnostics = _retainedReadinessDiagnostics?.call();
+        if (retainedDiagnostics == null) return;
+        currentDiagnostics = retainedDiagnostics;
+      }
+      final currentReadiness = ref.read(mapReadinessProvider);
+      if (!currentReadiness.locationReady ||
+          !currentReadiness.mapCreated ||
+          !currentReadiness.styleLoaded ||
+          !currentReadiness.baseMapSettled ||
+          !currentReadiness.cellsFetched ||
+          currentReadiness.overlayFramePainted) {
+        return;
+      }
       final hasMeaningfulContent = mapOverlayHasMeaningfulContent(
-        renderDiagnostics,
+        currentDiagnostics,
       );
-      if (!ref
-          .read(mapReadinessProvider.notifier)
-          .reportOverlayFramePainted(
-            hasMeaningfulContent: hasMeaningfulContent,
-          )) {
+      if (!_readinessNotifier.reportOverlayFramePainted(
+        hasMeaningfulContent: hasMeaningfulContent,
+      )) {
         return;
       }
       _logMapFlowEvent(
         TelemetryFlowPhase.dependencyReady,
         eventName: 'map.overlay_frame_painted',
         dependency: 'overlay_frame',
-        data: renderDiagnostics,
+        data: currentDiagnostics,
       );
       _logSteadyStateReady();
     });
@@ -612,6 +894,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   void _scheduleExactScreenProjection(_ExactScreenProjectionRequest request) {
+    if (_retainedRenderer.isAttached) return;
     final readiness = ref.read(mapReadinessProvider);
     if (!readiness.mapCreated ||
         !readiness.styleLoaded ||
@@ -630,7 +913,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   void _pumpExactScreenProjectionQueue() {
-    if (_exactScreenProjectionInFlight) return;
+    if (_retainedRenderer.isAttached) return;
+    if (_renderCameraMoving || _exactScreenProjectionInFlight) return;
     final controller = _mapController;
     final request = _pendingExactScreenProjectionRequest;
     if (controller == null || request == null) return;
@@ -651,7 +935,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
           (coord) => maplibre.LatLng(coord.lat, coord.lng),
         ),
       );
-      if (!mounted) return;
+      if (!mounted || _renderCameraMoving || _retainedRenderer.isAttached) {
+        return;
+      }
       if (screenPoints.length != request.coordinateKeys.length) {
         _logMapEvent(
           'map.screen_projection_failed',
@@ -815,37 +1101,91 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final userId = authState.status == AuthStatus.authenticated
         ? authState.user!.id
         : '';
-    final locationState = ref.watch(locationProvider);
+    if (_prefersRetainedRenderer) {
+      ref.watch(
+        locationProvider.select(
+          (state) => (
+            state.runtimeType,
+            state is LocationProviderError ? state.message : null,
+          ),
+        ),
+      );
+    }
+    final locationState = _prefersRetainedRenderer
+        ? ref.read(locationProvider)
+        : ref.watch(locationProvider);
     final mapState = ref.watch(mapProvider);
     final readiness = ref.watch(mapReadinessProvider);
-    final cameraFollowState = ref.watch(cameraFollowProvider);
-    final playerMarkerState = ref.watch(playerMarkerProvider);
-    final explorationEligibility = ref.watch(explorationEligibilityProvider);
+    final cameraFollowState = _prefersRetainedRenderer
+        ? const CameraFollowState.noFix()
+        : ref.watch(cameraFollowProvider);
+    if (_prefersRetainedRenderer) {
+      ref.watch(
+        playerMarkerProvider.select(
+          (marker) => (marker.isRing, marker.lat != 0.0),
+        ),
+      );
+    }
+    final playerMarkerState = _prefersRetainedRenderer
+        ? ref.read(playerMarkerProvider)
+        : ref.watch(playerMarkerProvider);
+    ref.watch(
+      explorationEligibilityProvider.select(
+        (eligibility) => (
+          eligibility.canRecordVisits,
+          eligibility.isPaused,
+          eligibility.reason,
+        ),
+      ),
+    );
+    final explorationEligibility = ref.read(explorationEligibilityProvider);
     final explorationState = ref.watch(explorationProvider);
     final encounterState = ref.watch(encounterProvider);
     final townState = ref.watch(townProvider);
     _syncTownProjection(authState, townState);
 
-    // Move camera from the fast smoothed camera-follow state, not directly from
-    // raw GPS. Raw GPS remains the target, but smoothing removes jitter.
-    ref.listen(cameraFollowProvider, (_, cameraState) {
-      if (cameraState.hasFix && _mapController != null) {
-        _mapController!.moveCamera(
-          maplibre.CameraUpdate.newLatLng(
-            maplibre.LatLng(cameraState.lat, cameraState.lng),
-          ),
+    if (_prefersRetainedRenderer) {
+      ref.listen<LocationProviderState>(locationProvider, (_, next) {
+        _retainedRenderer.updatePlayer(
+          ref.read(playerMarkerProvider),
+          trust: _playerMarkerTrust(next),
         );
-      }
-    });
+        if (next is LocationProviderActive) {
+          _retainedRenderer.updateCameraTarget((
+            lat: next.location.lat,
+            lng: next.location.lng,
+          ));
+        }
+      });
+    } else {
+      // Native fallback follows the fast smoothed camera state, not raw GPS.
+      ref.listen(cameraFollowProvider, (_, cameraState) {
+        if (cameraState.hasFix && _mapController != null) {
+          _mapController!.moveCamera(
+            maplibre.CameraUpdate.newLatLng(
+              maplibre.LatLng(cameraState.lat, cameraState.lng),
+            ),
+          );
+        }
+      });
+    }
 
     ref.listen<PlayerMarkerState>(playerMarkerProvider, (_, markerState) {
+      _retainedRenderer.updatePlayer(
+        markerState,
+        trust: _playerMarkerTrust(ref.read(locationProvider)),
+      );
       final mapState = ref.read(mapProvider);
       if (mapState case MapStateReady(
         :final cells,
         :final visitedCellIds,
         :final knowledgeByCellId,
       )) {
-        final explorationEligibility = ref.read(explorationEligibilityProvider);
+        final explorationEligibility =
+            ExplorationEligibility.fromLocationAndMarker(
+              ref.read(locationProvider),
+              markerState,
+            );
         unawaited(
           ref
               .read(explorationProvider.notifier)
@@ -867,12 +1207,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
         :final visitedCellIds,
         :final knowledgeByCellId,
       )) {
-        final explorationEligibility = ref.read(explorationEligibilityProvider);
+        final markerState = ref.read(playerMarkerProvider);
+        final explorationEligibility =
+            ExplorationEligibility.fromLocationAndMarker(
+              ref.read(locationProvider),
+              markerState,
+            );
         unawaited(
           ref
               .read(explorationProvider.notifier)
               .onPositionUpdate(
-                markerState: ref.read(playerMarkerProvider),
+                markerState: markerState,
                 cells: cells,
                 visitedCellIds: visitedCellIds,
                 knowledgeByCellId: knowledgeByCellId,
@@ -928,14 +1273,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
             : null,
       _ => null,
     };
-    final markerTrust = switch (locationState) {
-      LocationProviderPaused() => PlayerMarkerTrust.paused,
-      LocationProviderActive(location: final location) =>
-        location.isConfident
-            ? PlayerMarkerTrust.trusted
-            : PlayerMarkerTrust.lowConfidence,
-      _ => PlayerMarkerTrust.trusted,
-    };
+    final markerTrust = _playerMarkerTrust(locationState);
 
     return ObservableScreen(
       screenName: 'map_screen',
@@ -1003,6 +1341,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
       optimisticVisitedCellIds: explorationState.visitedCellIds,
     );
     final cellsObserved = footprint.uniqueCount;
+    _updateCellScene(
+      renderableMapState,
+      footprint.visitedCellIds,
+      explorationState,
+      town,
+    );
+    final retained = _retainedRenderer.isAttached;
     final desktopControlsAvailable = ref.watch(
       desktopControlsAvailableProvider,
     );
@@ -1025,29 +1370,30 @@ class _MapScreenState extends ConsumerState<MapScreen>
           final renderCameraPosition =
               _renderCameraPosition ?? desiredCameraPosition;
           final renderZoom = _renderCameraZoom ?? _kGpsZoom;
-          final cellsWithStates = renderableMapState != null
-              ? _buildCellStates(
-                  renderableMapState,
-                  footprint.visitedCellIds,
-                  explorationState,
-                )
-              : <({Cell cell, CellState state})>[];
+          final cellsWithStates = _cellScene;
           final markerGeoCoord = (
             lat: playerMarkerState.lat,
             lng: playerMarkerState.lng,
           );
-          final exactProjectionRequest = _ExactScreenProjectionRequest.from(
-            cellsWithStates: cellsWithStates,
-            markerPosition: markerGeoCoord,
-            cameraPosition: renderCameraPosition,
-            zoom: renderZoom,
-          );
-          _scheduleExactScreenProjection(exactProjectionRequest);
+          final exactProjectionRequest = retained
+              ? null
+              : _ExactScreenProjectionRequest.from(
+                  cellsWithStates: cellsWithStates,
+                  markerPosition: markerGeoCoord,
+                  cameraPosition: renderCameraPosition,
+                  zoom: renderZoom,
+                );
+          final exactProjectionKey = exactProjectionRequest?.key ?? '';
+          if (!_renderCameraMoving && exactProjectionRequest != null) {
+            _scheduleExactScreenProjection(exactProjectionRequest);
+          }
           final exactProjectionReady =
-              _exactScreenProjectionKey == exactProjectionRequest.key;
-          final rawExactProjector = _exactScreenProjectionProjector(
-            exactProjectionRequest.key,
-          );
+              !_renderCameraMoving &&
+              exactProjectionRequest != null &&
+              _exactScreenProjectionKey == exactProjectionKey;
+          final rawExactProjector = retained
+              ? null
+              : _exactScreenProjectionProjector(exactProjectionKey);
           final exactProjectedCameraPosition = exactProjectionReady
               ? _exactScreenProjectionByCoordKey[exactProjectionRequest
                     .cameraCoordKey]
@@ -1060,7 +1406,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
               );
           if (exactProjectionReady && !exactProjectionCenterAligned) {
             _handleMisalignedExactProjection(
-              projectionKey: exactProjectionRequest.key,
+              projectionKey: exactProjectionKey,
               exactProjectedCameraPosition: exactProjectedCameraPosition,
               screenCenter: screenCenter,
               mapSize: mapSize,
@@ -1084,32 +1430,48 @@ class _MapScreenState extends ConsumerState<MapScreen>
             );
           }
 
-          final markerScreenPosition = exactProjectionCenterAligned
-              ? _exactProjectedMarkerPosition(exactProjectionRequest.key) ??
+          final markerScreenPosition = retained
+              ? screenCenter
+              : exactProjectionCenterAligned
+              ? _exactProjectedMarkerPosition(exactProjectionKey) ??
                     projectGeoCoord(markerGeoCoord)
               : projectGeoCoord(markerGeoCoord);
-          final venueAnchors = _knownVenueAnchors(town, cellsWithStates);
+          final venueAnchors = _venueAnchors;
           final markerShowsRing = playerMarkerShowsRing(
             playerMarkerState,
             markerTrust,
           );
-          final renderDiagnostics = {
-            ...const MapRenderDiagnosticsService().summarize(
+          if (retained) {
+            _retainedReadinessDiagnostics = () => _retainedRenderDiagnostics(
               cellsWithStates: cellsWithStates,
               viewportSize: mapSize,
-              project: projectGeoCoord,
-              markerScreenPosition: markerScreenPosition,
+              fallbackCameraPosition: desiredCameraPosition,
+              playerMarkerState: playerMarkerState,
+              markerTrust: markerTrust,
               currentCellId: explorationState.currentCellId,
               visitedCellCount: footprint.uniqueCount,
-              markerIsRing: playerMarkerState.isRing,
-              markerShowsRing: markerShowsRing,
-              markerGapDistanceMeters: playerMarkerState.gapDistance,
-            ),
-            'projection_mode': projectionMode,
-            'screen_projection_revision': exactProjectionReady
-                ? _exactScreenProjectionRevision
-                : null,
-          };
+            );
+          }
+          final renderDiagnostics = retained
+              ? _retainedReadinessDiagnostics!()
+              : {
+                  ...const MapRenderDiagnosticsService().summarize(
+                    cellsWithStates: cellsWithStates,
+                    viewportSize: mapSize,
+                    project: projectGeoCoord,
+                    markerScreenPosition: markerScreenPosition,
+                    currentCellId: explorationState.currentCellId,
+                    visitedCellCount: footprint.uniqueCount,
+                    markerIsRing: playerMarkerState.isRing,
+                    markerShowsRing: markerShowsRing,
+                    markerGapDistanceMeters: playerMarkerState.gapDistance,
+                  ),
+                  'projection_mode': projectionMode,
+                  'screen_projection_revision': exactProjectionReady
+                      ? _exactScreenProjectionRevision
+                      : null,
+                };
+          _uploadCellScene(renderDiagnostics);
           final desktopTraversalBlocked =
               !readiness.isSteadyStateReady ||
               _isPendingEncounterVisible(pendingEncounterState) ||
@@ -1120,10 +1482,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
             renderDiagnostics: renderDiagnostics,
           );
           _logReadinessWaiting(readiness);
-          _logGeometryRenderDiagnostics(
-            cellsWithStates: cellsWithStates,
-            renderDiagnostics: renderDiagnostics,
-          );
+          if (!retained) {
+            _logGeometryRenderDiagnostics(
+              cellsWithStates: cellsWithStates,
+              renderDiagnostics: renderDiagnostics,
+            );
+          }
 
           return Stack(
             children: [
@@ -1131,8 +1495,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
               // Previously `ValueKey('$timestamp:$lat:$lng')` caused the entire
               // MapLibreMap (and its GL context) to be torn down and rebuilt on
               // every GPS tick (~1 Hz), making the map constantly flash.
-              // Camera follow is handled by cameraFollowProvider above so raw
-              // GPS remains the target without hard-snapping the camera.
+              // Native camera follow stays in Dart; web follow is retained.
               Positioned.fill(
                 child: DesktopTraversalInput(
                   enabled: desktopTraversalEnabled,
@@ -1178,6 +1541,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                               ),
                               zoom: _kGpsZoom,
                             ),
+                        isMoving: false,
                       );
                       _markMapCreated();
                       _logMapFlowEvent(
@@ -1189,7 +1553,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     onCameraMove: (cameraPosition) {
                       _updateRenderCamera(cameraPosition);
                     },
-                    onMapClick: desktopTraversalEnabled
+                    onCameraIdle: _handleRenderCameraIdle,
+                    onMapClick: desktopTraversalEnabled && !retained
                         ? (point, _) {
                             final readyMapState = renderableMapState;
                             if (readyMapState == null) return;
@@ -1197,7 +1562,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                               context,
                               Offset(point.x, point.y),
                               readyMapState,
-                              exactProjectionRequest.key,
+                              exactProjectionKey,
                               cellsWithStates,
                               projectGeoCoord,
                               venueAnchors,
@@ -1215,7 +1580,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
               ),
 
               // Shimmer while loading
-              if (mapState is MapStateLoading)
+              if (!retained && mapState is MapStateLoading)
                 Positioned.fill(
                   child: ShimmerCells(
                     cameraPosition: renderCameraPosition,
@@ -1224,7 +1589,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 ),
 
               // Cell overlay layer - drawn on top of map using Flutter Canvas
-              if (renderableMapState != null)
+              if (!retained && renderableMapState != null)
                 Positioned.fill(
                   child: IgnorePointer(
                     ignoring: desktopTraversalEnabled,
@@ -1234,7 +1599,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         context,
                         details.localPosition,
                         renderableMapState,
-                        exactProjectionRequest.key,
+                        exactProjectionKey,
                         cellsWithStates,
                         projectGeoCoord,
                         venueAnchors,
@@ -1257,14 +1622,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 ),
 
               // Player marker overlay — the app owns one gameplay marker.
-              if (playerMarkerState.lat != 0.0)
+              if (!retained && playerMarkerState.lat != 0.0)
                 Positioned(
                   left: markerScreenPosition.dx - 24,
                   top: markerScreenPosition.dy - 24,
                   child: IgnorePointer(child: PlayerMarker(trust: markerTrust)),
                 ),
 
-              for (final venueAnchor in venueAnchors)
+              for (final venueAnchor
+                  in retained ? const <_KnownVenueAnchor>[] : venueAnchors)
                 Positioned(
                   left: projectGeoCoord(venueAnchor.position).dx - 16,
                   top: projectGeoCoord(venueAnchor.position).dy - 16,
@@ -1392,15 +1758,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     Offset Function(GeoCoord coord) project,
     List<_KnownVenueAnchor> venueAnchors,
   ) {
-    final interaction = ObservableInteractionTrace.start(
-      observability: ref.read(appObservabilityProvider),
-      interaction: PlayerActions.inspectMapCell,
-      surface: 'map.cell_overlay',
-      readinessState: ref.read(appReadinessProvider).phase.name,
-      screenName: 'map_screen',
-      widgetName: 'cell_overlay',
-      actionType: 'cell_overlay_tap',
-    );
+    final interaction = _startCellInspection();
     // Find the cell that was tapped (simplified - find closest cell center)
     ({Cell cell, CellState state})? closestEntry;
     double closestDistance = double.infinity;
