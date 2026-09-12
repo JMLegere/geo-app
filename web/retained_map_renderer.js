@@ -337,8 +337,11 @@
       player?.marker.remove();
       for (const cue of cues.values()) cue.remove();
       for (const venue of venues.values()) venue.marker.remove();
-      for (const id of [...layerIds].reverse()) if (map.getLayer(id)) map.removeLayer(id);
-      for (const id of [CELLS,EDGES,OUTSIDE]) if (map.getSource(id)) map.removeSource(id);
+      // MapLibre destroys its style before emitting remove.
+      if (map.getStyle()) {
+        for (const id of [...layerIds].reverse()) if (map.getLayer(id)) map.removeLayer(id);
+        for (const id of [CELLS,EDGES,OUTSIDE]) if (map.getSource(id)) map.removeSource(id);
+      }
       for (const resolve of waiters.splice(0)) resolve();
       if (canvas) {
         if (originalLabel === null) canvas.removeAttribute('aria-label');
