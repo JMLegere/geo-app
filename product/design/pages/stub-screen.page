@@ -2,8 +2,8 @@ Page: StubScreen
 Status: canonical
 Role: temporary-route-page
 Interaction policy: display
-Exports: lib/shared/widgets/stub_screen.dart
-Public API: lib/shared/widgets/stub_screen.dart
+Exports: lib/ui/product_surfaces/system/stub_screen.dart
+Public API: lib/ui/product_surfaces/system/stub_screen.dart
 
 Purpose:
   Phase 6 neutral fallback page for unimplemented routes. It preserves the label and coming-soon message with no product action.

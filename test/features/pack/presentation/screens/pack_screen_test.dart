@@ -10,7 +10,7 @@ import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
-import 'package:earth_nova/features/pack/presentation/screens/pack_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/pack/screens/pack_screen.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 
 void main() {
@@ -795,10 +795,10 @@ void main() {
 
     test('source: Pack presentation uses only neutral design vocabulary', () {
       final source = File(
-        'lib/features/pack/presentation/screens/pack_screen.dart',
+        'lib/ui/product_surfaces/pack/screens/pack_screen.dart',
       ).readAsStringSync();
 
-      expect(source, contains("package:earth_nova/shared/design.dart"));
+      expect(source, contains("package:earth_nova/ui/design_system.dart"));
       for (final token in const [
         'AppTheme',
         'design_tokens',
@@ -880,7 +880,7 @@ void main() {
 
     test('source: PackScreen does not dispose injected controller', () {
       final source = File(
-        'lib/features/pack/presentation/screens/pack_screen.dart',
+        'lib/ui/product_surfaces/pack/screens/pack_screen.dart',
       ).readAsStringSync();
 
       // When a controller is injected, the widget must NOT call dispose() on it.
@@ -891,7 +891,9 @@ void main() {
     test('source: main.dart enables mouse drag via scrollBehavior', () {
       // OverscrollNotification fires correctly with default ClampingScrollPhysics
       // once mouse is included in dragDevices. The fix lives in MaterialApp.
-      final mainSource = File('lib/main.dart').readAsStringSync();
+      final mainSource = File(
+        'lib/ui/product_surfaces/app/earth_nova_app.dart',
+      ).readAsStringSync();
       expect(mainSource, contains('scrollBehavior'));
       expect(mainSource, contains('PointerDeviceKind.mouse'));
     });

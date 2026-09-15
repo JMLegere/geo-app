@@ -7,7 +7,7 @@ import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
-import 'package:earth_nova/features/identification/presentation/screens/identification_service_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/identification/screens/identification_service_screen.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:earth_nova/features/living_world/domain/entities/authored_living_world_entities.dart';
 import 'package:flutter/material.dart';

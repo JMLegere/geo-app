@@ -63,7 +63,7 @@ Every Markdown file in the repository must match exactly one row below. A docume
 | `docs/prd-target-container-migration.md` | `CURRENT-SCOPED` | Approved Issue #592 migration requirements; only the explicitly authorized first deployable slice is active |
 | `docs/prd-shadcn-ui-reset.md` | `CURRENT-SCOPED` | Phases 1–7 complete locally; final [Phase 7 acceptance](../.agents/qa/2026-09-02-shadcn-reset-phase-7-final-acceptance.md) passed; production deployment remains unauthorized |
 | `docs/issue-596-finish-plan.md` | `CURRENT-SCOPED` | Issue #596 delivery sequence; implementation evidence and acceptance remain tracked separately |
-| `lib/shared/design/README.md` | `CURRENT-SCOPED` | Shared design-library usage |
+| `lib/ui/design_system/README.md` | `CURRENT-SCOPED` | Reusable design-system usage and public API |
 | `2026-04-03-*.md` | `HISTORICAL-EVIDENCE` | Dated v3 planning and backlog |
 | `docs/design.md`, `docs/map-design.md`, `docs/prd-game-systems*.md` | `HISTORICAL-EVIDENCE` | Prior product and implementation intent |
 | `docs/eac-native-design-migration-plan.md`, `.agents/eac-native-design-migration-plan.md` | `HISTORICAL-EVIDENCE` | Completed/superseded migration planning |

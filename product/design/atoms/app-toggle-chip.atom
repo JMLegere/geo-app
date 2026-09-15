@@ -2,8 +2,8 @@ Atom: AppToggleChip
 Status: canonical
 Role: button
 Interaction policy: delegates-to-children
-Exports: lib/shared/design/primitives/app_toggle_chip.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/primitives/app_toggle_chip.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Immediate accessible filter selection using the shared Shad foundation.

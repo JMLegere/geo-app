@@ -2,8 +2,8 @@ Organism: AppInspectionPanel
 Status: canonical
 Role: item-detail-overlay
 Interaction policy: action-required
-Exports: lib/shared/design/patterns/app_inspection_panel.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/patterns/app_inspection_panel.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Shared nearly-full-width Item detail surface whose feature-owned content

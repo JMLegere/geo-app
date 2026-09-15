@@ -8,8 +8,8 @@ import 'package:earth_nova/features/auth/presentation/providers/auth_provider.da
 import 'package:earth_nova/features/home/domain/entities/home.dart';
 import 'package:earth_nova/features/home/domain/repositories/home_repository.dart';
 import 'package:earth_nova/features/home/presentation/providers/home_provider.dart';
-import 'package:earth_nova/features/home/presentation/screens/home_screen.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/product_surfaces/home/screens/home_screen.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

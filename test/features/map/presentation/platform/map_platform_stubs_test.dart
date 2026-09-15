@@ -1,7 +1,7 @@
-import 'package:earth_nova/features/map/presentation/platform/base_map_settled_signal.dart';
-import 'package:earth_nova/features/map/presentation/platform/base_map_style_loaded_signal.dart';
-import 'package:earth_nova/features/map/presentation/platform/map_level_gesture_bridge.dart';
-import 'package:earth_nova/features/map/presentation/platform/maplibre_platform_view_visibility_bridge.dart';
+import 'package:earth_nova/ui/product_surfaces/map/platform/base_map_settled_signal.dart';
+import 'package:earth_nova/ui/product_surfaces/map/platform/base_map_style_loaded_signal.dart';
+import 'package:earth_nova/ui/product_surfaces/map/platform/map_level_gesture_bridge.dart';
+import 'package:earth_nova/ui/product_surfaces/map/platform/maplibre_platform_view_visibility_bridge.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

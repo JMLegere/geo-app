@@ -1,0 +1,31 @@
+{
+  "version": 8,
+  "name": "EarthNova fixed Halifax documentary backdrop",
+  "metadata": {
+    "earthNova": {
+      "expectedBuiltAssetUrl": "assets/assets/map/reference.png",
+      "assetUrlStatus": "verified by Flutter web build on 2026-09-15",
+      "referenceMetadata": "assets/map/reference.json",
+      "limitations": "Documentary-only fixed image; noninteractive and without live map requests."
+    }
+  },
+  "sources": {
+    "halifax-documentary-backdrop": {
+      "type": "image",
+      "url": "assets/assets/map/reference.png",
+      "coordinates": [
+        [-63.591366861125294, 44.65466743354776],
+        [-63.55903313887218, 44.65466743354776],
+        [-63.55903313887218, 44.63933155281339],
+        [-63.591366861125294, 44.63933155281339]
+      ]
+    }
+  },
+  "layers": [
+    {
+      "id": "halifax-documentary-backdrop",
+      "type": "raster",
+      "source": "halifax-documentary-backdrop"
+    }
+  ]
+}

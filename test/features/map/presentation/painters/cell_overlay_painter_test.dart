@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
-import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
+import 'package:earth_nova/ui/product_surfaces/map/rendering/cell_overlay_painter.dart';
 
 void main() {
   group('CellOverlayPainter', () {
@@ -139,7 +139,7 @@ void main() {
 
     test('paints an unknown backdrop layer behind fetched cell fills', () {
       final source = File(
-        'lib/features/map/presentation/painters/cell_overlay_painter.dart',
+        'lib/ui/product_surfaces/map/rendering/cell_overlay_painter.dart',
       ).readAsStringSync();
 
       expect(source, contains('canvas.saveLayer'));
@@ -150,7 +150,7 @@ void main() {
 
     test('preserves a shrouded frontier through render canonicalization', () {
       final source = File(
-        'lib/features/map/presentation/painters/cell_overlay_painter.dart',
+        'lib/ui/product_surfaces/map/rendering/cell_overlay_painter.dart',
       ).readAsStringSync();
 
       expect(
@@ -165,7 +165,7 @@ void main() {
 
     test('uses a monochrome category cue with contrasting boundaries', () {
       final source = File(
-        'lib/features/map/presentation/painters/cell_overlay_painter.dart',
+        'lib/ui/product_surfaces/map/rendering/cell_overlay_painter.dart',
       ).readAsStringSync();
 
       expect(source, isNot(contains('AppTheme')));

@@ -1,0 +1,43 @@
+name: earth_nova_widgetbook
+description: Isolated visual workbench for EarthNova UI.
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+  flutter: 3.41.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  earth_nova:
+    path: ..
+  flutter_riverpod: 3.3.2
+  riverpod: 3.3.2
+  widgetbook: 3.23.0
+  widgetbook_annotation: 3.11.0
+  shadcn_ui: 0.56.2
+  supabase: 2.10.2
+  supabase_flutter: 2.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  build_runner: 2.10.0
+  widgetbook_generator: 3.23.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/map/reference.png
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+    - family: Noto Sans Symbols
+      fonts:
+        - asset: assets/fonts/NotoSansSymbols2-Regular.ttf
+    - family: Noto Color Emoji
+      fonts:
+        - asset: assets/fonts/NotoColorEmoji.ttf

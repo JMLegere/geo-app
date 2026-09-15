@@ -6,8 +6,8 @@ import 'dart:io';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/diagnostics/map_render_diagnostics_service.dart';
-import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
-import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
+import 'package:earth_nova/ui/product_surfaces/map/rendering/fog_renderer.dart';
+import 'package:earth_nova/ui/product_surfaces/map/rendering/cell_tessellation_render_model.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_fetch_coverage_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 

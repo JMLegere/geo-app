@@ -13,7 +13,7 @@ import 'package:earth_nova/features/map/presentation/providers/location_provider
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
-import 'package:earth_nova/shared/widgets/tab_shell.dart';
+import 'package:earth_nova/ui/product_surfaces/app/tab_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('root app logs lifecycle transitions and flushes when backgrounded', () {
-    final mainSource = File('lib/main.dart').readAsStringSync();
+    final mainSource = File('lib/ui/product_surfaces/app/earth_nova_app.dart')
+        .readAsStringSync();
 
     expect(mainSource, contains('with WidgetsBindingObserver'));
     expect(mainSource, contains('WidgetsBinding.instance.addObserver(this)'));

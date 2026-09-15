@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/shared/observability/widgets/error_boundary_retry.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:flutter/material.dart';
 
 class ObservableScreen extends StatefulWidget {

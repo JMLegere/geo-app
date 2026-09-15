@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
-import 'package:earth_nova/features/map/presentation/widgets/district_footprint_map.dart';
-import 'package:earth_nova/features/map/presentation/widgets/hierarchy_exploration_map.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/district_footprint_map.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/hierarchy_exploration_map.dart';
 import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
 
 import 'package:flutter/material.dart';

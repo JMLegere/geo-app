@@ -10,7 +10,7 @@ void main() {
   String read(String path) => File('$root/$path').readAsStringSync();
 
   test('preserves the migration contract', () {
-    final appRoot = read('lib/main.dart');
+    final appRoot = read('lib/ui/product_surfaces/app/earth_nova_app.dart');
     expect(appRoot, contains('theme: AppDesignTheme.dark()'));
     expect(appRoot, contains('themeMode: ThemeMode.dark'));
     expect(appRoot, contains('theme: Theme.of(context)'));
@@ -24,7 +24,7 @@ void main() {
       expect(appRoot, contains(delegate));
     }
     expect(appRoot, isNot(contains('AppTheme.dark(')));
-    final tabShell = read('lib/shared/widgets/tab_shell.dart');
+    final tabShell = read('lib/ui/product_surfaces/app/tab_shell.dart');
     final template = read(
       'product/design/templates/primary-navigation-shell.template',
     );
@@ -50,6 +50,7 @@ void main() {
     expect(appRoot, contains('loading: () => const LoadingScreen()'));
     expect(appRoot, contains('unauthenticated: () => const LoginScreen()'));
     expect(appRoot, contains('error: (_) => const LoginScreen()'));
+    expect(read('lib/main.dart'), contains('child: const EarthNovaApp()'));
 
     final destinations = RegExp(
       r'const _bottomNavItems = \[(.*?)\];',
@@ -95,7 +96,7 @@ void main() {
   });
 
   test('pins shadcn_ui and integrates the Shad root', () {
-    final appRoot = read('lib/main.dart');
+    final appRoot = read('lib/ui/product_surfaces/app/earth_nova_app.dart');
 
     expect(
       RegExp(

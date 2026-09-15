@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/design_system.dart';
 
 // Isolated review entry point: uses production widgets, no backend or auth.
 void main() => runApp(ui596Workbench());

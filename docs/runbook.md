@@ -48,7 +48,36 @@ gh workflow run deploy-prod.yml
 
 See `.github/workflows/` for the deploy flow.
 
+## Local visual workshop
+
+The isolated `widgetbook/` package renders production widgets with fixed,
+in-memory fixtures. It must not initialize production authentication,
+geolocation, storage, telemetry, or repositories.
+
+```bash
+cd widgetbook
+mise exec -- flutter pub get
+mise exec -- dart run build_runner build
+mise exec -- flutter analyze --no-pub
+mise exec -- flutter test --no-pub test/catalog_contract_test.dart test/fixture_safety_test.dart test/visual_goldens_test.dart
+mise exec -- flutter run -d chrome --no-web-resources-cdn
+```
+
+The generated catalog file is committed and checked for drift in CI. Native
+and composited MapLibre browser baselines change only through deliberate
+review; CI uploads the built workshop and visual artifacts without publishing
+a permanent site.
+
+The browser job in `.github/workflows/ci.yml` captures every Map-only story at
+both `BROWSER_GOLDEN_VIEWPORT=wide` (`1440x1000@1`) and `narrow`
+(`390x844@1`), then runs `test/browser_golden_test.dart` with its pinned
+`BROWSER_GOLDEN_ENV`. Both capture runs must succeed before comparing or
+deliberately updating browser baselines. Requested filenames are not state
+proof: the harness asserts Widgetbook's selected path and the visible state
+before writing observed route/viewport metadata.
+
 ---
+
 
 ## Deploy
 

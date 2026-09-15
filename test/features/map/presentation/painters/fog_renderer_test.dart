@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
-import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
+import 'package:earth_nova/ui/product_surfaces/map/rendering/fog_renderer.dart';
 
 CellState _state(
   CellKnowledgeState knowledgeState, {

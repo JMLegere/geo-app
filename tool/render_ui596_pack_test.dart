@@ -6,12 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
-import 'package:earth_nova/features/pack/presentation/screens/pack_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/pack/screens/pack_screen.dart';
 
 /// Actual screen, isolated fixtures; fallback symbols are not approved Item art.
 void main() {

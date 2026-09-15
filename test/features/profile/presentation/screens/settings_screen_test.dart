@@ -15,7 +15,7 @@ import 'package:earth_nova/core/persistence/shared_preferences_provider.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/desktop_controls_provider.dart';
-import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/profile/screens/settings_screen.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:sembast/sembast_memory.dart';
 

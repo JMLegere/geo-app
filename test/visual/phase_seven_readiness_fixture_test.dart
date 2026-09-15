@@ -1,5 +1,5 @@
 import 'package:earth_nova/app/readiness/app_readiness.dart';
-import 'package:earth_nova/app/readiness/app_readiness_gate.dart';
+import 'package:earth_nova/ui/product_surfaces/app/app_readiness_gate.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
@@ -18,7 +18,7 @@ import 'package:earth_nova/features/map/presentation/providers/player_marker_pro
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
-import 'package:earth_nova/shared/widgets/tab_shell.dart';
+import 'package:earth_nova/ui/product_surfaces/app/tab_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

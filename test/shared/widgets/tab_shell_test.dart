@@ -21,11 +21,11 @@ import 'package:earth_nova/features/map/presentation/providers/exploration_provi
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
-import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
+import 'package:earth_nova/ui/product_surfaces/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
-import 'package:earth_nova/shared/widgets/tab_shell.dart';
+import 'package:earth_nova/ui/product_surfaces/app/tab_shell.dart';
 
 class _FakeWakeLockRepository implements WakeLockRepository {
   @override
@@ -363,7 +363,9 @@ void main() {
   });
 
   test('tab shell keeps cached IndexedStack screen list', () {
-    final source = File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+    final source = File(
+      'lib/ui/product_surfaces/app/tab_shell.dart',
+    ).readAsStringSync();
 
     expect(source, contains('IndexedStack('));
     expect(source, contains('late final List<Widget> _screens;'));
@@ -373,20 +375,20 @@ void main() {
   group('TabShell MapRootScreen wiring', () {
     test('imports MapRootScreen', () {
       final source = File(
-        'lib/shared/widgets/tab_shell.dart',
+        'lib/ui/product_surfaces/app/tab_shell.dart',
       ).readAsStringSync();
 
       expect(
         source,
         contains(
-          "import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';",
+          "import 'package:earth_nova/ui/product_surfaces/map/screens/map_root_screen.dart';",
         ),
       );
     });
 
     test('instantiates MapRootScreen as first tab in default screens', () {
       final source = File(
-        'lib/shared/widgets/tab_shell.dart',
+        'lib/ui/product_surfaces/app/tab_shell.dart',
       ).readAsStringSync();
 
       // Verify MapRootScreen is instantiated in default screens list
@@ -401,7 +403,7 @@ void main() {
 
     test('does not instantiate MapScreen directly in TabShell', () {
       final source = File(
-        'lib/shared/widgets/tab_shell.dart',
+        'lib/ui/product_surfaces/app/tab_shell.dart',
       ).readAsStringSync();
 
       // MapScreen should NOT be instantiated directly in TabShell
@@ -414,7 +416,7 @@ void main() {
       'declares Map and Pack as the only bottom navigation destinations',
       () {
         final source = File(
-          'lib/shared/widgets/tab_shell.dart',
+          'lib/ui/product_surfaces/app/tab_shell.dart',
         ).readAsStringSync();
 
         expect(source, contains("label: 'Map'"));
@@ -1046,7 +1048,7 @@ void main() {
     // Source-level wiring checks — no widget pump needed.
     test('source: TabShell injects PageController into PackScreen', () {
       final source = File(
-        'lib/shared/widgets/tab_shell.dart',
+        'lib/ui/product_surfaces/app/tab_shell.dart',
       ).readAsStringSync();
       expect(source, contains('_packPageController'));
       expect(source, contains('PackScreen('));
@@ -1058,7 +1060,7 @@ void main() {
 
     test('source: TabShell completes Pack rewards without nav overlays', () {
       final source = File(
-        'lib/shared/widgets/tab_shell.dart',
+        'lib/ui/product_surfaces/app/tab_shell.dart',
       ).readAsStringSync();
       expect(source, contains('addPostFrameCallback'));
       expect(source, contains('completeRewardFlight'));
@@ -1069,7 +1071,7 @@ void main() {
 
     test('source: Pack left-edge overscroll returns to Map', () {
       final source = File(
-        'lib/shared/widgets/tab_shell.dart',
+        'lib/ui/product_surfaces/app/tab_shell.dart',
       ).readAsStringSync();
       final leftCase = source.substring(
         source.indexOf('case EdgeSwipeDirection.left:'),
@@ -1081,7 +1083,7 @@ void main() {
 
     test('source: Pack right-edge overscroll remains Pack-owned', () {
       final source = File(
-        'lib/shared/widgets/tab_shell.dart',
+        'lib/ui/product_surfaces/app/tab_shell.dart',
       ).readAsStringSync();
       final rightCaseStart = source.indexOf('case EdgeSwipeDirection.right:');
       final rightCase = source.substring(

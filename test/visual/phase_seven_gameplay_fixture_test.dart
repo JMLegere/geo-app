@@ -12,16 +12,16 @@ import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 import 'package:earth_nova/features/encounters/presentation/providers/pending_encounter_provider.dart';
-import 'package:earth_nova/features/encounters/presentation/widgets/pending_encounter_layer.dart';
+import 'package:earth_nova/ui/product_surfaces/encounters/widgets/pending_encounter_layer.dart';
 import 'package:earth_nova/features/living_world/data/dtos/living_world_dto.dart';
 import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
-import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
-import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
-import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
-import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
+import 'package:earth_nova/ui/product_surfaces/map/screens/map_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/cell_detail_sheet.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/discovery_notification.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/map_status_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -82,7 +82,7 @@ void main() {
 
     test('keeps a revisit visually silent', () {
       final mapScreen = File(
-        'lib/features/map/presentation/screens/map_screen.dart',
+        'lib/ui/product_surfaces/map/screens/map_screen.dart',
       ).readAsStringSync();
 
       expect(

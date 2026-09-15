@@ -2,8 +2,8 @@ Molecule: AppRibbon
 Status: canonical
 Role: group
 Interaction policy: display
-Exports: lib/shared/design/composites/app_ribbon.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/composites/app_ribbon.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Clean folded title ribbon using the shared palette and typography.

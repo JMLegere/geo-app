@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
+import 'package:earth_nova/ui/product_surfaces/debug/debug_gesture_overlay.dart';
 
 class _FakeInjector implements GestureInjectorInterface {
   final List<String> calls = [];

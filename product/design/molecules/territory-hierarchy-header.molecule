@@ -2,8 +2,8 @@ Molecule: TerritoryHierarchyHeader
 Status: canonical
 Role: navigation-header
 Interaction policy: action-required
-Exports: lib/features/map/presentation/widgets/hierarchy_header.dart
-Public API: lib/features/map/presentation/widgets/hierarchy_header.dart
+Exports: lib/ui/product_surfaces/map/widgets/hierarchy_header.dart
+Public API: lib/ui/product_surfaces/map/widgets/hierarchy_header.dart
 
 Purpose:
   Phase 3 neutral territory hierarchy header that exposes parent-scale navigation while keeping hierarchy browsing tied to product action evidence. Player-facing hierarchy copy uses State, never Province.

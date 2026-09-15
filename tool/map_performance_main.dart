@@ -34,9 +34,9 @@ import 'package:earth_nova/features/map/presentation/providers/map_provider.dart
 import 'package:earth_nova/features/map/presentation/providers/map_readiness_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
-import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/map/screens/map_screen.dart';
 import 'package:earth_nova/features/pack/data/repositories/legacy_item_repository_pack_adapter.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/design_system.dart';
 
 import 'map_performance_fixture.dart';
 

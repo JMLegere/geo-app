@@ -2,8 +2,8 @@ Page: PlayerSettings
 Status: canonical
 Role: settings-page
 Interaction policy: delegates-to-children
-Exports: lib/features/profile/presentation/screens/settings_screen.dart
-Public API: lib/features/profile/presentation/screens/settings_screen.dart
+Exports: lib/ui/product_surfaces/profile/screens/settings_screen.dart
+Public API: lib/ui/product_surfaces/profile/screens/settings_screen.dart
 
 Purpose:
   Player settings and account route for profile, debug, and sign-out controls outside the two gameplay destinations and gameplay action catalog.

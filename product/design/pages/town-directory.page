@@ -2,8 +2,8 @@ Page: TownDirectory
 Status: canonical
 Role: town-directory-page
 Interaction policy: action-required
-Exports: lib/features/living_world/presentation/screens/town_screen.dart
-Public API: lib/features/living_world/presentation/screens/town_screen.dart
+Exports: lib/ui/product_surfaces/living_world/screens/town_screen.dart
+Public API: lib/ui/product_surfaces/living_world/screens/town_screen.dart
 
 Purpose:
   Phase 5 neutral Town directory for known Venues, introduced Villagers, and current Services. It preserves Town/Venue provenance and map knowledge gates, and introduces neither a Town bottom tab nor Venue Visit triggers.

@@ -7,16 +7,15 @@ void main() {
   ObservableInteractionTrace start(
     ObservabilityService observability,
     String action,
-  ) =>
-      ObservableInteractionTrace.start(
-        observability: observability,
-        interaction: action,
-        surface: 'test.surface',
-        readinessState: 'usable',
-        screenName: 'test_screen',
-        widgetName: 'test_surface',
-        actionType: action,
-      );
+  ) => ObservableInteractionTrace.start(
+    observability: observability,
+    interaction: action,
+    surface: 'test.surface',
+    readinessState: 'usable',
+    screenName: 'test_screen',
+    widgetName: 'test_surface',
+    actionType: action,
+  );
 
   test('uses one root span and stops at the first transition', () {
     final observability = ObservabilityService(sessionId: 'interaction-test');
@@ -28,11 +27,14 @@ void main() {
     expect(observability.pendingSpanRecords, hasLength(1));
     final span = observability.pendingSpanRecords.single;
     expect(span['parent_span_id'], isNull);
-    expect((span['attributes'] as Map<String, dynamic>)['transition'],
-        'pack_visible');
     expect(
-      observability.pendingLogRecords
-          .where((record) => record['event_name'] == 'interaction.transition'),
+      (span['attributes'] as Map<String, dynamic>)['transition'],
+      'pack_visible',
+    );
+    expect(
+      observability.pendingLogRecords.where(
+        (record) => record['event_name'] == 'interaction.transition',
+      ),
       hasLength(1),
     );
   });
@@ -64,8 +66,9 @@ void main() {
 
     interaction.complete(transition: 'cell_sheet_visible');
 
-    final attributes = observability.pendingSpanRecords.single['attributes']
-        as Map<String, dynamic>;
+    final attributes =
+        observability.pendingSpanRecords.single['attributes']
+            as Map<String, dynamic>;
     expect(
       attributes,
       containsPair('interaction', PlayerActions.inspectMapCell),

@@ -2,8 +2,8 @@ Atom: AppNotice
 Status: canonical
 Role: status
 Interaction policy: display
-Exports: lib/shared/design/primitives/app_notice.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/primitives/app_notice.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Neutral Shad inline status or informational notice.

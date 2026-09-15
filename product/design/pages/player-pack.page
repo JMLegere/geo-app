@@ -2,8 +2,8 @@ Page: PlayerPack
 Status: canonical
 Role: inventory-page
 Interaction policy: action-required
-Exports: lib/features/pack/presentation/screens/pack_screen.dart
-Public API: lib/features/pack/presentation/screens/pack_screen.dart
+Exports: lib/ui/product_surfaces/pack/screens/pack_screen.dart
+Public API: lib/ui/product_surfaces/pack/screens/pack_screen.dart
 
 Purpose:
   Shared Pack cards and five-column phone browsing of exact owned active Items. Player-permitted names remain searchable and accessible but are printed only in inspection. Unknown is one Base Item knowledge marker; browsing is read-only. Explicit all-Pack search, reversible sorting, live filter sheets, category Help, per-category query/filter/order/scroll restoration, and retained Items during refresh use the shared design foundation. Production artwork/silhouette delivery and final visual acceptance remain governed by issue 596.
