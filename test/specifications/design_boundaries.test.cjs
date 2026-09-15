@@ -9,6 +9,9 @@ test('new raw presentation values fail outside the library', () => {
 test('the foundation owns raw presentation values', () => {
   assert.deepEqual(violations({'lib/ui/design_system/foundations/palette.dart': 'Color(0xff000000)'}), []);
 });
+test('surface inventory descriptions are metadata, not presentation debt', () => {
+  assert.deepEqual(violations({'lib/ui/product_surfaces/surface_inventory.dart': "'ShadInput('"}), []);
+});
 test('exact existing debt does not admit another occurrence', () => {
   const files = {'lib/features/a.dart': 'TextStyle(fontSize: 12)'};
   const baseline = violations(files);

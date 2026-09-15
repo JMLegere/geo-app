@@ -5,7 +5,7 @@ const path = require('node:path');
 function violations(files) {
   const result = [];
   for (const [file, source] of Object.entries(files)) {
-    if (file.startsWith('lib/shared/design/')) continue;
+    if (file.startsWith('lib/ui/design_system/') || file === 'lib/ui/product_surfaces/surface_inventory.dart') continue;
     const presentation = /extends\s+(StatelessWidget|StatefulWidget|ConsumerWidget|ConsumerStatefulWidget|CustomPainter)/.test(source)
       || file.includes('/presentation/');
     for (const original of source.split(/\r?\n/)) {

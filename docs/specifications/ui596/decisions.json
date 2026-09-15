@@ -20,7 +20,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -44,7 +44,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -68,7 +68,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -92,7 +92,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -116,7 +116,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -140,7 +140,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -164,7 +164,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -188,7 +188,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -212,7 +212,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -236,7 +236,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -260,7 +260,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -284,7 +284,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -308,7 +308,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -332,7 +332,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -356,7 +356,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -380,7 +380,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -404,7 +404,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -428,7 +428,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -452,7 +452,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -477,7 +477,7 @@
       "slice": "S04",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -502,7 +502,7 @@
       "slice": "S04",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -527,7 +527,7 @@
       "slice": "S04",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -552,7 +552,7 @@
       "slice": "S04",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -577,7 +577,7 @@
       "slice": "S04",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -603,7 +603,7 @@
       "slice": "S04",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -628,7 +628,7 @@
       "slice": "S04",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -653,7 +653,7 @@
       "slice": "S04",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -1145,7 +1145,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -1188,7 +1188,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -1213,7 +1213,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -1238,7 +1238,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -1263,7 +1263,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -1288,7 +1288,7 @@
       "slice": "S05",
       "implementation_status": "partial",
       "consumers": [
-        "lib/features/pack/presentation/screens/pack_screen.dart"
+        "lib/ui/product_surfaces/pack/screens/pack_screen.dart"
       ],
       "evidence": [
         {
@@ -1644,13 +1644,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -1674,13 +1674,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -1703,13 +1703,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -1732,13 +1732,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -1761,13 +1761,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -2314,13 +2314,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -2478,13 +2478,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -2507,13 +2507,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -2537,13 +2537,13 @@
       "slice": "S06",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/patterns/app_inspection_panel.dart",
-        "lib/features/pack/presentation/widgets/species_card.dart"
+        "lib/ui/design_system/patterns/app_inspection_panel.dart",
+        "lib/ui/product_surfaces/pack/widgets/species_card.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/issue596_inspection_test.dart"
+          "path": "test/ui/design_system/issue596_inspection_test.dart"
         },
         {
           "kind": "widget_test",
@@ -3356,13 +3356,13 @@
       "slice": "S02",
       "implementation_status": "partial",
       "consumers": [
-        "lib/shared/design/foundations/app_design_theme.dart",
+        "lib/ui/design_system/foundations/app_design_theme.dart",
         "lib/main.dart"
       ],
       "evidence": [
         {
           "kind": "widget_test",
-          "path": "test/shared/design/app_design_theme_test.dart"
+          "path": "test/ui/design_system/app_design_theme_test.dart"
         }
       ]
     }

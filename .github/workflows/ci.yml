@@ -145,6 +145,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          lfs: true
 
       - uses: subosito/flutter-action@v2
         with:
@@ -189,6 +191,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          lfs: true
 
       - uses: subosito/flutter-action@v2
         with:
@@ -214,7 +218,7 @@ jobs:
           CHROMEDRIVER_BINARY: ${{ steps.chrome.outputs.chromedriver-path }}
           BROWSER_GOLDEN_ENV: chrome-driver-153-mobile-emulation-131-linux-swiftshader
         run: |
-          "$CHROMEDRIVER_BINARY" --port=4444 --url-base=wd/hub &
+          "$CHROMEDRIVER_BINARY" --port=4444 --allowed-origins=* &
           DRIVER_PID=$!
           trap 'kill "$DRIVER_PID"' EXIT
           for VIEWPORT in wide narrow; do
