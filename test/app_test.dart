@@ -8,7 +8,8 @@ void main() {
 
   test('source: MaterialApp has scrollBehavior including mouse drag devices',
       () {
-    final source = File('lib/main.dart').readAsStringSync();
+    final source = File('lib/ui/product_surfaces/app/earth_nova_app.dart')
+        .readAsStringSync();
     // Flutter web default ScrollBehavior excludes mouse from drag devices.
     // We must override it so PageView horizontal drag and OverscrollNotification
     // work correctly on web/desktop.

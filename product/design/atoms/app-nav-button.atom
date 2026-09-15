@@ -2,8 +2,8 @@ Atom: AppNavButton
 Status: canonical
 Role: group
 Interaction policy: action-required
-Exports: lib/shared/design/primitives/app_nav_button.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/primitives/app_nav_button.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Accessible icon navigation with shared selection and optional Help labels.

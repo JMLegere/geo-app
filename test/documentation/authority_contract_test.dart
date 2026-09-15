@@ -123,7 +123,7 @@ _DocumentRole? _roleFor(String path) {
     'docs/prd-shadcn-ui-reset.md',
     'docs/observability-interaction-coverage.md',
     'docs/runbook.md',
-    'lib/shared/design/README.md',
+    'lib/ui/design_system/README.md',
   };
   const historicalExact = {
     '.agents/eac-native-design-migration-plan.md',

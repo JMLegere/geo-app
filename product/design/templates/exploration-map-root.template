@@ -2,8 +2,8 @@ Template: ExplorationMapRoot
 Status: canonical
 Role: feature-navigation-root
 Interaction policy: delegates-to-children
-Exports: lib/features/map/presentation/screens/map_root_screen.dart
-Public API: lib/features/map/presentation/screens/map_root_screen.dart
+Exports: lib/ui/product_surfaces/map/screens/map_root_screen.dart
+Public API: lib/ui/product_surfaces/map/screens/map_root_screen.dart
 
 Purpose:
   Exploration routing root that composes GPS map play and territory hierarchy routes without owning reusable visual styling.

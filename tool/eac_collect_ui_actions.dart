@@ -14,7 +14,7 @@ void main() {
     'lib',
   ).listSync(recursive: true).whereType<File>()) {
     if (!file.path.endsWith('.dart')) continue;
-    if (file.path.startsWith('lib/shared/design/')) continue;
+    if (file.path.startsWith('lib/ui/design_system/')) continue;
     if (file.path == 'lib/shared/product/product_action_surface.dart') continue;
 
     final source = file.readAsStringSync();

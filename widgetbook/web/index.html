@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="EarthNova Widgetbook">
+  <title>EarthNova Widgetbook</title>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:"
+  >
+  <link href="maplibre-gl.css" rel="stylesheet">
+</head>
+<body>
+  <script src="maplibre-gl.js"></script>
+  <script>
+    const EarthNovaMap = maplibregl.Map;
+    maplibregl.Map = function(options) {
+      options.attributionControl = false;
+      const map = new EarthNovaMap(options);
+      map.addControl(new maplibregl.AttributionControl({
+        compact: false,
+        customAttribution: '© OpenStreetMap contributors © CARTO',
+      }));
+      window.__earthnovaMapLibreMap = map;
+      map.on('remove', function() {
+        setTimeout(function() {
+          if (window.__earthnovaMapLibreMap === map) {
+            window.__earthnovaMapLibreMap = null;
+          }
+        }, 0);
+      });
+      return map;
+    };
+    maplibregl.Map.prototype = EarthNovaMap.prototype;
+  </script>
+  <script src="retained_map_renderer.js"></script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

@@ -14,7 +14,7 @@ import 'package:earth_nova/features/living_world/domain/entities/living_world_kn
 import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
 import 'package:earth_nova/features/living_world/domain/repositories/living_world_repository.dart';
 import 'package:earth_nova/features/living_world/presentation/providers/town_provider.dart';
-import 'package:earth_nova/features/living_world/presentation/screens/town_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/living_world/screens/town_screen.dart';
 
 import '../../data/living_world_test_data.dart';
 

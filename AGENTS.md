@@ -104,16 +104,16 @@ For product behavior, gameplay rules, UI flows, payload contracts, and state-mod
 
 ### Frontend / Design System
 
-Reusable UI belongs in `lib/shared/design/`, following the enforced taxonomy:
-`foundations → primitives → composites → patterns → feature screens`.
+Reusable UI belongs in `lib/ui/design_system/`, following the enforced taxonomy:
+`foundations → primitives → composites → feedback/adapters → product surfaces`.
 
-1. Feature screens import shared design components from `package:earth_nova/shared/design.dart` only.
-2. Do not import internal design taxonomy paths (`shared/design/primitives`, `shared/design/composites`, etc.) from app code.
+1. Product surfaces import reusable design components from `package:earth_nova/ui/design_system.dart` only.
+2. Do not import internal design taxonomy paths (`ui/design_system/primitives`, `ui/design_system/composites`, etc.) from product-surface code.
 3. New reusable UI must be added to the correct taxonomy folder, `designComponentRegistry`, and a native `product/design` atom/molecule/organism contract.
 4. App-level screens and repeated feature widgets should use product-language native page/template/molecule contracts (`ExplorationMap`, `PlayerPack`, `TownDirectory`, etc.), not implementation-only names.
 5. Raw clickables (`GestureDetector`, `InkWell`, Material buttons) must expose action evidence via `ProductActionSurface` or `ObservableInteraction`, or carry an explicit `eac-clickable-owner-logs` / `eac-clickable-ignore` reason.
 6. Design widgets expose semantic variants/tone props, not raw color/style/padding escape hatches.
-7. For design-library changes, run `mise exec -- flutter test --no-pub test/shared/design` plus the affected widget/feature tests.
+7. For design-system changes, run `mise exec -- flutter test --no-pub test/ui/design_system` plus the affected widget/feature tests.
 
 
 ### Observability — Every State Transition
@@ -142,7 +142,7 @@ The table below records inherited v3 implementation decisions and constraints. P
 | **Nuke and rebuild** | All v2 Dart code deleted, v3 built from scratch | App broken for weeks, root cause unknown, complexity exceeded value |
 | **No OTP** | Phone → `SHA-256(phone:earthnova-beta-2026)` → Supabase email+password | OTP requires SMS provider, adds state (pending/verified), never worked reliably |
 | **No local SQLite** | Supabase is the only data store for MVP | Drift added 32-column denormalized tables, codegen, repositories, migrations — the primary source of v2 complexity. Offline support is post-MVP. |
-| **No codegen** | Hand-written providers and models only. No `build_runner`. | Codegen hides structure from agents and developers, adds rebuild steps, produces stale output bugs |
+| **No product codegen** | Root app providers and models stay hand-written; `build_runner` is not a root dependency. | Avoids hidden structure and stale app output. The only narrow workshop exception is defined in `.agents/constraints.md` under [issue #610](https://github.com/JMLegere/geo-app/issues/610) and the [canonical PRD](.agents/discovery/2026-09-15-widgetbook-ui-migration-prd.md). |
 | **v3 tables alongside old** | New `v3_*` tables, old tables untouched | Beta users have data. Old tables stay until v3 is confirmed stable. |
 | **Observability from day 1** | `ObservableNotifier`, `runZonedGuarded`, `FlutterError.onError` | v2 outage ran undetected for weeks — no structured logging |
 | **2-frame sprite animation** | Real art frames from enrichment pipeline, not programmatic | Real frames from enrichment; `icon_url_frame2` null = static until enriched |
@@ -158,7 +158,7 @@ The table below records inherited v3 implementation decisions and constraints. P
 - **`extends Notifier<`** — all notifiers MUST extend `ObservableNotifier<T>`. A grep test in `test/providers/observable_notifier_test.dart` enforces this at CI time.
 - **`StateNotifier`** — use `Notifier` pattern only
 - **Drift / SQLite** — not in v3. Do not add back.
-- **`build_runner` / codegen** — hand-write everything
+- **`build_runner` / codegen in the root app** — hand-write everything. The isolated `widgetbook/` exception is governed solely by `.agents/constraints.md`.
 - **`maplibre`, `geolocator`, `geobase`, `h3_flutter_plus`** — post-MVP. Do not add back yet.
 - **`dynamic` casts, unchecked `as`** — use sealed classes and pattern matching
 - **Raw phone numbers in logs** — always SHA-256 hash before logging

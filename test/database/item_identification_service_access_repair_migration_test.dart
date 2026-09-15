@@ -24,9 +24,7 @@ void main() {
 
     expect(
       sql,
-      contains(
-        'villager_version.display_name as villager_display_name',
-      ),
+      contains('villager_version.display_name as villager_display_name'),
     );
     expect(
       sql,
@@ -51,8 +49,7 @@ void main() {
       "service_version.publication_status = 'published'",
       "'service_access'",
       "'villager_display_name'",
-      'grant execute on function public.prepare_v3_item_identification(uuid) '
-          'to authenticated',
+      'grant execute on function public.prepare_v3_item_identification(uuid) to authenticated',
     ]) {
       expect(sql, contains(clause));
     }

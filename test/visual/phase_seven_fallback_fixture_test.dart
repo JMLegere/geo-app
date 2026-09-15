@@ -1,7 +1,7 @@
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/shared/design.dart';
-import 'package:earth_nova/shared/widgets/stub_screen.dart';
+import 'package:earth_nova/ui/design_system.dart';
+import 'package:earth_nova/ui/product_surfaces/system/stub_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

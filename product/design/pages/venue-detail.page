@@ -2,8 +2,8 @@ Page: VenueDetail
 Status: canonical
 Role: venue-detail-page
 Interaction policy: action-required
-Exports: lib/features/living_world/presentation/screens/venue_detail_screen.dart
-Public API: lib/features/living_world/presentation/screens/venue_detail_screen.dart
+Exports: lib/ui/product_surfaces/living_world/screens/venue_detail_screen.dart
+Public API: lib/ui/product_surfaces/living_world/screens/venue_detail_screen.dart
 
 Purpose:
   Phase 5 neutral Venue detail page that groups the known Town projection's introduced Villagers and their current Services. It preserves Town/Venue provenance and map knowledge gates with no Venue Visit trigger.

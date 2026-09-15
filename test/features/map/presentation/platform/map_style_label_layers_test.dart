@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:earth_nova/features/map/presentation/platform/map_style_label_layers.dart';
+import 'package:earth_nova/ui/product_surfaces/map/platform/map_style_label_layers.dart';
 
 void main() {
   group('baseMapTextLabelLayerIdsFromStyle', () {

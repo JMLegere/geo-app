@@ -7,14 +7,14 @@ import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
-import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/map/screens/map_root_screen.dart';
 
 void main() {
   group('MapRootScreen HitTestBehavior', () {
     test('source uses HitTestBehavior.translucent so injected pointer events '
         'reach the GestureDetector when a hierarchy screen is mounted', () {
       final source = File(
-        'lib/features/map/presentation/screens/map_root_screen.dart',
+        'lib/ui/product_surfaces/map/screens/map_root_screen.dart',
       ).readAsStringSync();
 
       expect(
@@ -36,7 +36,7 @@ void main() {
   group('MapLibre platform-view visibility', () {
     test('source unmounts MapScreen when hierarchy screens are active', () {
       final source = File(
-        'lib/features/map/presentation/screens/map_root_screen.dart',
+        'lib/ui/product_surfaces/map/screens/map_root_screen.dart',
       ).readAsStringSync();
 
       expect(source, contains('MapLibrePlatformViewVisibilityBridge'));
@@ -57,13 +57,13 @@ void main() {
   group('pending encounter composition', () {
     test('source composes PendingEncounterLayer only at the cell level', () {
       final source = File(
-        'lib/features/map/presentation/screens/map_root_screen.dart',
+        'lib/ui/product_surfaces/map/screens/map_root_screen.dart',
       ).readAsStringSync();
 
       expect(
         source,
         contains(
-          "import 'package:earth_nova/features/encounters/presentation/widgets/"
+          "import 'package:earth_nova/ui/product_surfaces/encounters/widgets/"
           "pending_encounter_layer.dart';",
         ),
       );
@@ -81,7 +81,7 @@ void main() {
   group('accessible scale controls', () {
     test('source routes controls through the existing pinch transition', () {
       final source = File(
-        'lib/features/map/presentation/screens/map_root_screen.dart',
+        'lib/ui/product_surfaces/map/screens/map_root_screen.dart',
       ).readAsStringSync();
 
       expect(source, contains("source: 'scale_control'"));

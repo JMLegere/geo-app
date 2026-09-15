@@ -2,8 +2,8 @@ Page: IdentificationService
 Status: canonical
 Role: identification-service-page
 Interaction policy: action-required
-Exports: lib/features/identification/presentation/screens/identification_service_screen.dart
-Public API: lib/features/identification/presentation/screens/identification_service_screen.dart
+Exports: lib/ui/product_surfaces/identification/screens/identification_service_screen.dart
+Public API: lib/ui/product_surfaces/identification/screens/identification_service_screen.dart
 
 Purpose:
   Phase 5 neutral Villager service composition prepares one examined unidentified owned active Item on entry, names the known Villager and current Identification Service, and commits the retained exact plan only after explicit start and completed hold-to-reveal. Cancel or release before reveal writes nothing; examination remains separate, and this page does not activate Town as a bottom destination.

@@ -1,5 +1,5 @@
 import 'package:earth_nova/features/living_world/data/dtos/living_world_dto.dart';
-import 'package:earth_nova/features/living_world/presentation/widgets/venue_marker.dart';
+import 'package:earth_nova/ui/product_surfaces/living_world/widgets/venue_marker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

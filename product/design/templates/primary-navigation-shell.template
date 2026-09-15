@@ -2,8 +2,8 @@ Template: PrimaryNavigationShell
 Status: canonical
 Role: app-navigation-shell
 Interaction policy: action-required
-Exports: lib/shared/widgets/tab_shell.dart
-Public API: lib/shared/widgets/tab_shell.dart
+Exports: lib/ui/product_surfaces/app/tab_shell.dart
+Public API: lib/ui/product_surfaces/app/tab_shell.dart
 
 Purpose:
   Two-destination app shell for exactly Map and Pack. Navigation selections remain product actions with the existing Map and Pack action IDs, selection telemetry, lazy IndexedStack materialization, wake-lock behavior, and edge swipe.

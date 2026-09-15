@@ -7,7 +7,7 @@ test('new raw presentation values fail outside the library', () => {
   assert.equal(validate(files, []).length, 1);
 });
 test('the foundation owns raw presentation values', () => {
-  assert.deepEqual(violations({'lib/shared/design/foundations/palette.dart': 'Color(0xff000000)'}), []);
+  assert.deepEqual(violations({'lib/ui/design_system/foundations/palette.dart': 'Color(0xff000000)'}), []);
 });
 test('exact existing debt does not admit another occurrence', () => {
   const files = {'lib/features/a.dart': 'TextStyle(fontSize: 12)'};

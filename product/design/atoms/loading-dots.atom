@@ -2,8 +2,8 @@ Atom: LoadingDots
 Status: canonical
 Role: progress-indicator
 Interaction policy: display
-Exports: lib/shared/widgets/loading_dots.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/feedback/loading_dots.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Neutral Shad loading indicator for asynchronous waiting states.

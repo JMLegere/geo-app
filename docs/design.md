@@ -672,7 +672,7 @@ Timing is measured via observability — timed operations write spans to `teleme
 
 Nothing is designed ad hoc. Every colour, spacing value, radius, shadow, and animation timing comes from the token system below. If a value isn't here, it doesn't exist yet — add it here first, then use it.
 
-Canonical reusable UI now lives in `lib/shared/design/`, with the same enforced shape as the `main-website` repo: taxonomy folders, public API, registry, contract tests, and a catalog example. See `docs/frontend-usability-design-system.md` and `lib/shared/design/README.md`.
+Canonical reusable UI now lives in `lib/ui/design_system/`, with taxonomy folders, public API, registry, contract tests, and Widgetbook stories. See `docs/frontend-usability-design-system.md` and `lib/ui/design_system/README.md`.
 
 The v3 palette and core token values remain based on the proven v1 `lib/shared/` design language; new reusable widgets must enter through the shared design library before feature screens consume them.
 
@@ -760,21 +760,21 @@ Reusable UI is organized and enforced before it is consumed by screens.
 
 | Layer | File / path | What it owns |
 |-----------|------|------------|
-| Public API | `lib/shared/design.dart` | The only import path feature screens should use for shared design components |
-| Registry | `lib/shared/design/registry.dart` | Component taxonomy, status, purpose, and screen-usage policy |
-| Foundations | `lib/shared/design/foundations/` | Internal helpers and conventions |
-| Primitives | `lib/shared/design/primitives/` | `EarthActionButton`, `EarthMetaText`, `EarthTag`, `EarthNotice` |
-| Composites | `lib/shared/design/composites/` | `EarthPanel`, `EarthFieldRow`, `EarthStatGrid` |
-| Patterns | `lib/shared/design/patterns/` | `DesignLibraryExample` catalog/review artifact; not for direct app-screen use |
-| Theme | `lib/shared/theme/app_theme.dart` | Material theme factories and brand/surface colors |
-| Tokens | `lib/shared/theme/design_tokens.dart` | Spacing, radii, durations, curves, and component sizes |
+| Public API | `lib/ui/design_system.dart` | The only import path feature screens should use for shared visual foundation |
+| Registry | `lib/ui/design_system/registry.dart` | Component taxonomy, status, purpose, and screen-usage policy |
+| Foundations | `lib/ui/design_system/foundations/` | Internal helpers and conventions |
+| Primitives | `lib/ui/design_system/primitives/` | `EarthActionButton`, `EarthMetaText`, `EarthTag`, `EarthNotice` |
+| Composites | `lib/ui/design_system/composites/` | `EarthPanel`, `EarthFieldRow`, `EarthStatGrid` |
+| Feedback | `lib/ui/design_system/feedback/` | `LoadingDots` and `ErrorBoundaryRetry` |
+| Adapters | `lib/ui/design_system/adapters/` | Domain icon and status mappings |
+| Theme and tokens | `lib/ui/design_system/theme/` | Material theme factories, colors, spacing, radii, durations, curves, and component sizes |
 | Shared widgets | `lib/shared/widgets/` | Existing app shell/loading/stub widgets that can be migrated into the taxonomy when reused broadly |
 | Feature widgets | `lib/features/*/presentation/widgets/` | Feature-owned UI such as map-cell details or discovery notifications until a pattern becomes reusable |
 
-Enforcement lives in `test/shared/design/`:
+Enforcement lives in `test/ui/design_system/`:
 - `design_contract_test.dart` checks required artifacts, public import path, taxonomy-first exports, and no raw style escape hatches in design widgets.
 - `design_component_registry_test.dart` keeps exported design widgets and `designComponentRegistry` in sync.
-- `design_library_widget_test.dart` smoke-renders the catalog example and checks action touch-target usability.
+- Widgetbook stories provide visual catalog coverage.
 
 ---
 

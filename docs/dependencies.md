@@ -32,6 +32,10 @@
 | `flutter_native_splash` | `^2.4.4` | Generates native splash screen (`#0D1B2A` dark navy). Run once after splash changes. |
 | `@cucumber/cucumber` | `^12.2.0` | Executes SuperBDD `.feature` files through `npm run superbdd:cucumber`. Dev-only Node harness; no Flutter runtime dependency and no codegen. |
 
+
+## Isolated Widgetbook workshop exception
+
+This document's runtime and dev-dependency tables describe the root app. [Issue #610](https://github.com/JMLegere/geo-app/issues/610) permits only the separate `widgetbook/` package to use exact pins `widgetbook` `3.23.0`, `widgetbook_annotation` `3.11.0`, `widgetbook_generator` `3.23.0`, and `build_runner` `2.10.0`. The checked-in `widgetbook/pubspec.lock` records their successful resolution under pinned Flutter 3.41.3; root runtime dependencies, Flutter, analyzer, and the root lockfile remain unchanged. The canonical rules remain [root `AGENTS.md`](../AGENTS.md) and [`.agents/constraints.md`](../.agents/constraints.md); this note records the resolved package boundary rather than widening it.
 ---
 
 ## Removed Packages (and Why)
@@ -42,7 +46,7 @@ These packages were in v1/v2 and are **not** in v3. Do not add them back without
 |---------|----------------|
 | `drift` + `drift_dev` | Local SQLite ORM. Added schema management, code generation, repositories, and migration complexity. Drift was the source of most v2 complexity (32-column denormalized tables, `Value<T>` wrappers, build_runner). v3 reads directly from Supabase — no local cache for MVP. Offline support added later when it's actually needed. |
 | `sqlite3` + `sqlite3_flutter_libs` | SQLite native bindings required by Drift. Gone with Drift. |
-| `build_runner` | Code generation runner for Drift and Riverpod generators. No codegen in v3 — all models and providers are hand-written. Codegen adds hidden complexity (generated files, rebuild steps, stale output bugs). |
+| `build_runner` | Code generation runner for Drift and Riverpod generators. It remains excluded from the root app; the sole separate-`widgetbook/` exception is governed by [.agents/constraints.md](../.agents/constraints.md). |
 | `riverpod_generator` + `riverpod_annotation` | Riverpod codegen annotations. Replaced by hand-written `NotifierProvider`. Codegen hides the provider structure from AI agents and new developers. Manual providers are ~5 lines each and perfectly readable. |
 | `geobase` | Geographic coordinate type library (`Geographic(lat:, lon:)`). Only needed when map/GPS features are active. Not needed for auth + pack MVP. Add back when map is built. |
 | `h3_flutter_plus` | H3 hexagonal cell system (FFI). Replaced by Voronoi cells in v2. Not needed for MVP. Requires `LD_LIBRARY_PATH=.` hack in CI. |
@@ -63,7 +67,7 @@ Ask these questions first:
 
 1. **Is it already in Supabase?** Auth, storage, realtime, edge functions cover a lot. Don't add a package for something Supabase already does.
 2. **Is it deferred?** Many packages above are correct for post-MVP features. Don't add them until that feature is being built.
-3. **Does it require codegen?** No. `build_runner` is not in the project. Hand-write it.
+3. **Does it require codegen?** Not in the root app. The only isolated `widgetbook/` exception is governed by [.agents/constraints.md](../.agents/constraints.md); hand-write everything else.
 4. **Does it add native code or FFI?** Flag it — affects CI and web builds.
 5. **What does it cost in bundle size?** Run `flutter build web` before and after. Web bundle must stay < 5MB gzipped.
 6. **Write the ADR.** Any new package goes in the Key Decisions section of `AGENTS.md` with a one-line rationale.

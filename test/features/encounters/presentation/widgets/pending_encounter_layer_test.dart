@@ -14,8 +14,8 @@ import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 import 'package:earth_nova/features/encounters/presentation/providers/pending_encounter_provider.dart';
-import 'package:earth_nova/features/encounters/presentation/widgets/pending_encounter_layer.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/product_surfaces/encounters/widgets/pending_encounter_layer.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {

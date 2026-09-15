@@ -2,8 +2,8 @@ Molecule: MapCellDetailSheet
 Status: canonical
 Role: detail-sheet
 Interaction policy: action-required
-Exports: lib/features/map/presentation/widgets/cell_detail_sheet.dart
-Public API: lib/features/map/presentation/widgets/cell_detail_sheet.dart
+Exports: lib/ui/product_surfaces/map/widgets/cell_detail_sheet.dart
+Public API: lib/ui/product_surfaces/map/widgets/cell_detail_sheet.dart
 
 Purpose:
   Phase 3 neutral read-only map Cell detail for inspect-map-cell. Shrouded remains generic; Informed discloses only one category label and never an exact Encounter, fauna identity, Outcome, or reward; Explored and trusted Present may disclose known visit context. Known Venue navigation remains separate product action evidence.

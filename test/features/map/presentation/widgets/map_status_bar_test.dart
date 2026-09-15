@@ -1,6 +1,6 @@
-import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
-import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/map_status_bar.dart';
+import 'package:earth_nova/ui/product_surfaces/map/screens/map_screen.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';

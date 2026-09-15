@@ -1,6 +1,6 @@
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';

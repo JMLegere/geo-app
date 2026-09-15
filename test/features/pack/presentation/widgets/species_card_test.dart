@@ -8,7 +8,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/domain/entities/item_recorded_property.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
-import 'package:earth_nova/features/pack/presentation/widgets/species_card.dart';
+import 'package:earth_nova/ui/product_surfaces/pack/widgets/species_card.dart';
 
 void main() {
   group('SpeciesCard', () {
@@ -295,10 +295,10 @@ void main() {
 
     test('source uses neutral design vocabulary without legacy decoration', () {
       final source = File(
-        'lib/features/pack/presentation/widgets/species_card.dart',
+        'lib/ui/product_surfaces/pack/widgets/species_card.dart',
       ).readAsStringSync();
 
-      expect(source, contains("package:earth_nova/shared/design.dart"));
+      expect(source, contains("package:earth_nova/ui/design_system.dart"));
       for (final token in const [
         'AppTheme',
         'design_tokens',

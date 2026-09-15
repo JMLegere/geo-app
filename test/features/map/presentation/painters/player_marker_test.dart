@@ -1,5 +1,5 @@
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
-import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
+import 'package:earth_nova/ui/product_surfaces/map/rendering/player_marker.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

@@ -6,14 +6,14 @@ import 'package:earth_nova/features/auth/presentation/providers/auth_provider.da
 import 'package:earth_nova/features/home/domain/entities/home.dart';
 import 'package:earth_nova/features/home/domain/repositories/home_repository.dart';
 import 'package:earth_nova/features/home/presentation/providers/home_provider.dart';
-import 'package:earth_nova/features/home/presentation/screens/home_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/home/screens/home_screen.dart';
 import 'package:earth_nova/features/living_world/data/dtos/living_world_dto.dart';
 import 'package:earth_nova/features/living_world/domain/entities/living_world_knowledge.dart';
 import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
 import 'package:earth_nova/features/living_world/domain/repositories/living_world_repository.dart';
 import 'package:earth_nova/features/living_world/presentation/providers/town_provider.dart';
-import 'package:earth_nova/features/living_world/presentation/screens/town_screen.dart';
-import 'package:earth_nova/features/living_world/presentation/screens/venue_detail_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/living_world/screens/town_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/living_world/screens/venue_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

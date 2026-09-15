@@ -4,7 +4,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'package:earth_nova/features/living_world/data/dtos/living_world_dto.dart';
 import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
-import 'package:earth_nova/features/living_world/presentation/widgets/venue_marker.dart';
+import 'package:earth_nova/ui/product_surfaces/living_world/widgets/venue_marker.dart';
 
 import '../../data/living_world_test_data.dart';
 

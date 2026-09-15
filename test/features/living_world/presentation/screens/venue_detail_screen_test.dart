@@ -7,7 +7,7 @@ import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/living_world/data/dtos/living_world_dto.dart';
 import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
-import 'package:earth_nova/features/living_world/presentation/screens/venue_detail_screen.dart';
+import 'package:earth_nova/ui/product_surfaces/living_world/screens/venue_detail_screen.dart';
 
 import '../../data/living_world_test_data.dart';
 

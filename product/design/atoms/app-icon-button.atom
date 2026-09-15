@@ -2,8 +2,8 @@ Atom: AppIconButton
 Status: canonical
 Role: region
 Interaction policy: delegates-to-children
-Exports: lib/shared/design/primitives/app_icon_button.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/primitives/app_icon_button.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Shared immediate accessible retrieval control.

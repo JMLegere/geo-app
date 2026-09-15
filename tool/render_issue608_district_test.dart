@@ -2,9 +2,9 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
-import 'package:earth_nova/features/map/presentation/widgets/district_footprint_map.dart';
-import 'package:earth_nova/features/map/presentation/widgets/hierarchy_header.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/district_footprint_map.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/hierarchy_header.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';

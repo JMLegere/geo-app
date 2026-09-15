@@ -1,0 +1,56 @@
+{
+  "source": "CARTO Positron GL documentary map capture of Halifax waterfront and downtown",
+  "provider": "CARTO",
+  "styleUrl": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  "capturedAtUtc": "2026-09-15T15:00:13Z",
+  "image": {
+    "path": "widgetbook/assets/map/reference.png",
+    "width": 780,
+    "height": 520,
+    "sha256": "353d4e423a0392725fed36a75984c62e17e5c9c0c52432d2186682647b273975"
+  },
+  "view": {
+    "center": {
+      "longitude": -63.5752,
+      "latitude": 44.647
+    },
+    "zoom": 14.05,
+    "coordinates": {
+      "northwest": [-63.591366861125294, 44.65466743354776],
+      "northeast": [-63.55903313887218, 44.65466743354776],
+      "southeast": [-63.55903313887218, 44.63933155281339],
+      "southwest": [-63.591366861125294, 44.63933155281339]
+    }
+  },
+  "attribution": "© OpenStreetMap contributors © CARTO",
+  "licenseUseBasis": [
+    {
+      "provider": "OpenStreetMap contributors",
+      "url": "https://www.openstreetmap.org/copyright",
+      "basis": "OpenStreetMap attribution and Open Database License notice."
+    },
+    {
+      "provider": "Open Database License",
+      "url": "https://opendatacommons.org/licenses/odbl/",
+      "basis": "Database license referenced by OpenStreetMap copyright notice."
+    },
+    {
+      "provider": "CARTO",
+      "url": "https://carto.com/attributions",
+      "basis": "CARTO basemap attribution."
+    },
+    {
+      "provider": "CARTO basemap style",
+      "url": "https://github.com/CartoDB/basemap-styles/blob/master/LICENSE",
+      "basis": "CARTO basemap style license."
+    }
+  ],
+  "limitations": [
+    "Documentary-only fixed image; it is not live geography or evidence of pan/zoom fidelity.",
+    "Noninteractive workshop fixture; runtime must not request tiles, map services, or user location."
+  ],
+  "expectedBuiltAssetUrl": {
+    "url": "assets/assets/map/reference.png",
+    "status": "verified by Flutter web build on 2026-09-15"
+  }
+}

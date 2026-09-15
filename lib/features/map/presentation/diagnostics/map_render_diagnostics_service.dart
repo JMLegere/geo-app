@@ -3,8 +3,8 @@ import 'dart:ui';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/services/cell_geometry_diagnostics_service.dart';
-import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
-import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
+import 'package:earth_nova/ui/product_surfaces/map/rendering/fog_renderer.dart';
+import 'package:earth_nova/ui/product_surfaces/map/rendering/cell_tessellation_render_model.dart';
 
 /// True only when a completed overlay frame contains projected, visible,
 /// non-opaque Cell geometry. A Present Cell is not required: a new Player can

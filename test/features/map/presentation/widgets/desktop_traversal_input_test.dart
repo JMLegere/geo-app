@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:earth_nova/features/map/presentation/widgets/desktop_traversal_input.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/desktop_traversal_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,8 +9,9 @@ const _mapKey = ValueKey('map-child');
 
 void main() {
   group('DesktopTraversalInput', () {
-    testWidgets('moves at the cardinal rate and stops on key up',
-        (tester) async {
+    testWidgets('moves at the cardinal rate and stops on key up', (
+      tester,
+    ) async {
       final moves = <(double, double)>[];
       var ended = 0;
       await tester.pumpWidget(
@@ -36,8 +37,9 @@ void main() {
       expect(ended, 1);
     });
 
-    testWidgets('normalizes diagonal movement to the cardinal rate',
-        (tester) async {
+    testWidgets('normalizes diagonal movement to the cardinal rate', (
+      tester,
+    ) async {
       final moves = <(double, double)>[];
       await tester.pumpWidget(
         _input(onMove: (north, east) => moves.add((north, east))),
@@ -60,8 +62,9 @@ void main() {
       final disabledMoves = <(double, double)>[];
       await tester.pumpWidget(
         _input(
-            enabled: false,
-            onMove: (north, east) => disabledMoves.add((north, east))),
+          enabled: false,
+          onMove: (north, east) => disabledMoves.add((north, east)),
+        ),
       );
       await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump(const Duration(seconds: 1));
@@ -71,16 +74,18 @@ void main() {
       final blockedMoves = <(double, double)>[];
       await tester.pumpWidget(
         _input(
-            blocked: true,
-            onMove: (north, east) => blockedMoves.add((north, east))),
+          blocked: true,
+          onMove: (north, east) => blockedMoves.add((north, east)),
+        ),
       );
       await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump(const Duration(seconds: 1));
       expect(blockedMoves, isEmpty);
     });
 
-    testWidgets('clears and flushes movement when focus leaves the map',
-        (tester) async {
+    testWidgets('clears and flushes movement when focus leaves the map', (
+      tester,
+    ) async {
       final moves = <(double, double)>[];
       final textFocus = FocusNode();
       addTearDown(textFocus.dispose);
@@ -117,8 +122,9 @@ void main() {
       expect(ended, 1);
     });
 
-    testWidgets('does not start movement while a modal blocks traversal',
-        (tester) async {
+    testWidgets('does not start movement while a modal blocks traversal', (
+      tester,
+    ) async {
       final moves = <(double, double)>[];
       await tester.pumpWidget(
         _input(
@@ -133,8 +139,9 @@ void main() {
       expect(moves, isEmpty);
     });
 
-    testWidgets('leaves native pointer interaction with the map child intact',
-        (tester) async {
+    testWidgets('leaves native pointer interaction with the map child intact', (
+      tester,
+    ) async {
       var taps = 0;
       await tester.pumpWidget(
         MaterialApp(

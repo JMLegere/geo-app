@@ -7,8 +7,8 @@ import 'package:earth_nova/features/living_world/data/dtos/living_world_dto.dart
 import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
-import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/product_surfaces/map/widgets/cell_detail_sheet.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/product/product_action_surface.dart';
 import 'package:flutter/material.dart';

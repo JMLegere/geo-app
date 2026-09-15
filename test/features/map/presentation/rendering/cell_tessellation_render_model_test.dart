@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
-import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
+import 'package:earth_nova/ui/product_surfaces/map/rendering/cell_tessellation_render_model.dart';
 
 void main() {
   group('CellTessellationRenderModel', () {

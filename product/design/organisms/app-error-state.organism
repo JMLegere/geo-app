@@ -2,8 +2,8 @@ Organism: AppErrorState
 Status: canonical
 Role: error-state
 Interaction policy: delegates-to-children
-Exports: lib/shared/design/patterns/app_error_state.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/patterns/app_error_state.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Reusable screen-allowed recoverable-error pattern.

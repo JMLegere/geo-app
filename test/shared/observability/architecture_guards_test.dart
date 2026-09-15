@@ -139,9 +139,9 @@ void main() {
       () {
         expect(
           _isFeatureObservabilitySharedImportViolation(
-            File('lib/features/map/presentation/screens/map_screen.dart'),
+            File('lib/ui/product_surfaces/map/screens/map_screen.dart'),
             '''
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/design_system.dart';
 final ObservabilityService observabilityService;
 ''',
           ),
@@ -154,7 +154,7 @@ final ObservabilityService observabilityService;
       'rejects shared imports for domain and provider observability sources',
       () {
         const source = '''
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/shared/observability.dart';
 final ObservabilityService observabilityService;
 ''';
 
@@ -306,48 +306,48 @@ final ObservabilityService observabilityService;
   test('all root app screens are wrapped with ObservableScreen', () {
     final screenFiles = <String, ({String path, List<String> evidence})>{
       'loading_screen': (
-        path: 'lib/features/auth/presentation/screens/loading_screen.dart',
+        path: 'lib/ui/product_surfaces/auth/screens/loading_screen.dart',
         evidence: ["screenName: 'loading_screen'"],
       ),
       'login_screen': (
-        path: 'lib/features/auth/presentation/screens/login_screen.dart',
+        path: 'lib/ui/product_surfaces/auth/screens/login_screen.dart',
         evidence: ["screenName: 'login_screen'"],
       ),
       'pack_screen': (
-        path: 'lib/features/pack/presentation/screens/pack_screen.dart',
+        path: 'lib/ui/product_surfaces/pack/screens/pack_screen.dart',
         evidence: ["screenName: 'pack_screen'"],
       ),
       'identification_service_screen': (
         path:
-            'lib/features/identification/presentation/screens/identification_service_screen.dart',
+            'lib/ui/product_surfaces/identification/screens/identification_service_screen.dart',
         evidence: ["screenName: 'identification_service_screen'"],
       ),
       'town_screen': (
-        path: 'lib/features/living_world/presentation/screens/town_screen.dart',
+        path: 'lib/ui/product_surfaces/living_world/screens/town_screen.dart',
         evidence: ["screenName: 'town_screen'"],
       ),
       'venue_detail_screen': (
         path:
-            'lib/features/living_world/presentation/screens/venue_detail_screen.dart',
+            'lib/ui/product_surfaces/living_world/screens/venue_detail_screen.dart',
         evidence: [
           "static const _screenName = 'venue_detail_screen'",
           'screenName: _screenName',
         ],
       ),
       'home_screen': (
-        path: 'lib/features/home/presentation/screens/home_screen.dart',
+        path: 'lib/ui/product_surfaces/home/screens/home_screen.dart',
         evidence: ["screenName: 'home_screen'"],
       ),
       'map_root_screen': (
-        path: 'lib/features/map/presentation/screens/map_root_screen.dart',
+        path: 'lib/ui/product_surfaces/map/screens/map_root_screen.dart',
         evidence: ["screenName: 'map_root_screen'"],
       ),
       'map_screen': (
-        path: 'lib/features/map/presentation/screens/map_screen.dart',
+        path: 'lib/ui/product_surfaces/map/screens/map_screen.dart',
         evidence: ["screenName: 'map_screen'"],
       ),
       'settings_screen': (
-        path: 'lib/features/profile/presentation/screens/settings_screen.dart',
+        path: 'lib/ui/product_surfaces/profile/screens/settings_screen.dart',
         evidence: ["screenName: 'settings_screen'"],
       ),
     };

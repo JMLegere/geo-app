@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:earth_nova/app/readiness/app_readiness.dart';
-import 'package:earth_nova/app/readiness/app_readiness_gate.dart';
+import 'package:earth_nova/ui/product_surfaces/app/app_readiness_gate.dart';
 import 'package:earth_nova/app/readiness/client_working_set.dart';
 import 'package:earth_nova/app/readiness/pack_media_readiness.dart';
 import 'package:earth_nova/app/save/application/checkpoint_sync_coordinator.dart';
@@ -19,7 +19,7 @@ import 'package:earth_nova/features/identification/presentation/providers/items_
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_readiness_provider.dart';
-import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/ui/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

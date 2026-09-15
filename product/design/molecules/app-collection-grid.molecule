@@ -2,8 +2,8 @@ Molecule: AppCollectionGrid
 Status: canonical
 Role: region
 Interaction policy: delegates-to-children
-Exports: lib/shared/design/composites/app_collection_grid.dart
-Public API: lib/shared/design.dart
+Exports: lib/ui/design_system/composites/app_collection_grid.dart
+Public API: lib/ui/design_system.dart
 
 Purpose:
   Five phone columns with adaptive width and larger-text card height.

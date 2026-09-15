@@ -2,8 +2,8 @@ Page: HomeIdentity
 Status: canonical
 Role: home-identity-page
 Interaction policy: delegates-to-children
-Exports: lib/features/home/presentation/screens/home_screen.dart
-Public API: lib/features/home/presentation/screens/home_screen.dart
+Exports: lib/ui/product_surfaces/home/screens/home_screen.dart
+Public API: lib/ui/product_surfaces/home/screens/home_screen.dart
 
 Purpose:
   Phase 5 identity-only Home page for the authenticated Player, preserving loading, unavailable, error, retry, and established identity states. It intentionally contains no Modules future-state panel, Module CTA, destination, or new route.
