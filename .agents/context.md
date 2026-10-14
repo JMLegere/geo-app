@@ -1118,3 +1118,33 @@ Fresh full regression: 1,645 passed, 136 existing skips, zero failures; CI-filte
   for the app session, plus the bounded low-level browser event journal.
 - Successful and failed clipboard writes provide live feedback, and clipboard
   failure is itself recorded in observability without removing recovery paths.
+
+# 2026-10-13 — Issue 613 enrichment retention repair, local only
+
+- User-approved [Outcome Contract](https://github.com/JMLegere/geo-app/issues/613)
+  authorizes one local forward migration and focused tests, not release or
+  production data actions. Existing phone/quota investigation remains historical
+  planning evidence in `.agents/issues/2026-10-13-phone-sign-in-database-quota.md`.
+- Migration `108_restore_enrichment_event_retention.sql` restores migration 021's
+  strictly older-than-30-days cleanup and named daily `0 3 * * *` job. It uses
+  qualified objects, invoker security, fixed `pg_catalog` search path, postgres
+  ownership, and revoked PUBLIC/anon/authenticated execution. Applying the
+  migration does not directly run cleanup or change diagnostic/Player rows.
+- TDD: four contract tests first failed on the missing migration; native test was
+  explicitly skipped during that initial missing-file run.
+- Verified with pinned Flutter 3.41.3: focused analyzer reported no issues.
+  Command: `flutter test --no-pub test/supabase test/config/enrichment_pipeline_health_test.dart`.
+  All 24 tests passed, including the native fixture test with
+  `RETENTION_TEST_CONTAINER` supplied.
+- Real isolated PostgreSQL/pg_cron 1.6.4 checks verified cutoff/newer-row retention,
+  old-row deletion, repeated application with stable job identity, unchanged
+  unrelated cron metadata, denied client execution, caller search-path shadow
+  safety, unchanged protected v3/legacy/content rows, and complete rollback.
+  Parent independently verified no fixture tables, cleanup routine, jobs, or
+  synthetic owner remained after rollback. Standards and Spec reviews found
+  no blocking findings.
+- Exact tested migration and formatted test were copied into the shared checkout
+  with exclusive creation and hash verification. No existing concurrent files,
+  dependency manifests, or lockfiles changed. No commit/push/PR/deployment,
+  production cleanup/compaction, billing change, or credential export occurred.
+
